@@ -1,0 +1,164 @@
+/* TextViewer - SimpleText clone */
+/* Classic Mac text editor styling */
+
+.textViewer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--white);
+}
+
+/* ============================================
+   TOOLBAR
+   Shows filename and status
+   ============================================ */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background: var(--platinum);
+  border-bottom: 1px solid var(--shadow);
+  flex-shrink: 0;
+}
+
+.fileName {
+  font-family: var(--font-geneva);
+  font-size: 11px;
+  color: var(--black);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.unsaved {
+  font-size: 14px;
+  color: var(--black);
+  line-height: 1;
+}
+
+.saving {
+  font-family: var(--font-geneva);
+  font-size: 10px;
+  color: var(--shadow);
+  font-style: italic;
+}
+
+.readOnly {
+  margin-left: auto;
+  font-family: var(--font-geneva);
+  font-size: 10px;
+  color: var(--shadow);
+  background: var(--highlight);
+  padding: 2px 6px;
+  border: 1px solid var(--shadow);
+}
+
+/* ============================================
+   CONTENT AREA
+   ============================================ */
+
+.content {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+}
+
+/* Editable textarea */
+.textarea {
+  width: 100%;
+  height: 100%;
+  padding: 8px;
+  border: none;
+  outline: none;
+  resize: none;
+  background: var(--white);
+  color: var(--black);
+  font-family: var(--font-monaco);
+  font-size: 12px;
+  line-height: 1.4;
+  /* Pixel-perfect text */
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+  /* Allow text selection in textarea */
+  user-select: text;
+  cursor: text;
+}
+
+.textarea::placeholder {
+  color: var(--shadow);
+  opacity: 0.6;
+}
+
+.textarea:focus {
+  outline: none;
+}
+
+/* Read-only display */
+.readOnlyText {
+  padding: 8px;
+  font-family: var(--font-monaco);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--black);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  /* Pixel-perfect text */
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+  /* Allow text selection for copying */
+  user-select: text;
+  cursor: default;
+  min-height: 100%;
+}
+
+.emptyText {
+  color: var(--shadow);
+  font-style: italic;
+}
+
+/* ============================================
+   STATUS BAR
+   Shows character/line count
+   ============================================ */
+
+.statusBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2px 8px;
+  background: var(--platinum);
+  border-top: 1px solid var(--shadow);
+  font-family: var(--font-geneva);
+  font-size: 10px;
+  color: var(--shadow);
+  flex-shrink: 0;
+}
+
+.charCount, .lineCount {
+  opacity: 0.8;
+}
+
+/* ============================================
+   SCROLLBAR STYLING
+   Inherit from global but smaller
+   ============================================ */
+
+.content::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.content::-webkit-scrollbar-track {
+  background: var(--platinum);
+}
+
+.content::-webkit-scrollbar-thumb {
+  background: var(--platinum);
+  border: 1px solid var(--black);
+  border-top-color: var(--highlight);
+  border-left-color: var(--highlight);
+  border-bottom-color: var(--shadow);
+  border-right-color: var(--shadow);
+}

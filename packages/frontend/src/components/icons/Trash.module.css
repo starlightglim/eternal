@@ -1,0 +1,58 @@
+/* Trash Icon Styles */
+/* Fixed position bottom-right corner */
+
+.trash {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 4px;
+  cursor: default;
+  user-select: none;
+  z-index: 5;
+}
+
+.iconImage {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+/* Selected trash icon gets inverted colors */
+.selected .iconImage {
+  filter: invert(1);
+}
+
+.iconLabel {
+  text-align: center;
+  font-family: var(--font-geneva);
+  font-size: 9px;
+  line-height: 1.2;
+  color: var(--black);
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+  padding: 1px 2px;
+}
+
+/* Selected label - navy blue background, white text */
+.labelSelected {
+  background-color: var(--selection);
+  color: var(--selection-text);
+}
+
+/* Drop target highlight when dragging item over */
+.dropTarget {
+  outline: 2px dashed var(--selection);
+  outline-offset: 4px;
+  background-color: rgba(0, 0, 128, 0.1);
+}
+
+/* Hover state */
+.trash:hover .iconLabel:not(.labelSelected) {
+  background-color: rgba(0, 0, 128, 0.1);
+}

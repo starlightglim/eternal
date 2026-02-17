@@ -1,0 +1,95 @@
+/* FolderView - Classic Mac folder contents view */
+
+.folderView {
+  height: 100%;
+  overflow: auto;
+  background: var(--white);
+  padding: 8px;
+}
+
+.emptyFolder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-family: var(--font-geneva);
+  font-size: 12px;
+  color: var(--shadow);
+}
+
+/* ============================================
+   ITEM GRID
+   Icon layout similar to desktop
+   ============================================ */
+
+.itemGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-content: flex-start;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 72px;
+  padding: 4px;
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+.item:hover {
+  background: var(--highlight);
+}
+
+.item:active {
+  background: var(--selection);
+}
+
+.item:active .itemName {
+  color: var(--selection-text);
+}
+
+/* ============================================
+   ITEM ICON
+   ============================================ */
+
+.itemIcon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+  /* Pixel-perfect icons */
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.itemIcon svg {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* ============================================
+   ITEM NAME
+   ============================================ */
+
+.itemName {
+  font-family: var(--font-geneva);
+  font-size: 9px;
+  color: var(--black);
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
+  line-height: 1.2;
+  /* Pixel-perfect text */
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}

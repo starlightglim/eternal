@@ -1,0 +1,262 @@
+// Authentication store for EternalOS
+// Uses Cloudflare Workers API (or mock mode when API not configured)
+
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import type { UserProfile, AuthUser } from '../types';
+import {
+  isApiConfigured,
+  setAuthToken,
+  signup as apiSignup,
+  login as apiLogin,
+  logout as apiLogout,
+} from '../services/api';
+
+interface AuthState {
+  user: AuthUser | null;
+  profile: UserProfile | null;
+  token: string | null;
+  loading: boolean;
+  error: string | null;
+  initialized: boolean;
+}
+
+interface AuthActions {
+  signup: (email: string, password: string, username: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  clearError: () => void;
+  initialize: () => () => void;
+  setWallpaper: (wallpaper: string) => void;
+}
+
+type AuthStore = AuthState & AuthActions;
+
+// Validate username format
+function validateUsername(username: string): string | null {
+  if (username.length < 3) {
+    return 'Username must be at least 3 characters';
+  }
+  if (username.length > 20) {
+    return 'Username must be 20 characters or less';
+  }
+  if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+    return 'Username can only contain letters, numbers, and underscores';
+  }
+  return null;
+}
+
+// Mock user for demo mode
+const mockUser: AuthUser = {
+  uid: 'demo-user',
+  username: 'demo',
+  email: 'demo@eternalos.local',
+};
+
+const mockProfile: UserProfile = {
+  uid: 'demo-user',
+  username: 'demo',
+  displayName: 'Demo User',
+  wallpaper: 'default',
+  createdAt: Date.now(),
+};
+
+export const useAuthStore = create<AuthStore>()(
+  persist(
+    (set, get) => ({
+      user: null,
+      profile: null,
+      token: null,
+      loading: false,
+      error: null,
+      initialized: false,
+
+      signup: async (email: string, password: string, username: string) => {
+        // In demo mode, just set mock user
+        if (!isApiConfigured) {
+          set({
+            user: mockUser,
+            profile: mockProfile,
+            loading: false,
+            initialized: true,
+          });
+          return;
+        }
+
+        set({ loading: true, error: null });
+
+        try {
+          // Validate username format
+          const usernameError = validateUsername(username);
+          if (usernameError) {
+            set({ loading: false, error: usernameError });
+            return;
+          }
+
+          const response = await apiSignup(email, password, username);
+
+          // Store token in API client
+          setAuthToken(response.token);
+
+          const user: AuthUser = {
+            uid: response.user.uid,
+            username: response.user.username,
+            email: response.user.email,
+          };
+
+          const profile: UserProfile = {
+            uid: response.user.uid,
+            username: response.user.username,
+            displayName: response.user.username,
+            createdAt: Date.now(),
+          };
+
+          set({
+            user,
+            profile,
+            token: response.token,
+            loading: false,
+            initialized: true,
+          });
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : 'Signup failed';
+          set({ loading: false, error: message });
+        }
+      },
+
+      login: async (email: string, password: string) => {
+        // In demo mode, just set mock user
+        if (!isApiConfigured) {
+          set({
+            user: mockUser,
+            profile: mockProfile,
+            loading: false,
+            initialized: true,
+          });
+          return;
+        }
+
+        set({ loading: true, error: null });
+
+        try {
+          const response = await apiLogin(email, password);
+
+          // Store token in API client
+          setAuthToken(response.token);
+
+          const user: AuthUser = {
+            uid: response.user.uid,
+            username: response.user.username,
+            email: response.user.email,
+          };
+
+          // Note: Full profile would come from desktop fetch
+          const profile: UserProfile = {
+            uid: response.user.uid,
+            username: response.user.username,
+            displayName: response.user.username,
+            createdAt: Date.now(),
+          };
+
+          set({
+            user,
+            profile,
+            token: response.token,
+            loading: false,
+            initialized: true,
+          });
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : 'Login failed';
+          set({ loading: false, error: message });
+        }
+      },
+
+      logout: async () => {
+        const { token } = get();
+
+        set({ loading: true, error: null });
+
+        try {
+          if (isApiConfigured && token) {
+            await apiLogout();
+          }
+          setAuthToken(null);
+          set({
+            user: null,
+            profile: null,
+            token: null,
+            loading: false,
+          });
+        } catch (error: unknown) {
+          // Clear state even if logout API fails
+          setAuthToken(null);
+          const message = error instanceof Error ? error.message : 'Logout failed';
+          set({
+            user: null,
+            profile: null,
+            token: null,
+            loading: false,
+            error: message,
+          });
+        }
+      },
+
+      clearError: () => set({ error: null }),
+
+      setWallpaper: (wallpaper: string) => {
+        const { profile } = get();
+        if (profile) {
+          set({
+            profile: { ...profile, wallpaper },
+          });
+        }
+      },
+
+      initialize: () => {
+        const { token } = get();
+
+        // If we have a stored token, restore it to the API client
+        if (token) {
+          setAuthToken(token);
+        }
+
+        // In demo mode, auto-login with mock user
+        if (!isApiConfigured) {
+          set({
+            user: mockUser,
+            profile: mockProfile,
+            initialized: true,
+            loading: false,
+          });
+          return () => {};
+        }
+
+        // With API configured, check if we have a valid token
+        // The actual validation happens on API calls
+        if (token) {
+          // We have a stored token - assume valid until API call fails
+          // Profile will be loaded when desktop is fetched
+          set({ initialized: true, loading: false });
+        } else {
+          set({
+            user: null,
+            profile: null,
+            initialized: true,
+            loading: false,
+          });
+        }
+
+        return () => {};
+      },
+    }),
+    {
+      name: 'eternalos-auth',
+      // Only persist token
+      partialize: (state) => ({
+        token: state.token,
+        user: state.user,
+        profile: state.profile,
+      }),
+    }
+  )
+);

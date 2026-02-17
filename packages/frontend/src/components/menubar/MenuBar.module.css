@@ -1,0 +1,166 @@
+/* MenuBar.module.css - Classic Mac OS Menu Bar */
+
+/* ============================================
+   MENU BAR CONTAINER
+   Fixed top, 20px tall, white background
+   ============================================ */
+
+.menuBar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 20px;
+  background: var(--white);
+  border-bottom: 1px solid var(--black);
+  display: flex;
+  align-items: center;
+  z-index: 10000; /* Always on top */
+  font-family: var(--font-chicago);
+  font-size: var(--font-size-ui);
+  -webkit-font-smoothing: none;
+  user-select: none;
+}
+
+/* ============================================
+   MENU ITEMS (Top-level)
+   Apple icon + File, Edit, View, Special
+   ============================================ */
+
+.menuItem {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  cursor: default;
+}
+
+/* Hover/Active state - classic Mac inverted colors */
+.menuItem:hover,
+.menuItem.active {
+  background: var(--black);
+  color: var(--white);
+}
+
+/* Apple logo menu (leftmost) */
+.appleMenu {
+  padding: 0 6px;
+  font-size: 14px;
+}
+
+.appleMenu .appleIcon {
+  width: 14px;
+  height: 14px;
+}
+
+/* ============================================
+   DROPDOWN MENU
+   White box, 1px black border, shadow effect
+   ============================================ */
+
+.dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 180px;
+  background: var(--white);
+  border: 1px solid var(--black);
+  box-shadow: 2px 2px 0 var(--shadow);
+  padding: 2px 0;
+  z-index: 10001;
+}
+
+/* Position dropdown to align with menu item */
+.dropdown.rightAlign {
+  left: auto;
+  right: 0;
+}
+
+/* ============================================
+   DROPDOWN ITEMS
+   ============================================ */
+
+.dropdownItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2px 16px;
+  white-space: nowrap;
+  cursor: default;
+}
+
+/* Hover state - inverted colors */
+.dropdownItem:hover:not(.disabled):not(.divider) {
+  background: var(--black);
+  color: var(--white);
+}
+
+/* Disabled state */
+.dropdownItem.disabled {
+  color: var(--shadow);
+  cursor: default;
+}
+
+.dropdownItem.disabled:hover {
+  background: transparent;
+  color: var(--shadow);
+}
+
+/* Divider line */
+.divider {
+  height: 1px;
+  margin: 4px 0;
+  padding: 0;
+  background: var(--shadow);
+  border: none;
+}
+
+/* Shortcut hint (right-aligned) */
+.shortcut {
+  margin-left: 24px;
+  color: inherit;
+  font-size: 11px;
+}
+
+/* ============================================
+   APPLE ICON (SVG styled)
+   ============================================ */
+
+.appleIconSvg {
+  display: block;
+}
+
+/* When menu is active, invert the apple icon */
+.menuItem.active .appleIconSvg,
+.menuItem:hover .appleIconSvg {
+  filter: invert(1);
+}
+
+/* ============================================
+   CLOCK (Right side of menu bar)
+   ============================================ */
+
+.clock {
+  margin-left: auto;
+  padding: 0 8px;
+  font-family: var(--font-chicago);
+  font-size: var(--font-size-ui);
+}
+
+/* ============================================
+   VISITOR MODE
+   Shows "Visiting @username's desktop"
+   ============================================ */
+
+.visitorIndicator {
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  font-family: var(--font-chicago);
+  font-size: var(--font-size-ui);
+}
+
+.visitorText {
+  color: var(--black);
+}

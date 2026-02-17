@@ -1,0 +1,46 @@
+# EternalOS Worker Configuration
+# See https://developers.cloudflare.com/workers/wrangler/configuration/
+
+name = "eternalos-api"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Durable Objects
+[[durable_objects.bindings]]
+name = "USER_DESKTOP"
+class_name = "UserDesktop"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["UserDesktop"]
+
+# KV Namespaces (local dev uses Miniflare simulation)
+# For production: wrangler kv:namespace create AUTH_KV
+[[kv_namespaces]]
+binding = "AUTH_KV"
+id = "AUTH_KV_DEV"
+
+[[kv_namespaces]]
+binding = "DESKTOP_KV"
+id = "DESKTOP_KV_DEV"
+
+# R2 Bucket (local dev uses Miniflare simulation)
+# For production: wrangler r2 bucket create eternalos-files
+[[r2_buckets]]
+binding = "ETERNALOS_FILES"
+bucket_name = "eternalos-files"
+
+# Workers AI
+[ai]
+binding = "AI"
+
+# Development variables (for local dev only)
+# In production, use: wrangler secret put JWT_SECRET
+[vars]
+JWT_SECRET = "dev-secret-change-in-production-abc123xyz"
+
+# Development settings
+[dev]
+port = 8787
+local_protocol = "http"

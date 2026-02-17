@@ -1,0 +1,79 @@
+/* LoadingOverlay - Classic Mac OS Loading Dialog */
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(192, 192, 192, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100000;
+}
+
+/* Dialog box - classic Mac alert style */
+.dialog {
+  background: var(--white);
+  border: 2px solid var(--black);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
+  padding: 20px 30px;
+  min-width: 200px;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.watchIcon {
+  width: 32px;
+  height: 32px;
+}
+
+.message {
+  font-family: var(--font-chicago);
+  font-size: 12px;
+  color: var(--black);
+  text-align: center;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+/* Watch SVG */
+.watchSvg {
+  display: block;
+  image-rendering: pixelated;
+}
+
+/* Rotating watch hands animation */
+.hourHand {
+  transform-origin: 16px 16px;
+  animation: rotateHour 4s linear infinite;
+}
+
+.minuteHand {
+  transform-origin: 16px 16px;
+  animation: rotateMinute 1s linear infinite;
+}
+
+@keyframes rotateHour {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes rotateMinute {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -1,0 +1,216 @@
+/* ImageViewer - Classic Mac OS style image viewer */
+
+.imageViewer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--platinum);
+}
+
+/* ============================================
+   PIXEL-ART FRAME
+   Classic Mac picture frame border effect
+   ============================================ */
+
+.frame {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  min-height: 0; /* Allow flexbox shrinking */
+}
+
+.frameInner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--white);
+  /* Classic Mac picture frame - double border effect */
+  border: 2px solid var(--black);
+  box-shadow:
+    inset 2px 2px 0 var(--shadow),
+    inset -2px -2px 0 var(--highlight);
+  /* Max size with padding */
+  max-width: calc(100% - 8px);
+  max-height: calc(100% - 8px);
+  min-width: 100px;
+  min-height: 80px;
+  overflow: hidden;
+}
+
+/* ============================================
+   IMAGE
+   ============================================ */
+
+.image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  /* Pixel-perfect scaling for small images */
+  image-rendering: auto;
+  /* Remove any default image borders */
+  border: none;
+  display: block;
+}
+
+/* For pixel art or small images, use pixelated rendering */
+.image.pixelated {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* ============================================
+   LOADING STATE
+   Dithered placeholder effect
+   ============================================ */
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.loadingIcon {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 8px;
+}
+
+/* Classic Mac dithered pattern */
+.dither {
+  width: 100%;
+  height: 100%;
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 1px,
+      var(--shadow) 1px,
+      var(--shadow) 2px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 1px,
+      var(--shadow) 1px,
+      var(--shadow) 2px
+    );
+  opacity: 0.5;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.loadingText {
+  font-family: var(--font-geneva);
+  font-size: 11px;
+  color: var(--shadow);
+}
+
+/* ============================================
+   ERROR STATE
+   ============================================ */
+
+.error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.errorIcon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-chicago);
+  font-size: 24px;
+  font-weight: bold;
+  color: var(--black);
+  background: var(--white);
+  border: 2px solid var(--black);
+  border-radius: 50%;
+  margin-bottom: 8px;
+}
+
+.errorText {
+  font-family: var(--font-geneva);
+  font-size: 11px;
+  color: var(--shadow);
+  text-align: center;
+}
+
+/* ============================================
+   DEMO MODE PLACEHOLDER
+   ============================================ */
+
+.demoImage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.demoPlaceholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.demoPlaceholder svg {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.demoText {
+  font-family: var(--font-geneva);
+  font-size: 11px;
+  color: var(--shadow);
+  max-width: 150px;
+  text-align: center;
+  word-break: break-word;
+}
+
+/* ============================================
+   INFO BAR
+   Shows filename and type at bottom
+   ============================================ */
+
+.infoBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
+  background: var(--white);
+  border-top: 1px solid var(--shadow);
+  font-family: var(--font-geneva);
+  font-size: 10px;
+  color: var(--shadow);
+  flex-shrink: 0;
+}
+
+.fileName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 60%;
+}
+
+.fileType {
+  color: var(--shadow);
+  opacity: 0.7;
+}

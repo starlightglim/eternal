@@ -1,0 +1,115 @@
+/* AlertDialog - Classic Mac OS Alert Box */
+
+/* Semi-transparent overlay */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100001;
+}
+
+/* Dialog box - classic Mac alert style */
+.dialog {
+  background: var(--white);
+  border: 2px solid var(--black);
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.4);
+  padding: 16px;
+  min-width: 280px;
+  max-width: 400px;
+}
+
+/* Content area - icon + message */
+.content {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+/* Icon container */
+.iconContainer {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+}
+
+.icon {
+  display: block;
+  image-rendering: pixelated;
+}
+
+/* Message area */
+.messageArea {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.title {
+  font-family: var(--font-chicago);
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--black);
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+.message {
+  font-family: var(--font-geneva);
+  font-size: 12px;
+  color: var(--black);
+  line-height: 1.4;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* Buttons row - right-aligned like classic Mac */
+.buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Button base style - classic Mac 3D button */
+.button {
+  font-family: var(--font-chicago);
+  font-size: 12px;
+  color: var(--black);
+  background: var(--white);
+  border: 2px solid var(--black);
+  border-radius: 4px;
+  padding: 4px 16px;
+  min-width: 60px;
+  cursor: pointer;
+  /* Pixel-perfect text */
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+.button:hover {
+  background: var(--highlight);
+}
+
+.button:active {
+  background: var(--black);
+  color: var(--white);
+}
+
+/* Primary button - bold outline, default action */
+.primaryButton {
+  border-width: 3px;
+  padding: 3px 15px;
+}
+
+.primaryButton:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--black);
+}

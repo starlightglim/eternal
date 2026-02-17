@@ -1,0 +1,17 @@
+{
+  "name": "eternalos",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "packages/frontend",
+    "packages/worker"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=@eternalos/frontend",
+    "dev:worker": "npm run dev --workspace=@eternalos/worker",
+    "build": "npm run build --workspace=@eternalos/frontend",
+    "build:worker": "npm run deploy --workspace=@eternalos/worker",
+    "lint": "npm run lint --workspace=@eternalos/frontend",
+    "preview": "npm run preview --workspace=@eternalos/frontend"
+  }
+}

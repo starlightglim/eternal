@@ -1,0 +1,231 @@
+/* GetInfo - Classic Mac OS "Get Info" window */
+
+.getInfo {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 12px;
+  background: var(--white);
+  font-family: var(--font-geneva);
+  font-size: 11px;
+  overflow-y: auto;
+}
+
+/* ============================================
+   HEADER - Icon + Name
+   ============================================ */
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+}
+
+.iconContainer {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  background: var(--platinum);
+  border: 1px solid var(--shadow);
+  border-radius: 2px;
+}
+
+.iconContainer svg {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.nameContainer {
+  flex: 1;
+  min-width: 0;
+}
+
+.name {
+  display: block;
+  font-family: var(--font-chicago);
+  font-size: 12px;
+  font-weight: normal;
+  color: var(--black);
+  word-break: break-word;
+  cursor: default;
+  padding: 2px 4px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+.name:hover {
+  border-color: var(--highlight);
+}
+
+.nameInput {
+  display: block;
+  width: 100%;
+  font-family: var(--font-chicago);
+  font-size: 12px;
+  color: var(--black);
+  background: var(--white);
+  border: 1px solid var(--black);
+  padding: 2px 4px;
+  border-radius: 2px;
+  outline: none;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+.nameInput:focus {
+  box-shadow: 0 0 0 1px var(--selection);
+}
+
+/* ============================================
+   DIVIDER
+   ============================================ */
+
+.divider {
+  height: 1px;
+  background: var(--shadow);
+  margin: 8px 0;
+  opacity: 0.5;
+}
+
+/* ============================================
+   INFO TABLE
+   ============================================ */
+
+.infoTable {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.infoRow {
+  display: flex;
+  gap: 8px;
+  line-height: 1.4;
+}
+
+.infoLabel {
+  flex-shrink: 0;
+  width: 60px;
+  color: var(--shadow);
+  text-align: right;
+}
+
+.infoValue {
+  flex: 1;
+  color: var(--black);
+  word-break: break-word;
+}
+
+.link {
+  color: var(--selection);
+  text-decoration: underline;
+}
+
+.link:hover {
+  color: var(--black);
+}
+
+/* ============================================
+   VISIBILITY SECTION
+   ============================================ */
+
+.visibilitySection {
+  padding: 4px 0;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.checkboxLabel:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.checkbox {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  cursor: pointer;
+  /* Custom checkbox styling for retro look */
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--white);
+  border: 1px solid var(--black);
+  position: relative;
+}
+
+.checkbox:checked {
+  background: var(--white);
+}
+
+.checkbox:checked::after {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 4px;
+  width: 4px;
+  height: 8px;
+  border: solid var(--black);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.checkbox:disabled {
+  cursor: not-allowed;
+  background: var(--platinum);
+}
+
+.checkbox:focus {
+  outline: none;
+  box-shadow: 0 0 0 1px var(--selection);
+}
+
+.checkboxText {
+  font-size: 11px;
+  color: var(--black);
+  user-select: none;
+}
+
+.visibilityHint {
+  margin: 6px 0 0 22px;
+  font-size: 10px;
+  color: var(--shadow);
+  line-height: 1.4;
+}
+
+/* ============================================
+   SCROLLBAR STYLING (Classic Mac)
+   ============================================ */
+
+.getInfo::-webkit-scrollbar {
+  width: 16px;
+}
+
+.getInfo::-webkit-scrollbar-track {
+  background: var(--platinum);
+  border-left: 1px solid var(--shadow);
+}
+
+.getInfo::-webkit-scrollbar-thumb {
+  background: var(--white);
+  border: 1px solid var(--black);
+  border-radius: 0;
+}
+
+.getInfo::-webkit-scrollbar-thumb:hover {
+  background: var(--highlight);
+}
+
+.getInfo::-webkit-scrollbar-button {
+  display: none;
+}

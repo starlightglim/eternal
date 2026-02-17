@@ -1,0 +1,22 @@
+/* Desktop Surface Styles */
+
+.desktop {
+  position: fixed;
+  /* Account for menu bar height (20px) */
+  top: 20px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--platinum);
+  /* The desktop is the base layer */
+  z-index: 0;
+  /* Allow windows and icons to be positioned */
+  overflow: hidden;
+}
+
+/* Drag-over state for file drops */
+.dragOver {
+  background-color: #b0b0b0;
+  outline: 3px dashed var(--black);
+  outline-offset: -6px;
+}

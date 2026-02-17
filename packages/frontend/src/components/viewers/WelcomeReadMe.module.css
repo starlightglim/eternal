@@ -1,0 +1,95 @@
+/**
+ * WelcomeReadMe styles
+ * Classic Mac "Read Me" document styling
+ */
+
+.container {
+  height: 100%;
+  overflow-y: auto;
+  background-color: white;
+  font-family: var(--font-geneva);
+  font-size: 11px;
+  line-height: 1.5;
+  color: black;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--shadow);
+  background: linear-gradient(to bottom, #ffffff, #f0f0f0);
+}
+
+.icon {
+  flex-shrink: 0;
+}
+
+.title {
+  font-family: var(--font-chicago);
+  font-size: 14px;
+  font-weight: normal;
+  margin: 0;
+}
+
+.content {
+  padding: 16px;
+}
+
+.intro {
+  font-size: 12px;
+  margin-bottom: 16px;
+  color: var(--shadow);
+}
+
+.section {
+  margin-bottom: 16px;
+}
+
+.section h2 {
+  font-family: var(--font-chicago);
+  font-size: 12px;
+  font-weight: normal;
+  margin: 0 0 8px 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #ccc;
+}
+
+.section ul {
+  margin: 0;
+  padding-left: 16px;
+}
+
+.section li {
+  margin-bottom: 4px;
+}
+
+.section li strong {
+  font-weight: bold;
+}
+
+.section code {
+  font-family: var(--font-monaco);
+  font-size: 10px;
+  background: #f0f0f0;
+  padding: 1px 4px;
+  border: 1px solid #ccc;
+}
+
+.footer {
+  margin-top: 24px;
+  padding-top: 12px;
+  border-top: 1px solid #ccc;
+  text-align: center;
+}
+
+.footer p {
+  margin: 4px 0;
+  color: var(--shadow);
+}
+
+.tagline {
+  font-style: italic;
+  font-size: 10px;
+}

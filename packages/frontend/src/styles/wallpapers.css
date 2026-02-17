@@ -1,0 +1,164 @@
+/* EternalOS Wallpaper Patterns */
+/* Classic Mac OS tiling desktop patterns */
+
+/* ============================================
+   WALLPAPER PATTERN CLASSES
+   Apply these to .desktop for different backgrounds
+   ============================================ */
+
+/* Default: Solid platinum gray (no pattern) */
+.wallpaper-default {
+  background-color: var(--platinum);
+  background-image: none;
+}
+
+/* Diagonal Lines - Classic Mac stripes */
+.wallpaper-diagonal {
+  background-color: #b8b8b8;
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 2px,
+    #a0a0a0 2px,
+    #a0a0a0 4px
+  );
+}
+
+/* Checkerboard - 8x8 pixel checker pattern */
+.wallpaper-checkerboard {
+  background-color: var(--platinum);
+  background-image:
+    linear-gradient(45deg, #a8a8a8 25%, transparent 25%),
+    linear-gradient(-45deg, #a8a8a8 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #a8a8a8 75%),
+    linear-gradient(-45deg, transparent 75%, #a8a8a8 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
+}
+
+/* Denim - Classic Mac OS 8 denim texture */
+.wallpaper-denim {
+  background-color: #6699cc;
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 1px,
+      rgba(255, 255, 255, 0.1) 1px,
+      rgba(255, 255, 255, 0.1) 2px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 1px,
+      rgba(0, 0, 0, 0.1) 1px,
+      rgba(0, 0, 0, 0.1) 2px
+    );
+}
+
+/* Crosshatch - Fine diagonal lines both ways */
+.wallpaper-crosshatch {
+  background-color: #c8c8c8;
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 1px,
+      #b0b0b0 1px,
+      #b0b0b0 2px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 1px,
+      #b0b0b0 1px,
+      #b0b0b0 2px
+    );
+}
+
+/* Dots - Classic Mac polka dot pattern */
+.wallpaper-dots {
+  background-color: var(--platinum);
+  background-image: radial-gradient(#a0a0a0 1px, transparent 1px);
+  background-size: 8px 8px;
+}
+
+/* Horizontal Lines - Subtle scan lines effect */
+.wallpaper-lines {
+  background-color: var(--platinum);
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    #b0b0b0 3px,
+    #b0b0b0 4px
+  );
+}
+
+/* Brick - Staggered brick pattern */
+.wallpaper-brick {
+  background-color: #c4b8a8;
+  background-image:
+    linear-gradient(
+      335deg,
+      #b8a898 23px,
+      transparent 23px
+    ),
+    linear-gradient(
+      155deg,
+      #b8a898 23px,
+      transparent 23px
+    ),
+    linear-gradient(
+      335deg,
+      #b8a898 23px,
+      transparent 23px
+    ),
+    linear-gradient(
+      155deg,
+      #b8a898 23px,
+      transparent 23px
+    );
+  background-size: 58px 18px;
+  background-position:
+    0px 2px,
+    4px 35px,
+    29px 31px,
+    34px 6px;
+}
+
+/* Weave - Basket weave pattern */
+.wallpaper-weave {
+  background-color: #c0b8a8;
+  background-image:
+    linear-gradient(135deg, #b0a898 25%, transparent 25%),
+    linear-gradient(225deg, #b0a898 25%, transparent 25%),
+    linear-gradient(45deg, #b0a898 25%, transparent 25%),
+    linear-gradient(315deg, #b0a898 25%, transparent 25%);
+  background-size: 8px 8px;
+  background-position: 0 0, 4px 0, 4px -4px, 0px 4px;
+}
+
+/* Navy Blue - Solid dark blue (Mac OS 8 style) */
+.wallpaper-navy {
+  background-color: #336699;
+  background-image: none;
+}
+
+/* Teal - System 7 teal */
+.wallpaper-teal {
+  background-color: #339999;
+  background-image: none;
+}
+
+/* Purple - Mac OS 9 grape */
+.wallpaper-purple {
+  background-color: #996699;
+  background-image: none;
+}
+
+/* Forest - Dark green */
+.wallpaper-forest {
+  background-color: #336633;
+  background-image: none;
+}
