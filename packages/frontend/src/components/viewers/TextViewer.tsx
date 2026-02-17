@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useDesktopStore } from '../../stores/desktopStore';
+import { useWindowStore } from '../../stores/windowStore';
 import { isApiConfigured } from '../../services/api';
 import styles from './TextViewer.module.css';
 
 interface TextViewerProps {
   itemId: string;
+  windowId: string;
   name: string;
   textContent?: string;
   isOwner?: boolean; // Whether current user owns this file
@@ -20,21 +22,70 @@ interface TextViewerProps {
  */
 export function TextViewer({
   itemId,
+  windowId,
   name,
   textContent: initialContent = '',
   isOwner = true,
 }: TextViewerProps) {
   const [content, setContent] = useState(initialContent);
+  const [fileName, setFileName] = useState(name);
+  const [isEditingName, setIsEditingName] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const { updateItem } = useDesktopStore();
+  const { updateWindowTitle } = useWindowStore();
 
   // Update content when prop changes
   useEffect(() => {
     setContent(initialContent);
     setIsDirty(false);
   }, [initialContent]);
+
+  // Update filename when prop changes
+  useEffect(() => {
+    setFileName(name);
+  }, [name]);
+
+  // Focus input when entering edit mode
+  useEffect(() => {
+    if (isEditingName && nameInputRef.current) {
+      nameInputRef.current.focus();
+      nameInputRef.current.select();
+    }
+  }, [isEditingName]);
+
+  // Handle filename rename
+  const handleRename = useCallback(() => {
+    if (!isOwner || !fileName.trim()) {
+      setFileName(name);
+      setIsEditingName(false);
+      return;
+    }
+
+    const newName = fileName.trim();
+    if (newName !== name) {
+      updateItem(itemId, { name: newName });
+      updateWindowTitle(windowId, newName);
+    }
+    setIsEditingName(false);
+  }, [fileName, name, isOwner, itemId, windowId, updateItem, updateWindowTitle]);
+
+  // Handle name input key events
+  const handleNameKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleRename();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        setFileName(name);
+        setIsEditingName(false);
+      }
+    },
+    [handleRename, name]
+  );
 
   // Save handler
   const saveContent = useCallback(async () => {
@@ -80,11 +131,43 @@ export function TextViewer({
     }
   };
 
+  // Download the text file
+  const handleDownload = useCallback(() => {
+    const blob = new Blob([content], { type: 'text/plain' });
+    const downloadUrl = URL.createObjectURL(blob);
+
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(downloadUrl);
+  }, [content, fileName]);
+
   return (
     <div className={styles.textViewer}>
       {/* Title bar with file info */}
       <div className={styles.toolbar}>
-        <span className={styles.fileName}>{name}</span>
+        {isEditingName ? (
+          <input
+            ref={nameInputRef}
+            type="text"
+            className={styles.fileNameInput}
+            value={fileName}
+            onChange={(e) => setFileName(e.target.value)}
+            onBlur={handleRename}
+            onKeyDown={handleNameKeyDown}
+          />
+        ) : (
+          <span
+            className={`${styles.fileName} ${isOwner ? styles.fileNameEditable : ''}`}
+            onClick={isOwner ? () => setIsEditingName(true) : undefined}
+            title={isOwner ? 'Click to rename' : undefined}
+          >
+            {fileName}
+          </span>
+        )}
         {isDirty && <span className={styles.unsaved}>•</span>}
         {isSaving && <span className={styles.saving}>Saving...</span>}
         {!isOwner && <span className={styles.readOnly}>Read Only</span>}
@@ -117,12 +200,21 @@ export function TextViewer({
 
       {/* Status bar */}
       <div className={styles.statusBar}>
-        <span className={styles.charCount}>
-          {content.length} characters
-        </span>
-        <span className={styles.lineCount}>
-          {content.split('\n').length} lines
-        </span>
+        <div className={styles.statusLeft}>
+          <span className={styles.charCount}>
+            {content.length} characters
+          </span>
+          <span className={styles.lineCount}>
+            {content.split('\n').length} lines
+          </span>
+        </div>
+        <button
+          className={styles.downloadButton}
+          onClick={handleDownload}
+          title="Download"
+        >
+          Download
+        </button>
       </div>
     </div>
   );

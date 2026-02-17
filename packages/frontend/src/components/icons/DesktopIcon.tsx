@@ -9,11 +9,13 @@ interface DesktopIconProps {
   gridCellSize: number;
   onSelect: (id: string, addToSelection: boolean) => void;
   onDoubleClick: (item: DesktopItem) => void;
+  onContextMenu?: (e: React.MouseEvent) => void;
   onDragStart?: (id: string, e: React.PointerEvent) => void;
   onDragMove?: (e: React.PointerEvent) => void;
   onDragEnd?: (e: React.PointerEvent) => void;
   isDragging: boolean;
   dragOffset?: { x: number; y: number };
+  isDropTarget?: boolean;
 }
 
 /**
@@ -27,11 +29,13 @@ export function DesktopIcon({
   gridCellSize,
   onSelect,
   onDoubleClick,
+  onContextMenu,
   onDragStart,
   onDragMove,
   onDragEnd,
   isDragging,
   dragOffset,
+  isDropTarget,
 }: DesktopIconProps) {
   const clickTimeoutRef = useRef<number | null>(null);
   const clickCountRef = useRef(0);
@@ -113,6 +117,7 @@ export function DesktopIcon({
     styles.desktopIcon,
     isSelected && styles.selected,
     isDragging && styles.dragging,
+    isDropTarget && styles.dropTarget,
   ]
     .filter(Boolean)
     .join(' ');
@@ -130,6 +135,7 @@ export function DesktopIcon({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onClick={handleClick}
+      onContextMenu={onContextMenu}
     >
       <div className={styles.iconImage}>
         {item.type === 'folder' && <FolderIcon size={32} />}

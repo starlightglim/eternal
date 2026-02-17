@@ -11,7 +11,7 @@ export function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [username, setUsername] = useState('')
   const [localError, setLocalError] = useState<string | null>(null)
-  const { signup, loading, error, clearError } = useAuthStore()
+  const { signup, loading, error, clearError, user } = useAuthStore()
   const navigate = useNavigate()
 
   // Set document title
@@ -20,14 +20,21 @@ export function SignupPage() {
     return () => { document.title = 'EternalOS' }
   }, [])
 
+  // If already logged in, redirect to desktop
+  useEffect(() => {
+    if (user) {
+      navigate('/desktop', { replace: true })
+    }
+  }, [user, navigate])
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     clearError()
     setLocalError(null)
 
     if (!isApiConfigured) {
-      // Demo mode - just navigate to desktop
-      navigate('/desktop')
+      // Demo mode - navigate to demo user's desktop
+      navigate('/@demo', { replace: true })
       return
     }
 
@@ -43,8 +50,13 @@ export function SignupPage() {
       return
     }
 
-    await signup(email, password, username)
-    // If signup successful, auth state change will trigger navigation
+    try {
+      await signup(email, password, username)
+      // Navigation happens via useEffect when user state updates
+    } catch (err) {
+      // Error is handled by the store
+      console.error('Signup error:', err)
+    }
   }
 
   const displayError = localError || error

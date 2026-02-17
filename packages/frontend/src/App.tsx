@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Desktop } from './components/desktop/Desktop'
+import { MobileBrowser } from './components/desktop/MobileBrowser'
 import { LandingPage } from './pages/LandingPage'
 import { LoginPage } from './pages/LoginPage'
 import { SignupPage } from './pages/SignupPage'
@@ -8,6 +9,7 @@ import { VisitorPage } from './pages/VisitorPage'
 import { LoadingOverlay, AlertDialog } from './components/ui'
 import { useAuthStore } from './stores/authStore'
 import { useAlertStore } from './stores/alertStore'
+import { useIsMobile } from './hooks/useIsMobile'
 import { isApiConfigured } from './services/api'
 
 /**
@@ -70,6 +72,31 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+// Responsive wrapper - shows MobileBrowser on small screens
+function ResponsiveDesktop() {
+  const isMobile = useIsMobile()
+  return isMobile ? <MobileBrowser /> : <Desktop />
+}
+
+// Smart route that shows owner Desktop or visitor view based on auth
+function UserDesktopRoute() {
+  const { user, initialized } = useAuthStore()
+  const isMobile = useIsMobile()
+  const username = window.location.pathname.slice(2) // Remove "/@"
+
+  if (!initialized && isApiConfigured) {
+    return <LoadingOverlay message="Loading..." />
+  }
+
+  // If logged in as this user, show owner's Desktop (responsive)
+  if (user?.username?.toLowerCase() === username.toLowerCase()) {
+    return isMobile ? <MobileBrowser /> : <Desktop />
+  }
+
+  // Otherwise show visitor view (has its own mobile handling)
+  return <VisitorPage />
+}
+
 function App() {
   const { initialize, initialized } = useAuthStore()
 
@@ -93,14 +120,14 @@ function App() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
-      <Route path="/@:username" element={<VisitorPage />} />
+      <Route path="/@:username" element={<UserDesktopRoute />} />
 
       {/* Protected routes */}
       <Route
         path="/desktop"
         element={
           <ProtectedRoute>
-            <Desktop />
+            <ResponsiveDesktop />
           </ProtectedRoute>
         }
       />

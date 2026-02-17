@@ -9,6 +9,7 @@ interface WindowProps {
   size: { width: number; height: number };
   zIndex: number;
   minimized: boolean;
+  collapsed?: boolean;
   isActive: boolean;
   children?: React.ReactNode;
 }
@@ -28,16 +29,18 @@ export function Window({
   size,
   zIndex,
   minimized,
+  collapsed,
   isActive,
   children,
 }: WindowProps) {
-  const { closeWindow, focusWindow, moveWindow, resizeWindow } = useWindowStore();
+  const { closeWindow, focusWindow, moveWindow, resizeWindow, toggleCollapse, toggleMaximize } = useWindowStore();
 
   const windowRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
   const isResizing = useRef(false);
   const dragOffset = useRef({ x: 0, y: 0 });
   const resizeStart = useRef({ x: 0, y: 0, width: 0, height: 0 });
+  const lastClickTime = useRef(0);
 
   // Focus window on any click
   const handleWindowClick = useCallback(() => {
@@ -53,6 +56,24 @@ export function Window({
     [closeWindow, id]
   );
 
+  // Collapse button handler (window shade)
+  const handleCollapse = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      toggleCollapse(id);
+    },
+    [toggleCollapse, id]
+  );
+
+  // Zoom button handler (maximize/restore)
+  const handleZoom = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      toggleMaximize(id);
+    },
+    [toggleMaximize, id]
+  );
+
   // ============================================
   // DRAG HANDLING (Title Bar)
   // ============================================
@@ -64,6 +85,16 @@ export function Window({
 
       e.preventDefault();
       e.stopPropagation();
+
+      // Check for double-click to toggle collapse (window shade)
+      const now = Date.now();
+      if (now - lastClickTime.current < 300) {
+        // Double-click detected - toggle collapse
+        toggleCollapse(id);
+        lastClickTime.current = 0;
+        return;
+      }
+      lastClickTime.current = now;
 
       isDragging.current = true;
       dragOffset.current = {
@@ -77,7 +108,7 @@ export function Window({
       // Capture pointer for smooth dragging outside window
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
     },
-    [position, focusWindow, id]
+    [position, focusWindow, id, toggleCollapse]
   );
 
   const handleDragMove = useCallback(
@@ -93,14 +124,35 @@ export function Window({
       // Constrain to viewport bounds
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
+      const menuBarHeight = 20;
 
       // Keep at least 50px of window visible on each edge
       newX = Math.max(-size.width + 50, Math.min(newX, viewportWidth - 50));
       newY = Math.max(0, Math.min(newY, viewportHeight - 30)); // Keep title bar accessible
 
+      // Snap to edges when within threshold
+      const snapThreshold = 10;
+
+      // Snap to left edge
+      if (newX >= 0 && newX <= snapThreshold) {
+        newX = 0;
+      }
+      // Snap to right edge
+      if (newX + size.width >= viewportWidth - snapThreshold && newX + size.width <= viewportWidth) {
+        newX = viewportWidth - size.width;
+      }
+      // Snap to top (below menu bar)
+      if (newY >= menuBarHeight && newY <= menuBarHeight + snapThreshold) {
+        newY = menuBarHeight;
+      }
+      // Snap to bottom
+      if (newY + size.height >= viewportHeight - snapThreshold && newY + size.height <= viewportHeight) {
+        newY = viewportHeight - size.height;
+      }
+
       moveWindow(id, { x: newX, y: newY });
     },
-    [moveWindow, id, size.width]
+    [moveWindow, id, size.width, size.height]
   );
 
   const handleDragEnd = useCallback((e: React.PointerEvent) => {
@@ -173,6 +225,7 @@ export function Window({
     styles.window,
     !isActive && styles.inactive,
     minimized && styles.minimized,
+    collapsed && styles.collapsed,
   ]
     .filter(Boolean)
     .join(' ');
@@ -210,18 +263,34 @@ export function Window({
 
           {/* Title Text */}
           <span className={styles.titleText}>{title}</span>
+
+          {/* Zoom Box (Maximize/Restore) */}
+          <div
+            className={styles.zoomBox}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={handleZoom}
+          />
+
+          {/* Collapse Box (Window Shade) */}
+          <div
+            className={styles.collapseBox}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={handleCollapse}
+          />
         </div>
 
-        {/* Content Area */}
-        <div className={styles.content}>{children}</div>
+        {/* Content Area (hidden when collapsed) */}
+        {!collapsed && <div className={styles.content}>{children}</div>}
 
-        {/* Resize Handle */}
-        <div
-          className={styles.resizeHandle}
-          onPointerDown={handleResizeStart}
-          onPointerMove={handleResizeMove}
-          onPointerUp={handleResizeEnd}
-        />
+        {/* Resize Handle (hidden when collapsed) */}
+        {!collapsed && (
+          <div
+            className={styles.resizeHandle}
+            onPointerDown={handleResizeStart}
+            onPointerMove={handleResizeMove}
+            onPointerUp={handleResizeEnd}
+          />
+        )}
       </div>
     </div>
   );

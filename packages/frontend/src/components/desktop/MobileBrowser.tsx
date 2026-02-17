@@ -9,7 +9,7 @@ import { useState, useCallback } from 'react';
 import { useDesktopStore } from '../../stores/desktopStore';
 import { useWindowStore } from '../../stores/windowStore';
 import { useAuthStore } from '../../stores/authStore';
-import { FolderIcon, FileIcon, ImageIcon, LinkIcon } from '../icons/PixelIcons';
+import { FolderIcon, TextFileIcon, ImageFileIcon, LinkIcon } from '../icons/PixelIcons';
 import type { DesktopItem } from '../../types';
 import styles from './MobileBrowser.module.css';
 
@@ -98,12 +98,12 @@ export function MobileBrowser({ isVisitorMode = false, visitorItems, username }:
       case 'folder':
         return <FolderIcon size={24} />;
       case 'image':
-        return <ImageIcon size={24} />;
+        return <ImageFileIcon size={24} />;
       case 'link':
         return <LinkIcon size={24} />;
       case 'text':
       default:
-        return <FileIcon size={24} />;
+        return <TextFileIcon size={24} />;
     }
   };
 

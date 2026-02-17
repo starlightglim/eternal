@@ -124,6 +124,22 @@ export function GetInfo({ item, isOwner = true }: GetInfoProps) {
       <div className={styles.infoTable}>
         <InfoRow label="Kind" value={kindDisplay} />
         <InfoRow label="Size" value={sizeDisplay} />
+        {item.type === 'image' && (
+          <InfoRow
+            label="Limit"
+            value={
+              <span className={item.fileSize && item.fileSize > 10 * 1024 * 1024 ? styles.warningText : undefined}>
+                {item.fileSize && item.fileSize > 10 * 1024 * 1024 ? 'Exceeds 10MB limit' : '10MB max per image'}
+              </span>
+            }
+          />
+        )}
+        {item.type === 'text' && item.textContent && (
+          <InfoRow
+            label="Chars"
+            value={`${item.textContent.length.toLocaleString()} / 100,000`}
+          />
+        )}
         {item.mimeType && <InfoRow label="Type" value={item.mimeType} />}
         {item.url && (
           <InfoRow

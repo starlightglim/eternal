@@ -32,6 +32,28 @@
   white-space: nowrap;
 }
 
+.fileNameEditable {
+  cursor: pointer;
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+.fileNameEditable:hover {
+  background: var(--highlight);
+}
+
+.fileNameInput {
+  font-family: var(--font-geneva);
+  font-size: 11px;
+  color: var(--black);
+  background: var(--white);
+  border: 1px solid var(--shadow);
+  padding: 1px 4px;
+  margin: -2px 0;
+  min-width: 100px;
+  max-width: 200px;
+}
+
 .unsaved {
   font-size: 14px;
   color: var(--black);
@@ -136,8 +158,39 @@
   flex-shrink: 0;
 }
 
+.statusLeft {
+  display: flex;
+  gap: 12px;
+}
+
 .charCount, .lineCount {
   opacity: 0.8;
+}
+
+.downloadButton {
+  font-family: var(--font-geneva);
+  font-size: 10px;
+  padding: 2px 8px;
+  background: var(--platinum);
+  border: 1px solid var(--shadow);
+  border-radius: 3px;
+  cursor: pointer;
+  /* Classic Mac button bevel */
+  box-shadow:
+    inset 1px 1px 0 var(--highlight),
+    inset -1px -1px 0 var(--shadow);
+}
+
+.downloadButton:hover {
+  background: var(--highlight);
+}
+
+.downloadButton:active {
+  background: var(--shadow);
+  color: var(--white);
+  box-shadow:
+    inset -1px -1px 0 var(--highlight),
+    inset 1px 1px 0 var(--shadow);
 }
 
 /* ============================================

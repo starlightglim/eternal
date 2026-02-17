@@ -122,6 +122,11 @@
   word-break: break-word;
 }
 
+.warningText {
+  color: #cc0000;
+  font-weight: bold;
+}
+
 .link {
   color: var(--selection);
   text-decoration: underline;

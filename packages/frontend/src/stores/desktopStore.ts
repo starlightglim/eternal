@@ -43,12 +43,23 @@ interface DesktopStore {
 
   // Selection
   selectItem: (id: string, addToSelection?: boolean) => void;
+  selectAll: (parentId?: string | null) => void;
   deselectAll: () => void;
   isSelected: (id: string) => boolean;
 
   // Helpers
   getItemsByParent: (parentId: string | null) => DesktopItem[];
   getItem: (id: string) => DesktopItem | undefined;
+  cleanUp: (parentId?: string | null) => void;
+  sortByName: (parentId?: string | null) => void;
+  sortByDate: (parentId?: string | null) => void;
+  sortByKind: (parentId?: string | null) => void;
+  duplicateItems: (itemIds: string[], targetParentId: string | null) => Promise<DesktopItem[]>;
+  pasteItems: (
+    itemIds: string[],
+    isCut: boolean,
+    targetParentId: string | null
+  ) => Promise<void>;
 
   // Loading
   setLoading: (loading: boolean) => void;
@@ -137,15 +148,56 @@ const mockItems: DesktopItem[] = [
 // Debounce timers for position updates
 const positionUpdateTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
+// Local cache key for instant load
+const DESKTOP_CACHE_KEY = 'eternalos-desktop-cache';
+
+// Load cached items from localStorage
+function loadCachedItems(): DesktopItem[] | null {
+  try {
+    const cached = localStorage.getItem(DESKTOP_CACHE_KEY);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch {
+    // Ignore cache errors
+  }
+  return null;
+}
+
+// Save items to localStorage cache (debounced)
+let cacheTimer: ReturnType<typeof setTimeout> | null = null;
+function cacheItems(items: DesktopItem[]) {
+  // Debounce cache writes
+  if (cacheTimer) {
+    clearTimeout(cacheTimer);
+  }
+  cacheTimer = setTimeout(() => {
+    try {
+      localStorage.setItem(DESKTOP_CACHE_KEY, JSON.stringify(items));
+    } catch {
+      // Ignore cache errors (e.g., quota exceeded)
+    }
+  }, 1000);
+}
+
 export const useDesktopStore = create<DesktopStore>((set, get) => ({
-  // Use mock items when API is not configured
-  items: isApiConfigured ? [] : mockItems,
+  // Use cached items on initial load for instant display (if API mode)
+  // Falls back to mock items in demo mode
+  items: isApiConfigured ? (loadCachedItems() || []) : mockItems,
   selectedIds: new Set<string>(),
   uid: null,
   loading: false,
   uploads: [],
 
-  setItems: (items) => set({ items }),
+  setItems: (items) => {
+    set({ items });
+    if (isApiConfigured) {
+      cacheItems(items);
+    }
+  },
 
   setUid: (uid) => set({ uid }),
 
@@ -153,9 +205,13 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
 
   addItem: (item) => {
     // Update local state
-    set((state) => ({
-      items: [...state.items, item],
-    }));
+    set((state) => {
+      const newItems = [...state.items, item];
+      if (isApiConfigured) {
+        cacheItems(newItems);
+      }
+      return { items: newItems };
+    });
 
     // Sync to API if configured
     if (isApiConfigured) {
@@ -171,10 +227,16 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
 
   removeItem: (id) => {
     // Update local state
-    set((state) => ({
-      items: state.items.filter((item) => item.id !== id),
-      selectedIds: new Set([...state.selectedIds].filter((sid) => sid !== id)),
-    }));
+    set((state) => {
+      const newItems = state.items.filter((item) => item.id !== id);
+      if (isApiConfigured) {
+        cacheItems(newItems);
+      }
+      return {
+        items: newItems,
+        selectedIds: new Set([...state.selectedIds].filter((sid) => sid !== id)),
+      };
+    });
 
     // Sync to API if configured
     if (isApiConfigured) {
@@ -190,11 +252,15 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
 
   updateItem: (id, updates) => {
     // Update local state
-    set((state) => ({
-      items: state.items.map((item) =>
+    set((state) => {
+      const newItems = state.items.map((item) =>
         item.id === id ? { ...item, ...updates, updatedAt: Date.now() } : item
-      ),
-    }));
+      );
+      if (isApiConfigured) {
+        cacheItems(newItems);
+      }
+      return { items: newItems };
+    });
 
     // Sync to API if configured
     if (isApiConfigured) {
@@ -206,11 +272,13 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
 
   moveItem: (id, position) => {
     // Update local state immediately for responsive UI
-    set((state) => ({
-      items: state.items.map((item) =>
+    set((state) => {
+      const newItems = state.items.map((item) =>
         item.id === id ? { ...item, position, updatedAt: Date.now() } : item
-      ),
-    }));
+      );
+      // Note: caching is handled by the debounced API sync below
+      return { items: newItems };
+    });
 
     // Debounced sync to API (avoid excessive writes during drag)
     if (isApiConfigured) {
@@ -225,6 +293,8 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
         apiUpdateItems([{ id, updates: { position } }]).catch((error) => {
           console.error('Failed to update position:', error);
         });
+        // Cache after position sync completes
+        cacheItems(get().items);
         positionUpdateTimers.delete(id);
       }, 500);
 
@@ -241,6 +311,14 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
     });
   },
 
+  selectAll: (parentId = null) => {
+    set((state) => {
+      // Select all items in the specified parent (null = desktop root)
+      const itemsInParent = state.items.filter((item) => item.parentId === parentId);
+      return { selectedIds: new Set(itemsInParent.map((item) => item.id)) };
+    });
+  },
+
   deselectAll: () => set({ selectedIds: new Set() }),
 
   isSelected: (id) => get().selectedIds.has(id),
@@ -249,6 +327,246 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
     get().items.filter((item) => item.parentId === parentId),
 
   getItem: (id) => get().items.find((item) => item.id === id),
+
+  cleanUp: (parentId = null) => {
+    // Sort items by name and arrange in columns
+    const itemsInParent = get().items.filter((item) => item.parentId === parentId);
+    const otherItems = get().items.filter((item) => item.parentId !== parentId);
+
+    // Sort alphabetically by name
+    const sortedItems = [...itemsInParent].sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+    );
+
+    // Arrange in columns (max ~8 items per column on typical desktop)
+    const maxItemsPerColumn = 8;
+    const updatedItems = sortedItems.map((item, index) => ({
+      ...item,
+      position: {
+        x: Math.floor(index / maxItemsPerColumn),
+        y: index % maxItemsPerColumn,
+      },
+      updatedAt: Date.now(),
+    }));
+
+    const newItems = [...otherItems, ...updatedItems];
+    set({ items: newItems });
+
+    // Cache and sync to API
+    if (isApiConfigured) {
+      cacheItems(newItems);
+      // Batch update all positions
+      const updates = updatedItems.map((item) => ({
+        id: item.id,
+        updates: { position: item.position },
+      }));
+      apiUpdateItems(updates).catch((error) => {
+        console.error('Failed to update positions during clean up:', error);
+      });
+    }
+  },
+
+  sortByName: (parentId = null) => {
+    // Sort items by name and arrange in columns
+    const itemsInParent = get().items.filter((item) => item.parentId === parentId);
+    const otherItems = get().items.filter((item) => item.parentId !== parentId);
+
+    const sortedItems = [...itemsInParent].sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+    );
+
+    const maxItemsPerColumn = 8;
+    const updatedItems = sortedItems.map((item, index) => ({
+      ...item,
+      position: {
+        x: Math.floor(index / maxItemsPerColumn),
+        y: index % maxItemsPerColumn,
+      },
+      updatedAt: Date.now(),
+    }));
+
+    const newItems = [...otherItems, ...updatedItems];
+    set({ items: newItems });
+
+    if (isApiConfigured) {
+      cacheItems(newItems);
+      const updates = updatedItems.map((item) => ({
+        id: item.id,
+        updates: { position: item.position },
+      }));
+      apiUpdateItems(updates).catch((error) => {
+        console.error('Failed to update positions during sort by name:', error);
+      });
+    }
+  },
+
+  sortByDate: (parentId = null) => {
+    // Sort items by date (newest first) and arrange in columns
+    const itemsInParent = get().items.filter((item) => item.parentId === parentId);
+    const otherItems = get().items.filter((item) => item.parentId !== parentId);
+
+    const sortedItems = [...itemsInParent].sort((a, b) => b.updatedAt - a.updatedAt);
+
+    const maxItemsPerColumn = 8;
+    const updatedItems = sortedItems.map((item, index) => ({
+      ...item,
+      position: {
+        x: Math.floor(index / maxItemsPerColumn),
+        y: index % maxItemsPerColumn,
+      },
+      updatedAt: Date.now(),
+    }));
+
+    const newItems = [...otherItems, ...updatedItems];
+    set({ items: newItems });
+
+    if (isApiConfigured) {
+      cacheItems(newItems);
+      const updates = updatedItems.map((item) => ({
+        id: item.id,
+        updates: { position: item.position },
+      }));
+      apiUpdateItems(updates).catch((error) => {
+        console.error('Failed to update positions during sort by date:', error);
+      });
+    }
+  },
+
+  sortByKind: (parentId = null) => {
+    // Sort items by type (folders first, then by type, then by name) and arrange in columns
+    const itemsInParent = get().items.filter((item) => item.parentId === parentId);
+    const otherItems = get().items.filter((item) => item.parentId !== parentId);
+
+    // Type order: folder, text, image, link
+    const typeOrder: Record<string, number> = {
+      folder: 0,
+      text: 1,
+      image: 2,
+      link: 3,
+    };
+
+    const sortedItems = [...itemsInParent].sort((a, b) => {
+      const typeComparison = (typeOrder[a.type] ?? 99) - (typeOrder[b.type] ?? 99);
+      if (typeComparison !== 0) return typeComparison;
+      return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+    });
+
+    const maxItemsPerColumn = 8;
+    const updatedItems = sortedItems.map((item, index) => ({
+      ...item,
+      position: {
+        x: Math.floor(index / maxItemsPerColumn),
+        y: index % maxItemsPerColumn,
+      },
+      updatedAt: Date.now(),
+    }));
+
+    const newItems = [...otherItems, ...updatedItems];
+    set({ items: newItems });
+
+    if (isApiConfigured) {
+      cacheItems(newItems);
+      const updates = updatedItems.map((item) => ({
+        id: item.id,
+        updates: { position: item.position },
+      }));
+      apiUpdateItems(updates).catch((error) => {
+        console.error('Failed to update positions during sort by kind:', error);
+      });
+    }
+  },
+
+  duplicateItems: async (itemIds, targetParentId) => {
+    const { items, getItem } = get();
+    const duplicates: DesktopItem[] = [];
+
+    // Find positions in target folder
+    const itemsInTarget = items.filter((item) => item.parentId === targetParentId);
+    let nextY = itemsInTarget.length > 0
+      ? Math.max(...itemsInTarget.map((i) => i.position.y)) + 1
+      : 0;
+
+    for (const id of itemIds) {
+      const original = getItem(id);
+      if (!original) continue;
+
+      // Create duplicate with new id and position
+      const duplicate: DesktopItem = {
+        ...original,
+        id: crypto.randomUUID(),
+        name: `${original.name} copy`,
+        parentId: targetParentId,
+        position: { x: 0, y: nextY++ },
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+
+      duplicates.push(duplicate);
+
+      // Create item via API
+      if (isApiConfigured) {
+        try {
+          await apiCreateItem(duplicate);
+        } catch (error) {
+          console.error('Failed to create duplicate item:', error);
+        }
+      }
+    }
+
+    // Add all duplicates to state
+    if (duplicates.length > 0) {
+      const newItems = [...items, ...duplicates];
+      set({ items: newItems });
+      if (isApiConfigured) {
+        cacheItems(newItems);
+      }
+    }
+
+    return duplicates;
+  },
+
+  pasteItems: async (itemIds, isCut, targetParentId) => {
+    const { items, duplicateItems } = get();
+
+    if (isCut) {
+      // Move items to target folder
+      const updates: { id: string; updates: Partial<DesktopItem> }[] = [];
+      const itemsInTarget = items.filter((item) => item.parentId === targetParentId);
+      let nextY = itemsInTarget.length > 0
+        ? Math.max(...itemsInTarget.map((i) => i.position.y)) + 1
+        : 0;
+
+      const movedItems = items.map((item) => {
+        if (itemIds.includes(item.id)) {
+          const newPos = { x: 0, y: nextY++ };
+          updates.push({
+            id: item.id,
+            updates: { parentId: targetParentId, position: newPos },
+          });
+          return {
+            ...item,
+            parentId: targetParentId,
+            position: newPos,
+            updatedAt: Date.now(),
+          };
+        }
+        return item;
+      });
+
+      set({ items: movedItems });
+
+      // Sync to API
+      if (isApiConfigured && updates.length > 0) {
+        cacheItems(movedItems);
+        apiUpdateItems(updates).catch((error) => {
+          console.error('Failed to move items:', error);
+        });
+      }
+    } else {
+      // Copy items (create duplicates)
+      await duplicateItems(itemIds, targetParentId);
+    }
+  },
 
   uploadFile: async (file, parentId, position) => {
     if (!isApiConfigured) {
@@ -286,13 +604,17 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
       );
 
       // Mark upload complete
-      set((state) => ({
-        uploads: state.uploads.map((u) =>
-          u.id === uploadId ? { ...u, progress: 100, status: 'complete' as const } : u
-        ),
-        // Add the uploaded item to local state
-        items: [...state.items, result.item],
-      }));
+      set((state) => {
+        const newItems = [...state.items, result.item];
+        cacheItems(newItems);
+        return {
+          uploads: state.uploads.map((u) =>
+            u.id === uploadId ? { ...u, progress: 100, status: 'complete' as const } : u
+          ),
+          // Add the uploaded item to local state
+          items: newItems,
+        };
+      });
 
       // Auto-clear completed uploads after 3 seconds
       setTimeout(() => {
@@ -334,20 +656,33 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
       return;
     }
 
-    set({ loading: true });
+    // If we have cached items, show them immediately (already loaded in initial state)
+    const cachedItems = get().items;
+    const hasCache = cachedItems.length > 0;
+
+    // Only show loading if no cache
+    if (!hasCache) {
+      set({ loading: true });
+    }
+
     try {
       const response = await apiFetchDesktop();
       set({
         items: response.items,
         loading: false,
       });
+      // Cache the fresh items
+      cacheItems(response.items);
     } catch (error) {
       console.error('Failed to load desktop:', error);
       set({ loading: false });
-      showError(
-        `Could not load your desktop. ${error instanceof Error ? error.message : 'Please try again.'}`,
-        'Loading Failed'
-      );
+      // Only show error if we don't have a cache to fall back on
+      if (!hasCache) {
+        showError(
+          `Could not load your desktop. ${error instanceof Error ? error.message : 'Please try again.'}`,
+          'Loading Failed'
+        );
+      }
     }
   },
 }));

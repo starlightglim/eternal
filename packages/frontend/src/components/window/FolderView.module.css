@@ -43,12 +43,33 @@
   background: var(--highlight);
 }
 
+.item.selected {
+  background: var(--selection);
+}
+
+.item.selected .itemName {
+  color: var(--selection-text);
+}
+
 .item:active {
   background: var(--selection);
 }
 
 .item:active .itemName {
   color: var(--selection-text);
+}
+
+/* Dragging state */
+.item.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+/* Drop target - folder being hovered over */
+.item.dropTarget {
+  outline: 2px solid var(--selection);
+  outline-offset: 2px;
+  background: var(--highlight);
 }
 
 /* ============================================

@@ -1,0 +1,6 @@
+# Cloudflare Pages Redirects
+# https://developers.cloudflare.com/pages/configuration/redirects/
+
+# SPA routing - serve index.html for all routes
+# This enables React Router to handle client-side navigation
+/*  /index.html  200

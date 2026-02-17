@@ -1,0 +1,75 @@
+/* ContextMenu - Classic Mac OS Context Menu */
+
+/* Menu container */
+.menu {
+  position: fixed;
+  background: var(--white);
+  border: 1px solid var(--black);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
+  min-width: 160px;
+  padding: 2px 0;
+  z-index: 100002;
+  /* Prevent text selection */
+  user-select: none;
+}
+
+/* Individual menu item */
+.item {
+  display: flex;
+  align-items: center;
+  padding: 2px 16px 2px 20px;
+  font-family: var(--font-chicago);
+  font-size: 12px;
+  color: var(--black);
+  cursor: default;
+  white-space: nowrap;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+.item:hover {
+  background: var(--selection);
+  color: var(--selection-text);
+}
+
+/* Disabled item */
+.itemDisabled {
+  color: var(--shadow);
+  cursor: default;
+}
+
+.itemDisabled:hover {
+  background: transparent;
+  color: var(--shadow);
+}
+
+/* Divider line */
+.divider {
+  height: 1px;
+  background: var(--shadow);
+  margin: 4px 0;
+}
+
+/* Keyboard shortcut text (right-aligned) */
+.shortcut {
+  margin-left: auto;
+  padding-left: 24px;
+  font-family: var(--font-chicago);
+  font-size: 11px;
+  color: inherit;
+}
+
+/* Checkmark for toggleable items */
+.checkmark {
+  width: 12px;
+  margin-left: -14px;
+  margin-right: 2px;
+  font-size: 10px;
+}
+
+/* Submenu arrow indicator */
+.submenuArrow {
+  margin-left: auto;
+  padding-left: 8px;
+  font-size: 10px;
+}

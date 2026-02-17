@@ -13,6 +13,9 @@ interface WindowStore {
   resizeWindow: (id: string, size: { width: number; height: number }) => void;
   minimizeWindow: (id: string) => void;
   restoreWindow: (id: string) => void;
+  toggleCollapse: (id: string) => void;
+  toggleMaximize: (id: string) => void;
+  updateWindowTitle: (id: string, title: string) => void;
   getTopWindow: () => WindowState | undefined;
 }
 
@@ -25,14 +28,18 @@ export const useWindowStore = create<WindowStore>((set, get) => ({
     const existingWindow = windows.find((w) => w.id === windowData.id);
 
     if (existingWindow) {
-      // If window already exists, just focus it
+      // If window already exists, just focus it and uncollapse it
       get().focusWindow(windowData.id);
+      if (existingWindow.collapsed) {
+        get().toggleCollapse(windowData.id);
+      }
       return;
     }
 
     const newWindow: WindowState = {
       ...windowData,
       zIndex: nextZIndex,
+      collapsed: false,
     };
 
     set({
@@ -99,6 +106,56 @@ export const useWindowStore = create<WindowStore>((set, get) => ({
     set((state) => ({
       windows: state.windows.map((w) =>
         w.id === id ? { ...w, minimized: false } : w
+      ),
+    }));
+  },
+
+  toggleCollapse: (id) => {
+    set((state) => ({
+      windows: state.windows.map((w) =>
+        w.id === id ? { ...w, collapsed: !w.collapsed } : w
+      ),
+    }));
+  },
+
+  toggleMaximize: (id) => {
+    set((state) => ({
+      windows: state.windows.map((w) => {
+        if (w.id !== id) return w;
+
+        if (w.maximized) {
+          // Restore to pre-maximized state
+          return {
+            ...w,
+            maximized: false,
+            position: w.preMaximizedPosition || w.position,
+            size: w.preMaximizedSize || w.size,
+            preMaximizedPosition: undefined,
+            preMaximizedSize: undefined,
+          };
+        } else {
+          // Maximize - fill screen below menu bar (20px)
+          const menuBarHeight = 20;
+          return {
+            ...w,
+            maximized: true,
+            preMaximizedPosition: w.position,
+            preMaximizedSize: w.size,
+            position: { x: 0, y: menuBarHeight },
+            size: {
+              width: window.innerWidth,
+              height: window.innerHeight - menuBarHeight,
+            },
+          };
+        }
+      }),
+    }));
+  },
+
+  updateWindowTitle: (id, title) => {
+    set((state) => ({
+      windows: state.windows.map((w) =>
+        w.id === id ? { ...w, title } : w
       ),
     }));
   },

@@ -151,21 +151,51 @@ export async function uploadFile(
   formData.append('parentId', parentId || '');
   formData.append('position', JSON.stringify(position));
 
-  // Note: For progress tracking, we'd need XMLHttpRequest
-  // For now, using fetch without progress
-  const response = await fetch(`${API_URL}/api/upload`, {
-    method: 'POST',
-    headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
-    body: formData,
+  // Use XMLHttpRequest for progress tracking
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+
+    xhr.upload.addEventListener('progress', (event) => {
+      if (event.lengthComputable && onProgress) {
+        const progress = Math.round((event.loaded / event.total) * 100);
+        onProgress(progress);
+      }
+    });
+
+    xhr.addEventListener('load', () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const response = JSON.parse(xhr.responseText);
+          resolve(response);
+        } catch {
+          reject(new Error('Invalid response from server'));
+        }
+      } else {
+        try {
+          const error = JSON.parse(xhr.responseText);
+          reject(new Error(error.error || `HTTP ${xhr.status}`));
+        } catch {
+          reject(new Error(`Upload failed: HTTP ${xhr.status}`));
+        }
+      }
+    });
+
+    xhr.addEventListener('error', () => {
+      reject(new Error('Network error during upload'));
+    });
+
+    xhr.addEventListener('abort', () => {
+      reject(new Error('Upload cancelled'));
+    });
+
+    xhr.open('POST', `${API_URL}/api/upload`);
+
+    if (authToken) {
+      xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);
+    }
+
+    xhr.send(formData);
   });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Upload failed' }));
-    throw new Error(error.error || `HTTP ${response.status}`);
-  }
-
-  onProgress?.(100);
-  return response.json();
 }
 
 // ============ Visitor API ============
@@ -210,8 +240,12 @@ export async function fetchVisitorDesktop(username: string): Promise<VisitorResp
 
 // ============ File URL ============
 
-export function getFileUrl(uid: string, itemId: string, filename: string): string {
-  return `${API_URL}/api/files/${uid}/${itemId}/${filename}`;
+/**
+ * Get the URL for a file stored in R2.
+ * @param r2Key - The full R2 key path (e.g., "uid/itemId/filename")
+ */
+export function getFileUrl(r2Key: string): string {
+  return `${API_URL}/api/files/${r2Key}`;
 }
 
 // ============ Assistant API ============

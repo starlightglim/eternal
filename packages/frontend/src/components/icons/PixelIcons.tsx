@@ -178,3 +178,45 @@ export function TrashFullIcon({ className, size = 32 }: IconProps) {
   );
 }
 
+/**
+ * Desk Assistant Icon - Classic Mac terminal/computer icon
+ */
+export function AssistantIcon({ className, size = 32 }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 32 32"
+      className={className}
+      style={{ imageRendering: 'pixelated' }}
+    >
+      {/* Monitor body */}
+      <rect x="3" y="2" width="26" height="20" fill="#C0C0C0" stroke="#000" strokeWidth="1" />
+      {/* Monitor highlight */}
+      <line x1="4" y1="3" x2="28" y2="3" stroke="#FFFFFF" strokeWidth="1" />
+      <line x1="4" y1="3" x2="4" y2="21" stroke="#FFFFFF" strokeWidth="1" />
+      {/* Monitor shadow */}
+      <line x1="28" y1="3" x2="28" y2="21" stroke="#808080" strokeWidth="1" />
+      <line x1="4" y1="21" x2="28" y2="21" stroke="#808080" strokeWidth="1" />
+      {/* Screen */}
+      <rect x="5" y="4" width="22" height="14" fill="#000000" stroke="#000" strokeWidth="1" />
+      {/* Screen inner border */}
+      <rect x="6" y="5" width="20" height="12" fill="#001a00" stroke="none" />
+      {/* Terminal text lines (green on black) */}
+      <line x1="8" y1="8" x2="16" y2="8" stroke="#00FF00" strokeWidth="1" />
+      <line x1="8" y1="11" x2="20" y2="11" stroke="#00FF00" strokeWidth="1" />
+      <line x1="8" y1="14" x2="12" y2="14" stroke="#00FF00" strokeWidth="1" />
+      {/* Blinking cursor */}
+      <rect x="13" y="13" width="2" height="3" fill="#00FF00" />
+      {/* Stand neck */}
+      <rect x="13" y="22" width="6" height="3" fill="#808080" stroke="#000" strokeWidth="1" />
+      {/* Stand base */}
+      <rect x="9" y="25" width="14" height="4" fill="#C0C0C0" stroke="#000" strokeWidth="1" />
+      {/* Base highlight */}
+      <line x1="10" y1="26" x2="22" y2="26" stroke="#FFFFFF" strokeWidth="1" />
+      {/* Base shadow */}
+      <line x1="10" y1="28" x2="22" y2="28" stroke="#808080" strokeWidth="1" />
+    </svg>
+  );
+}
+

@@ -52,7 +52,7 @@
   position: absolute;
   top: 0;
   left: 22px; /* Leave space for close box */
-  right: 22px; /* Symmetry */
+  right: 38px; /* Leave space for zoom + collapse boxes */
   bottom: 0;
   background: repeating-linear-gradient(
     to bottom,
@@ -128,6 +128,64 @@
 }
 
 /* ============================================
+   ZOOM BOX (Maximize/Restore)
+   ============================================ */
+
+.zoomBox {
+  position: absolute;
+  right: 22px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 11px;
+  height: 11px;
+  background: var(--white);
+  border: 1px solid var(--black);
+  cursor: pointer;
+  z-index: 2;
+}
+
+.zoomBox:hover {
+  background: var(--black);
+}
+
+.zoomBox:active {
+  background: var(--black);
+}
+
+.inactive .zoomBox {
+  background: var(--platinum);
+}
+
+/* ============================================
+   COLLAPSE BOX (Window Shade)
+   ============================================ */
+
+.collapseBox {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 11px;
+  height: 11px;
+  background: var(--white);
+  border: 1px solid var(--black);
+  cursor: pointer;
+  z-index: 2;
+}
+
+.collapseBox:hover {
+  background: var(--black);
+}
+
+.collapseBox:active {
+  background: var(--black);
+}
+
+.inactive .collapseBox {
+  background: var(--platinum);
+}
+
+/* ============================================
    CONTENT AREA
    ============================================ */
 
@@ -188,4 +246,22 @@
 
 .minimized {
   display: none;
+}
+
+/* ============================================
+   COLLAPSED STATE (Window Shade)
+   ============================================ */
+
+.collapsed {
+  /* Override height to show only title bar */
+  height: auto !important;
+  min-height: auto;
+}
+
+.collapsed .windowInner {
+  height: auto;
+}
+
+.collapsed .titleBar {
+  border-bottom: none;
 }

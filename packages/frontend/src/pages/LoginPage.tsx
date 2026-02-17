@@ -8,7 +8,7 @@ import styles from './AuthPage.module.css'
 export function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const { login, loading, error, clearError } = useAuthStore()
+  const { login, loading, error, clearError, user } = useAuthStore()
   const navigate = useNavigate()
 
   // Set document title
@@ -17,18 +17,30 @@ export function LoginPage() {
     return () => { document.title = 'EternalOS' }
   }, [])
 
+  // If already logged in, redirect to desktop
+  useEffect(() => {
+    if (user) {
+      navigate('/desktop', { replace: true })
+    }
+  }, [user, navigate])
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     clearError()
 
     if (!isApiConfigured) {
-      // Demo mode - just navigate to desktop
-      navigate('/desktop')
+      // Demo mode - navigate to demo user's desktop
+      navigate('/@demo', { replace: true })
       return
     }
 
-    await login(email, password)
-    // If login successful, navigate to desktop (auth state change will trigger this)
+    try {
+      await login(email, password)
+      // Navigation happens via useEffect when user state updates
+    } catch (err) {
+      // Error is handled by the store
+      console.error('Login error:', err)
+    }
   }
 
   // If API not configured, show demo mode notice

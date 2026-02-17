@@ -23,10 +23,16 @@
   margin-bottom: 4px;
 }
 
-/* Selected icon gets inverted colors */
+/* Selected icon - classic Mac darkened effect */
 .selected .iconImage {
-  /* Classic Mac inverted selection effect */
-  filter: invert(1);
+  /* Classic Mac applies a darkening effect to selected icons */
+  filter: brightness(0.6) saturate(1.5);
+}
+
+/* Alternative: for SVG icons, we can use a CSS mask overlay */
+.selected .iconImage svg {
+  /* Apply navy-ish tint to selected icon */
+  filter: brightness(0.5) sepia(1) hue-rotate(190deg) saturate(3);
 }
 
 .iconLabel {
@@ -65,4 +71,12 @@
 /* Hover state - subtle feedback */
 .desktopIcon:hover .iconLabel:not(.labelSelected) {
   background-color: rgba(0, 0, 128, 0.1);
+}
+
+/* Drop target state - folder receiving a drop */
+.dropTarget {
+  outline: 2px solid var(--selection);
+  outline-offset: 2px;
+  background-color: rgba(0, 0, 128, 0.15);
+  border-radius: 4px;
 }

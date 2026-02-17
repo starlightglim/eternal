@@ -1,13 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useDesktopStore } from '../../stores/desktopStore';
+import { useWindowStore } from '../../stores/windowStore';
 import { isApiConfigured, getFileUrl } from '../../services/api';
-import { useAuthStore } from '../../stores/authStore';
 import styles from './ImageViewer.module.css';
 
 interface ImageViewerProps {
   itemId: string;
+  windowId: string;
   name: string;
   r2Key?: string;
   mimeType?: string;
+  isOwner?: boolean;
 }
 
 /**
@@ -18,29 +21,104 @@ interface ImageViewerProps {
  * - Loading state with dithered placeholder
  * - Error state for failed loads
  */
-export function ImageViewer({ itemId, name, r2Key, mimeType }: ImageViewerProps) {
+export function ImageViewer({
+  itemId,
+  windowId,
+  name,
+  r2Key,
+  mimeType,
+  isOwner = true,
+}: ImageViewerProps) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useAuthStore();
+  const [fileName, setFileName] = useState(name);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const { updateItem } = useDesktopStore();
+  const { updateWindowTitle } = useWindowStore();
+
+  // Update filename when prop changes
+  useEffect(() => {
+    setFileName(name);
+  }, [name]);
+
+  // Focus input when entering edit mode
+  useEffect(() => {
+    if (isEditingName && nameInputRef.current) {
+      nameInputRef.current.focus();
+      nameInputRef.current.select();
+    }
+  }, [isEditingName]);
+
+  // Handle filename rename
+  const handleRename = useCallback(() => {
+    if (!isOwner || !fileName.trim()) {
+      setFileName(name);
+      setIsEditingName(false);
+      return;
+    }
+
+    const newName = fileName.trim();
+    if (newName !== name) {
+      updateItem(itemId, { name: newName });
+      updateWindowTitle(windowId, newName);
+    }
+    setIsEditingName(false);
+  }, [fileName, name, isOwner, itemId, windowId, updateItem, updateWindowTitle]);
+
+  // Handle name input key events
+  const handleNameKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleRename();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        setFileName(name);
+        setIsEditingName(false);
+      }
+    },
+    [handleRename, name]
+  );
+
+  // Download the image file
+  const handleDownload = useCallback(async () => {
+    if (!imageUrl) return;
+
+    try {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      const downloadUrl = URL.createObjectURL(blob);
+
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(downloadUrl);
+    } catch (err) {
+      console.error('Failed to download image:', err);
+    }
+  }, [imageUrl, fileName]);
 
   useEffect(() => {
     function loadImage() {
       setLoading(true);
       setError(null);
 
-      // In demo mode (no API), use a placeholder
+      // In demo mode (no API) or no r2Key, show demo placeholder
       if (!isApiConfigured || !r2Key) {
         setImageUrl(null);
         setLoading(false);
-        setError('Demo mode: No image data');
+        // Don't show error for demo mode - we'll show a nice placeholder
         return;
       }
 
       try {
-        // Build the file URL from API
-        const uid = user?.uid || 'unknown';
-        const url = getFileUrl(uid, itemId, name);
+        // Build the file URL using the r2Key directly
+        const url = getFileUrl(r2Key);
         setImageUrl(url);
         setLoading(false);
       } catch (err) {
@@ -51,7 +129,7 @@ export function ImageViewer({ itemId, name, r2Key, mimeType }: ImageViewerProps)
     }
 
     loadImage();
-  }, [r2Key, itemId, name, user?.uid]);
+  }, [r2Key]);
 
   return (
     <div className={styles.imageViewer}>
@@ -84,8 +162,8 @@ export function ImageViewer({ itemId, name, r2Key, mimeType }: ImageViewerProps)
             />
           )}
 
-          {/* Demo mode placeholder image */}
-          {!isApiConfigured && !loading && (
+          {/* Demo mode or missing r2Key - show placeholder image */}
+          {(!isApiConfigured || !r2Key) && !loading && !error && (
             <div className={styles.demoImage}>
               <div className={styles.demoPlaceholder}>
                 <svg
@@ -113,8 +191,37 @@ export function ImageViewer({ itemId, name, r2Key, mimeType }: ImageViewerProps)
 
       {/* Image info bar */}
       <div className={styles.infoBar}>
-        <span className={styles.fileName}>{name}</span>
-        {mimeType && <span className={styles.fileType}>{mimeType}</span>}
+        {isEditingName ? (
+          <input
+            ref={nameInputRef}
+            type="text"
+            className={styles.fileNameInput}
+            value={fileName}
+            onChange={(e) => setFileName(e.target.value)}
+            onBlur={handleRename}
+            onKeyDown={handleNameKeyDown}
+          />
+        ) : (
+          <span
+            className={`${styles.fileName} ${isOwner ? styles.fileNameEditable : ''}`}
+            onClick={isOwner ? () => setIsEditingName(true) : undefined}
+            title={isOwner ? 'Click to rename' : undefined}
+          >
+            {fileName}
+          </span>
+        )}
+        <div className={styles.infoBarRight}>
+          {mimeType && <span className={styles.fileType}>{mimeType}</span>}
+          {imageUrl && (
+            <button
+              className={styles.downloadButton}
+              onClick={handleDownload}
+              title="Download"
+            >
+              Download
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -1,0 +1,116 @@
+/* SearchWindow - Classic Mac OS Find File dialog */
+
+.searchWindow {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 12px;
+  background: var(--white);
+  font-family: var(--font-geneva);
+  font-size: 11px;
+}
+
+.searchHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.searchLabel {
+  font-family: var(--font-chicago);
+  font-size: 12px;
+  color: var(--black);
+}
+
+.searchInput {
+  width: 100%;
+  padding: 4px 6px;
+  font-family: var(--font-geneva);
+  font-size: 11px;
+  border: 1px solid var(--black);
+  background: var(--white);
+  outline: none;
+}
+
+.searchInput:focus {
+  outline: 2px solid var(--selection);
+  outline-offset: -2px;
+}
+
+.resultsContainer {
+  flex: 1;
+  border: 1px solid var(--shadow);
+  background: var(--white);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.placeholder {
+  padding: 20px;
+  text-align: center;
+  color: var(--shadow);
+  font-style: italic;
+}
+
+.resultsList {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.resultsHeader {
+  display: flex;
+  padding: 4px 8px;
+  background: var(--platinum);
+  border-bottom: 1px solid var(--shadow);
+  font-family: var(--font-chicago);
+  font-size: 10px;
+  font-weight: normal;
+}
+
+.colName {
+  flex: 2;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.colKind {
+  flex: 1;
+  min-width: 60px;
+  text-transform: capitalize;
+}
+
+.colLocation {
+  flex: 1;
+  min-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resultItem {
+  display: flex;
+  padding: 4px 8px;
+  cursor: default;
+  border-bottom: 1px solid var(--highlight);
+}
+
+.resultItem:hover {
+  background: var(--selection);
+  color: var(--selection-text);
+}
+
+.typeIcon {
+  margin-right: 4px;
+  font-size: 12px;
+}
+
+.resultsCount {
+  padding-top: 8px;
+  text-align: right;
+  color: var(--shadow);
+  font-size: 10px;
+}

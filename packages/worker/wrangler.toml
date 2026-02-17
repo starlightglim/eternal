@@ -15,15 +15,14 @@ class_name = "UserDesktop"
 tag = "v1"
 new_classes = ["UserDesktop"]
 
-# KV Namespaces (local dev uses Miniflare simulation)
-# For production: wrangler kv:namespace create AUTH_KV
+# KV Namespaces
 [[kv_namespaces]]
 binding = "AUTH_KV"
-id = "AUTH_KV_DEV"
+id = "181861d860e5441a9467effa18a6fa16"
 
 [[kv_namespaces]]
 binding = "DESKTOP_KV"
-id = "DESKTOP_KV_DEV"
+id = "90801c76cfcb483c8dc6f6123ed8f79a"
 
 # R2 Bucket (local dev uses Miniflare simulation)
 # For production: wrangler r2 bucket create eternalos-files

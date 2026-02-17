@@ -20,3 +20,12 @@
   outline: 3px dashed var(--black);
   outline-offset: -6px;
 }
+
+/* Selection rectangle (marquee select) */
+.selectionRect {
+  position: absolute;
+  border: 1px solid var(--black);
+  background-color: rgba(0, 0, 128, 0.15);
+  pointer-events: none;
+  z-index: 9999;
+}

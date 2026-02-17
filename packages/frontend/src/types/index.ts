@@ -36,8 +36,12 @@ export interface WindowState {
   zIndex: number;
   minimized: boolean;
   maximized: boolean;
+  collapsed?: boolean; // Window shade - show only title bar
+  // Pre-maximized state for restore
+  preMaximizedPosition?: { x: number; y: number };
+  preMaximizedSize?: { width: number; height: number };
   // Content information
-  contentType: 'folder' | 'image' | 'text' | 'get-info' | 'about' | 'assistant' | 'wallpaper' | 'welcome';
+  contentType: 'folder' | 'image' | 'text' | 'get-info' | 'about' | 'assistant' | 'wallpaper' | 'welcome' | 'search' | 'preferences';
   contentId?: string; // Reference to DesktopItem id if applicable
 }
 

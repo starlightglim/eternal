@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useWindowStore } from '../../stores/windowStore';
 import { useDesktopStore } from '../../stores/desktopStore';
 import { useAuthStore } from '../../stores/authStore';
+import { useClipboardStore } from '../../stores/clipboardStore';
 import { isApiConfigured } from '../../services/api';
 import type { MenuItem } from '../../types';
 import styles from './MenuBar.module.css';
@@ -18,8 +19,9 @@ import styles from './MenuBar.module.css';
  */
 export function MenuBar() {
   const { windows, closeWindow, getTopWindow, openWindow } = useWindowStore();
-  const { selectedIds, addItem, items, deselectAll, removeItem } = useDesktopStore();
+  const { selectedIds, addItem, items, deselectAll, selectAll, removeItem, cleanUp, sortByName, sortByDate, sortByKind, pasteItems, duplicateItems } = useDesktopStore();
   const { profile, logout } = useAuthStore();
+  const { clipboard, cut, copy, clear: clearClipboard, hasItems: hasClipboardItems } = useClipboardStore();
   const navigate = useNavigate();
 
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
@@ -125,6 +127,86 @@ export function MenuBar() {
     setActiveMenu(null);
   }, [openWindow]);
 
+  const handleOpenPreferences = useCallback(() => {
+    openWindow({
+      id: 'preferences-window',
+      title: 'Preferences',
+      position: { x: 120, y: 80 },
+      size: { width: 380, height: 360 },
+      minimized: false,
+      maximized: false,
+      contentType: 'preferences',
+    });
+    setActiveMenu(null);
+  }, [openWindow]);
+
+  const handleSelectAll = useCallback(() => {
+    // Select all items on the desktop (root level)
+    selectAll(null);
+    setActiveMenu(null);
+  }, [selectAll]);
+
+  const handleCleanUp = useCallback(() => {
+    // Arrange all desktop icons in a neat grid
+    cleanUp(null);
+    setActiveMenu(null);
+  }, [cleanUp]);
+
+  const handleCut = useCallback(() => {
+    if (selectedIds.size === 0) return;
+    cut(Array.from(selectedIds), null);
+    setActiveMenu(null);
+  }, [selectedIds, cut]);
+
+  const handleCopy = useCallback(() => {
+    if (selectedIds.size === 0) return;
+    copy(Array.from(selectedIds), null);
+    setActiveMenu(null);
+  }, [selectedIds, copy]);
+
+  const handlePaste = useCallback(async () => {
+    if (!clipboard) return;
+    await pasteItems(clipboard.itemIds, clipboard.isCut, null);
+    if (clipboard.isCut) {
+      clearClipboard();
+    }
+    setActiveMenu(null);
+  }, [clipboard, pasteItems, clearClipboard]);
+
+  const handleDuplicate = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+    await duplicateItems(Array.from(selectedIds), null);
+    setActiveMenu(null);
+  }, [selectedIds, duplicateItems]);
+
+  const handleSortByName = useCallback(() => {
+    sortByName(null);
+    setActiveMenu(null);
+  }, [sortByName]);
+
+  const handleSortByDate = useCallback(() => {
+    sortByDate(null);
+    setActiveMenu(null);
+  }, [sortByDate]);
+
+  const handleSortByKind = useCallback(() => {
+    sortByKind(null);
+    setActiveMenu(null);
+  }, [sortByKind]);
+
+  const handleFind = useCallback(() => {
+    openWindow({
+      id: 'find-window',
+      title: 'Find',
+      position: { x: 150, y: 100 },
+      size: { width: 400, height: 300 },
+      minimized: false,
+      maximized: false,
+      contentType: 'search',
+    });
+    setActiveMenu(null);
+  }, [openWindow]);
+
   const handleLogout = useCallback(async () => {
     setActiveMenu(null);
     await logout();
@@ -171,12 +253,30 @@ export function MenuBar() {
       } else if (isMeta && (e.key === 'Backspace' || e.key === 'Delete')) {
         e.preventDefault();
         handleTrashSelected();
+      } else if (isMeta && e.key === 'a') {
+        e.preventDefault();
+        handleSelectAll();
+      } else if (isMeta && e.key === 'x') {
+        e.preventDefault();
+        handleCut();
+      } else if (isMeta && e.key === 'c') {
+        e.preventDefault();
+        handleCopy();
+      } else if (isMeta && e.key === 'v') {
+        e.preventDefault();
+        handlePaste();
+      } else if (isMeta && e.key === 'd') {
+        e.preventDefault();
+        handleDuplicate();
+      } else if (isMeta && e.key === 'f') {
+        e.preventDefault();
+        handleFind();
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [handleNewFolder, handleCloseWindow, handleTrashSelected]);
+  }, [handleNewFolder, handleCloseWindow, handleTrashSelected, handleSelectAll, handleCut, handleCopy, handlePaste, handleDuplicate, handleFind]);
 
   // ============================================
   // OTHER HANDLERS
@@ -219,27 +319,29 @@ export function MenuBar() {
       { label: 'Close Window', shortcut: '⌘W', action: handleCloseWindow, disabled: windows.length === 0 },
       { divider: true, label: '' },
       { label: 'Get Info', shortcut: '⌘I', disabled: selectedIds.size === 0 },
+      { label: 'Find...', shortcut: '⌘F', action: handleFind },
     ],
     edit: [
       { label: 'Undo', shortcut: '⌘Z', disabled: true },
       { divider: true, label: '' },
-      { label: 'Cut', shortcut: '⌘X', disabled: true },
-      { label: 'Copy', shortcut: '⌘C', disabled: true },
-      { label: 'Paste', shortcut: '⌘V', disabled: true },
-      { label: 'Clear', disabled: true },
+      { label: 'Cut', shortcut: '⌘X', action: handleCut, disabled: selectedIds.size === 0 },
+      { label: 'Copy', shortcut: '⌘C', action: handleCopy, disabled: selectedIds.size === 0 },
+      { label: 'Paste', shortcut: '⌘V', action: handlePaste, disabled: !hasClipboardItems() },
+      { label: 'Duplicate', shortcut: '⌘D', action: handleDuplicate, disabled: selectedIds.size === 0 },
       { divider: true, label: '' },
-      { label: 'Select All', shortcut: '⌘A', disabled: true },
+      { label: 'Select All', shortcut: '⌘A', action: handleSelectAll },
     ],
     view: [
-      { label: 'By Icon', action: () => setActiveMenu(null) },
-      { label: 'By Name', action: () => setActiveMenu(null) },
-      { label: 'By Date', action: () => setActiveMenu(null) },
+      { label: 'Sort by Name', action: handleSortByName },
+      { label: 'Sort by Date', action: handleSortByDate },
+      { label: 'Sort by Kind', action: handleSortByKind },
       { divider: true, label: '' },
-      { label: 'Clean Up', disabled: true },
+      { label: 'Clean Up', action: handleCleanUp },
     ],
     special: [
       { label: 'Desk Assistant', action: handleOpenAssistant },
       { label: 'Desktop Patterns...', action: handleOpenWallpaperPicker },
+      { label: 'Preferences...', action: handleOpenPreferences },
       { divider: true, label: '' },
       { label: 'Empty Trash...', action: handleEmptyTrash },
       { divider: true, label: '' },

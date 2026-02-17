@@ -6,6 +6,8 @@ import { TextViewer } from '../viewers/TextViewer';
 import { GetInfo } from '../viewers/GetInfo';
 import { WallpaperPicker } from '../viewers/WallpaperPicker';
 import { WelcomeReadMe } from '../viewers/WelcomeReadMe';
+import { SearchWindow } from '../viewers/SearchWindow';
+import { PreferencesWindow } from '../viewers/PreferencesWindow';
 import { DeskAssistant } from '../assistant';
 import { FolderView } from './FolderView';
 import type { DesktopItem } from '../../types';
@@ -40,10 +42,12 @@ export function WindowManager({ isVisitorMode = false, visitorItems }: WindowMan
           size={win.size}
           zIndex={win.zIndex}
           minimized={win.minimized}
+          collapsed={win.collapsed}
           isActive={win.id === activeWindowId}
         >
           {/* Window content will be rendered based on contentType */}
           <WindowContent
+            windowId={win.id}
             contentType={win.contentType}
             contentId={win.contentId}
             isVisitorMode={isVisitorMode}
@@ -60,11 +64,13 @@ export function WindowManager({ isVisitorMode = false, visitorItems }: WindowMan
  * Uses real viewers for images and text, folder view for folders
  */
 function WindowContent({
+  windowId,
   contentType,
   contentId,
   isVisitorMode = false,
   visitorItems,
 }: {
+  windowId: string;
   contentType: string;
   contentId?: string;
   isVisitorMode?: boolean;
@@ -85,6 +91,7 @@ function WindowContent({
         <FolderView
           folderId={contentId || null}
           visitorItems={isVisitorMode ? visitorItems : undefined}
+          isVisitorMode={isVisitorMode}
         />
       );
 
@@ -107,9 +114,11 @@ function WindowContent({
       return (
         <ImageViewer
           itemId={item.id}
+          windowId={windowId}
           name={item.name}
           r2Key={item.r2Key}
           mimeType={item.mimeType}
+          isOwner={!isVisitorMode}
         />
       );
 
@@ -130,6 +139,7 @@ function WindowContent({
       return (
         <TextViewer
           itemId={item.id}
+          windowId={windowId}
           name={item.name}
           textContent={item.textContent}
           isOwner={!isVisitorMode} // Read-only in visitor mode
@@ -199,6 +209,12 @@ function WindowContent({
 
     case 'welcome':
       return <WelcomeReadMe />;
+
+    case 'search':
+      return <SearchWindow />;
+
+    case 'preferences':
+      return <PreferencesWindow />;
 
     default:
       return null;
