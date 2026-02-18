@@ -16,6 +16,7 @@ import { WallpaperPicker } from '../viewers/WallpaperPicker';
 import { WelcomeReadMe } from '../viewers/WelcomeReadMe';
 import { SearchWindow } from '../viewers/SearchWindow';
 import { PreferencesWindow } from '../viewers/PreferencesWindow';
+import { AppearancePanel } from '../viewers/AppearancePanel';
 import { DeskAssistant } from '../assistant';
 import { FolderView } from './FolderView';
 import { TrashView } from './TrashView';
@@ -277,6 +278,9 @@ function WindowContent({
 
     case 'preferences':
       return <PreferencesWindow />;
+
+    case 'appearance':
+      return <AppearancePanel />;
 
     case 'trash':
       return <TrashView />;

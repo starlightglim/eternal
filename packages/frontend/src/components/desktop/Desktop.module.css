@@ -7,7 +7,8 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: var(--platinum);
+  /* Custom desktop color overrides platinum if set */
+  background-color: var(--custom-desktop-color, var(--platinum));
   /* The desktop is the base layer */
   z-index: 0;
   /* Allow windows and icons to be positioned */

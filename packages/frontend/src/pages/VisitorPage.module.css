@@ -4,7 +4,8 @@
   width: 100%;
   height: 100%;
   position: relative;
-  background-color: var(--platinum);
+  /* Custom desktop color overrides platinum if set */
+  background-color: var(--custom-desktop-color, var(--platinum));
 }
 
 .desktop {
@@ -13,7 +14,8 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: var(--platinum);
+  /* Custom desktop color overrides platinum if set */
+  background-color: var(--custom-desktop-color, var(--platinum));
   overflow: hidden;
 }
 

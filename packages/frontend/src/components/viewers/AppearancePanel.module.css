@@ -1,0 +1,566 @@
+/* AppearancePanel - Mac OS 8 Appearance Manager styling */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--platinum);
+  font-family: var(--font-geneva);
+  font-size: 11px;
+}
+
+/* ============================================
+   TAB BAR
+   ============================================ */
+
+.tabBar {
+  display: flex;
+  padding: 8px 8px 0;
+  gap: 2px;
+  background: var(--platinum);
+  border-bottom: 1px solid var(--shadow);
+}
+
+.tab {
+  padding: 6px 16px;
+  background: var(--platinum);
+  border: 1px solid var(--shadow);
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+  font-family: var(--font-chicago);
+  font-size: 11px;
+  cursor: pointer;
+  position: relative;
+  top: 1px;
+  color: var(--text-color);
+  box-shadow:
+    inset 1px 1px 0 var(--highlight),
+    inset -1px 0 0 var(--shadow);
+}
+
+.tab:hover {
+  background: var(--highlight);
+}
+
+.activeTab {
+  background: var(--white);
+  border-bottom: 1px solid var(--white);
+  box-shadow:
+    inset 1px 1px 0 var(--highlight),
+    inset -1px 0 0 var(--shadow);
+}
+
+.activeTab:hover {
+  background: var(--white);
+}
+
+/* ============================================
+   CONTENT AREA
+   ============================================ */
+
+.content {
+  flex: 1;
+  background: var(--white);
+  border: 1px solid var(--shadow);
+  border-top: none;
+  margin: 0 8px;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+/* ============================================
+   PANEL ICON
+   ============================================ */
+
+.panelIcon {
+  display: flex;
+  justify-content: center;
+  padding-bottom: 12px;
+}
+
+.panelIcon svg {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* ============================================
+   SECTIONS
+   ============================================ */
+
+.section {
+  margin-bottom: 16px;
+}
+
+.section:last-child {
+  margin-bottom: 0;
+}
+
+.sectionHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--shadow);
+  margin-bottom: 10px;
+}
+
+.sectionTitle {
+  font-family: var(--font-chicago);
+  font-size: 12px;
+  color: var(--text-color);
+}
+
+.sectionHint {
+  font-size: 10px;
+  color: var(--text-color-secondary);
+}
+
+/* ============================================
+   THEME SELECT
+   ============================================ */
+
+.themeSelect {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.select {
+  width: 100%;
+  padding: 6px 8px;
+  font-family: var(--font-geneva);
+  font-size: 11px;
+  background: var(--white);
+  border: 1px solid var(--black);
+  color: var(--window-text-color, var(--black));
+  cursor: pointer;
+}
+
+.select:focus {
+  outline: none;
+  box-shadow: 0 0 0 1px var(--selection);
+}
+
+.themeDescription {
+  font-size: 10px;
+  color: var(--text-color-secondary);
+  font-style: italic;
+}
+
+/* ============================================
+   COLOR GRID
+   ============================================ */
+
+.colorGrid {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  gap: 6px;
+}
+
+.colorSwatch {
+  width: 100%;
+  aspect-ratio: 1;
+  min-height: 24px;
+  border: 2px solid var(--shadow);
+  cursor: pointer;
+  transition: border-color 0.1s;
+}
+
+.colorSwatch:hover {
+  border-color: var(--black);
+}
+
+.colorSwatch.selected {
+  border-color: var(--selection);
+  box-shadow: 0 0 0 2px var(--selection);
+}
+
+.customSwatch {
+  background: linear-gradient(
+    45deg,
+    #FF0000 0%,
+    #FFFF00 25%,
+    #00FF00 50%,
+    #00FFFF 75%,
+    #0000FF 100%
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.customIcon {
+  font-size: 16px;
+  font-weight: bold;
+  color: #000;
+  text-shadow: 0 0 2px #FFF;
+}
+
+/* ============================================
+   CUSTOM COLOR ROW
+   ============================================ */
+
+.customColorRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+  padding: 8px;
+  background: var(--platinum);
+  border: 1px solid var(--shadow);
+}
+
+.colorPicker {
+  width: 32px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--black);
+  cursor: pointer;
+}
+
+.colorInput {
+  flex: 1;
+  padding: 4px 8px;
+  font-family: var(--font-monaco);
+  font-size: 11px;
+  background: var(--white);
+  border: 1px solid var(--black);
+  color: var(--window-text-color, var(--black));
+}
+
+.colorInput:focus {
+  outline: none;
+  box-shadow: 0 0 0 1px var(--selection);
+}
+
+.applyButton {
+  padding: 4px 12px;
+  font-family: var(--font-geneva);
+  font-size: 10px;
+  background: var(--platinum);
+  border: 1px solid var(--shadow);
+  border-radius: 3px;
+  cursor: pointer;
+  color: var(--text-color);
+  box-shadow:
+    inset 1px 1px 0 var(--highlight),
+    inset -1px -1px 0 var(--shadow);
+}
+
+.applyButton:hover {
+  background: var(--highlight);
+}
+
+.applyButton:active {
+  background: var(--shadow);
+  color: var(--white);
+  box-shadow:
+    inset -1px -1px 0 var(--highlight),
+    inset 1px 1px 0 var(--shadow);
+}
+
+/* ============================================
+   FONTS TAB
+   ============================================ */
+
+.fontsTab {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.fontOption {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--platinum);
+  border: 1px solid var(--shadow);
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-family: var(--font-geneva);
+  font-size: 11px;
+  color: var(--text-color);
+}
+
+.checkbox {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  accent-color: var(--selection);
+}
+
+.optionDescription {
+  font-size: 10px;
+  color: var(--text-color-secondary);
+  margin: 0;
+  padding-left: 22px;
+}
+
+.fontSamples {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.fontSample {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+  background: var(--platinum);
+  border: 1px solid var(--shadow);
+}
+
+.fontName {
+  font-family: var(--font-chicago);
+  font-size: 11px;
+  font-weight: bold;
+  color: var(--text-color);
+}
+
+.fontPreview {
+  font-size: 12px;
+  color: var(--text-color);
+  background: var(--white);
+  padding: 6px 8px;
+  border: 1px solid var(--shadow);
+}
+
+.fontUsage {
+  font-size: 9px;
+  color: var(--text-color-secondary);
+  font-style: italic;
+}
+
+/* ============================================
+   PREVIEW TAB
+   ============================================ */
+
+.previewTab {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.previewDescription {
+  font-size: 11px;
+  color: var(--text-color);
+  text-align: center;
+}
+
+.previewContainer {
+  display: flex;
+  justify-content: center;
+  padding: 8px;
+}
+
+.previewDesktop {
+  width: 220px;
+  height: 160px;
+  border: 2px solid var(--black);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.previewMenuBar {
+  height: 14px;
+  background: var(--white);
+  border-bottom: 1px solid var(--black);
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  gap: 8px;
+  font-size: 8px;
+  font-family: var(--font-chicago);
+}
+
+.previewWindow {
+  position: absolute;
+  top: 30px;
+  left: 20px;
+  width: 140px;
+  border: 2px solid var(--black);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
+}
+
+.previewTitleBar {
+  height: 14px;
+  background: var(--platinum);
+  border-bottom: 1px solid;
+  display: flex;
+  align-items: center;
+  padding: 0 4px;
+  gap: 6px;
+  font-size: 8px;
+  font-family: var(--font-chicago);
+}
+
+.previewCloseBox {
+  width: 8px;
+  height: 8px;
+  background: var(--white);
+  border: 1px solid var(--black);
+}
+
+.previewContent {
+  padding: 8px;
+  font-size: 8px;
+}
+
+.previewSelection {
+  display: inline-block;
+  padding: 1px 4px;
+  color: #FFFFFF;
+  margin-bottom: 4px;
+  font-family: var(--font-geneva);
+}
+
+.previewText {
+  color: var(--window-text-color, var(--black));
+  font-family: var(--font-geneva);
+}
+
+.previewIcon {
+  position: absolute;
+  bottom: 10px;
+  right: 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.previewIconImage {
+  width: 20px;
+  height: 16px;
+  background: #FFCC66;
+  border: 1px solid var(--black);
+}
+
+.previewIcon span {
+  font-size: 7px;
+  font-family: var(--font-geneva);
+  color: var(--text-color);
+}
+
+.previewNote {
+  font-size: 10px;
+  color: var(--text-color-secondary);
+  text-align: center;
+  font-style: italic;
+}
+
+/* ============================================
+   COLORS TAB
+   ============================================ */
+
+.colorsTab {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ============================================
+   ACTION BAR
+   ============================================ */
+
+.actionBar {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px;
+  background: var(--platinum);
+  border-top: 1px solid var(--shadow);
+}
+
+.resetButton {
+  padding: 6px 16px;
+  font-family: var(--font-geneva);
+  font-size: 11px;
+  background: var(--platinum);
+  border: 1px solid var(--shadow);
+  border-radius: 3px;
+  cursor: pointer;
+  color: var(--text-color);
+  box-shadow:
+    inset 1px 1px 0 var(--highlight),
+    inset -1px -1px 0 var(--shadow);
+}
+
+.resetButton:hover:not(:disabled) {
+  background: var(--highlight);
+}
+
+.resetButton:active:not(:disabled) {
+  background: var(--shadow);
+  color: var(--white);
+  box-shadow:
+    inset -1px -1px 0 var(--highlight),
+    inset 1px 1px 0 var(--shadow);
+}
+
+.resetButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.saveButton {
+  padding: 6px 20px;
+  font-family: var(--font-chicago);
+  font-size: 11px;
+  background: var(--white);
+  border: 2px solid var(--black);
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--window-text-color, var(--black));
+  box-shadow:
+    inset 1px 1px 0 var(--highlight),
+    inset -1px -1px 0 var(--shadow);
+}
+
+.saveButton:hover:not(:disabled) {
+  background: var(--highlight);
+}
+
+.saveButton:active:not(:disabled) {
+  background: var(--shadow);
+  color: var(--white);
+  box-shadow:
+    inset -1px -1px 0 var(--highlight),
+    inset 1px 1px 0 var(--shadow);
+}
+
+.saveButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ============================================
+   SCROLLBAR STYLING
+   ============================================ */
+
+.content::-webkit-scrollbar {
+  width: 16px;
+}
+
+.content::-webkit-scrollbar-track {
+  background: var(--platinum);
+  border-left: 1px solid var(--shadow);
+}
+
+.content::-webkit-scrollbar-thumb {
+  background: var(--white);
+  border: 1px solid var(--black);
+  border-radius: 0;
+}
+
+.content::-webkit-scrollbar-thumb:hover {
+  background: var(--highlight);
+}

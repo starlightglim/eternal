@@ -181,6 +181,19 @@ export function MenuBar() {
     setActiveMenu(null);
   }, [openWindow]);
 
+  const handleOpenAppearance = useCallback(() => {
+    openWindow({
+      id: 'appearance-panel',
+      title: 'Appearance',
+      position: { x: 100, y: 60 },
+      size: { width: 400, height: 480 },
+      minimized: false,
+      maximized: false,
+      contentType: 'appearance',
+    });
+    setActiveMenu(null);
+  }, [openWindow]);
+
   const handleOpen = useCallback(() => {
     // Open each selected item
     if (selectedIds.size === 0) return;
@@ -529,6 +542,7 @@ export function MenuBar() {
       { label: 'Clock', action: handleOpenClock },
       { label: 'Desk Assistant', action: handleOpenAssistant },
       { divider: true, label: '' },
+      { label: 'Appearance...', action: handleOpenAppearance },
       { label: 'Desktop Patterns...', action: handleOpenWallpaperPicker },
       { label: 'Preferences...', action: handleOpenPreferences },
       { divider: true, label: '' },
