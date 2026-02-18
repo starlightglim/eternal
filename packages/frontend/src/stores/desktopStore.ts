@@ -90,6 +90,11 @@ interface DesktopStore {
   // Helpers
   getItemsByParent: (parentId: string | null) => DesktopItem[];
   getItem: (id: string) => DesktopItem | undefined;
+  getNextAvailablePositionsInFolder: (
+    folderId: string,
+    count: number,
+    excludeIds?: string[]
+  ) => Array<{ x: number; y: number }>;
   cleanUp: (parentId?: string | null) => void;
   sortByName: (parentId?: string | null) => void;
   sortByDate: (parentId?: string | null) => void;
@@ -377,6 +382,42 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
     get().items.filter((item) => item.parentId === parentId),
 
   getItem: (id) => get().items.find((item) => item.id === id),
+
+  getNextAvailablePositionsInFolder: (folderId, count, excludeIds = []) => {
+    // Get items already in the target folder, excluding the ones being moved
+    const existingItems = get().items.filter(
+      (item) =>
+        item.parentId === folderId &&
+        !item.isTrashed &&
+        !excludeIds.includes(item.id)
+    );
+
+    // Build a set of occupied positions
+    const occupiedPositions = new Set(
+      existingItems.map((item) => `${item.position.x},${item.position.y}`)
+    );
+
+    // Find available positions using an 8-column grid layout
+    const positions: Array<{ x: number; y: number }> = [];
+    let x = 0;
+    let y = 0;
+
+    while (positions.length < count) {
+      const key = `${x},${y}`;
+      if (!occupiedPositions.has(key)) {
+        positions.push({ x, y });
+        occupiedPositions.add(key); // Mark as occupied for subsequent items
+      }
+      // Move to next position in 8-column grid
+      x++;
+      if (x >= 8) {
+        x = 0;
+        y++;
+      }
+    }
+
+    return positions;
+  },
 
   cleanUp: (parentId = null) => {
     // Sort items by name and arrange in columns

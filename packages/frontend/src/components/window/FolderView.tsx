@@ -35,6 +35,7 @@ interface FolderViewProps {
 export function FolderView({ folderId, visitorItems, isVisitorMode = false, isDropTarget = false }: FolderViewProps) {
   const getItemsByParent = useDesktopStore((state) => state.getItemsByParent);
   const updateItem = useDesktopStore((state) => state.updateItem);
+  const getNextAvailablePositionsInFolder = useDesktopStore((state) => state.getNextAvailablePositionsInFolder);
   const openWindow = useWindowStore((state) => state.openWindow);
 
   // Selection and drag state
@@ -203,10 +204,12 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false, isDr
 
       // If we dropped on a folder within this folder view, handle it here
       if (draggingId && hasDragged.current && folderDropTargetId) {
-        // Move item to the target folder
+        // Get the next available position in the target folder
+        const positions = getNextAvailablePositionsInFolder(folderDropTargetId, 1, [draggingId]);
+        // Move item to the target folder at the available position
         updateItem(draggingId, {
           parentId: folderDropTargetId,
-          position: { x: 0, y: 0 },
+          position: positions[0],
         });
       }
 
@@ -216,7 +219,7 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false, isDr
       dragStartPos.current = null;
       hasDragged.current = false;
     },
-    [draggingId, folderDropTargetId, updateItem, folderId, releasePointerCapture]
+    [draggingId, folderDropTargetId, updateItem, getNextAvailablePositionsInFolder, folderId, releasePointerCapture]
   );
 
   // Handle pointer cancel (when browser/OS interrupts the drag)

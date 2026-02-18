@@ -108,19 +108,19 @@
 .infoLabel {
   flex-shrink: 0;
   width: 100px;
-  color: var(--shadow);
+  color: var(--text-color-secondary);
   text-align: right;
 }
 
 .infoValue {
   flex: 1;
-  color: var(--black);
+  color: var(--text-color);
   word-break: break-word;
 }
 
 .infoValueEditable {
   flex: 1;
-  color: var(--black);
+  color: var(--text-color);
   cursor: pointer;
   padding: 2px 4px;
   border: 1px solid transparent;
@@ -161,7 +161,7 @@
 
 .visitorLabel {
   font-weight: bold;
-  color: var(--black);
+  color: var(--text-color);
 }
 
 .visitorUrl {
@@ -227,7 +227,7 @@
 .sectionTitle {
   font-family: var(--font-chicago);
   font-size: 12px;
-  color: var(--black);
+  color: var(--text-color);
 }
 
 .patternGrid {
@@ -361,7 +361,7 @@
 .volumeLabel {
   flex-shrink: 0;
   width: 60px;
-  color: var(--black);
+  color: var(--text-color);
   font-family: var(--font-geneva);
   font-size: 11px;
 }
@@ -422,13 +422,13 @@
   text-align: right;
   font-family: var(--font-monaco);
   font-size: 10px;
-  color: var(--shadow);
+  color: var(--text-color-secondary);
 }
 
 .testLabel {
   flex-shrink: 0;
   width: 80px;
-  color: var(--black);
+  color: var(--text-color);
   font-family: var(--font-geneva);
   font-size: 11px;
 }
@@ -579,14 +579,14 @@
   font-family: var(--font-chicago);
   font-size: 11px;
   font-weight: bold;
-  color: var(--black);
+  color: var(--text-color);
   text-align: center;
 }
 
 .themeDescription {
   font-family: var(--font-geneva);
   font-size: 9px;
-  color: var(--shadow);
+  color: var(--text-color-secondary);
   text-align: center;
   margin-top: 2px;
 }
@@ -626,7 +626,7 @@
 
 .customWallpaperLabel {
   font-size: 10px;
-  color: var(--shadow);
+  color: var(--text-color-secondary);
 }
 
 .uploadSection {
@@ -676,7 +676,7 @@
 
 .uploadHint {
   font-size: 9px;
-  color: var(--shadow);
+  color: var(--text-color-secondary);
 }
 
 .uploadError {
@@ -704,14 +704,14 @@
 
 .quotaLabel {
   font-weight: bold;
-  color: var(--black);
+  color: var(--text-color);
   font-family: var(--font-chicago);
   font-size: 11px;
 }
 
 .quotaLoading {
   font-size: 10px;
-  color: var(--shadow);
+  color: var(--text-color-secondary);
   font-style: italic;
 }
 
@@ -745,13 +745,13 @@
 
 .quotaText {
   font-size: 10px;
-  color: var(--black);
+  color: var(--text-color);
   font-family: var(--font-monaco);
 }
 
 .quotaFiles {
   font-size: 9px;
-  color: var(--shadow);
+  color: var(--text-color-secondary);
 }
 
 .quotaError {

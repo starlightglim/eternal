@@ -20,7 +20,7 @@
 .searchLabel {
   font-family: var(--font-chicago);
   font-size: 12px;
-  color: var(--black);
+  color: var(--window-text-color, var(--black));
 }
 
 .searchInput {
@@ -50,7 +50,7 @@
 .placeholder {
   padding: 20px;
   text-align: center;
-  color: var(--shadow);
+  color: var(--window-text-secondary, var(--shadow));
   font-style: italic;
 }
 
@@ -111,6 +111,6 @@
 .resultsCount {
   padding-top: 8px;
   text-align: right;
-  color: var(--shadow);
+  color: var(--window-text-secondary, var(--shadow));
   font-size: 10px;
 }

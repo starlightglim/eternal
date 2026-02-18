@@ -20,7 +20,7 @@
   padding: 2px 16px 2px 20px;
   font-family: var(--font-chicago);
   font-size: 12px;
-  color: var(--black);
+  color: var(--window-text-color, var(--black));
   cursor: default;
   white-space: nowrap;
   -webkit-font-smoothing: none;
@@ -34,13 +34,13 @@
 
 /* Disabled item */
 .itemDisabled {
-  color: var(--shadow);
+  color: var(--window-text-secondary, var(--shadow));
   cursor: default;
 }
 
 .itemDisabled:hover {
   background: transparent;
-  color: var(--shadow);
+  color: var(--window-text-secondary, var(--shadow));
 }
 
 /* Divider line */

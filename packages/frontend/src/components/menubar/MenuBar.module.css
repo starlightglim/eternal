@@ -88,25 +88,25 @@
   padding: 2px 16px;
   white-space: nowrap;
   cursor: default;
-  color: var(--black);
+  color: var(--window-text-color, var(--black));
   background: var(--white);
 }
 
 /* Hover state - inverted colors */
 .dropdownItem:hover:not(.disabled):not(.divider) {
-  background: var(--black);
-  color: var(--white);
+  background: var(--selection);
+  color: var(--selection-text);
 }
 
 /* Disabled state */
 .dropdownItem.disabled {
-  color: var(--shadow);
+  color: var(--window-text-secondary, var(--shadow));
   cursor: default;
 }
 
 .dropdownItem.disabled:hover {
   background: transparent;
-  color: var(--shadow);
+  color: var(--window-text-secondary, var(--shadow));
 }
 
 /* Divider line */
@@ -164,5 +164,5 @@
 }
 
 .visitorText {
-  color: var(--black);
+  color: var(--menu-bar-text, var(--black));
 }

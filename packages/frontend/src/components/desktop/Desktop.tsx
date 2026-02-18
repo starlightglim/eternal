@@ -308,9 +308,15 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
 
         // Check if dropped on a different folder window
         if (currentFolderWindowDropTargetId && currentFolderWindowDropTargetId !== currentFolderDragItem.sourceFolderId) {
+          const { getNextAvailablePositionsInFolder } = useDesktopStore.getState();
+          const positions = getNextAvailablePositionsInFolder(
+            currentFolderWindowDropTargetId,
+            1,
+            [currentFolderDragItem.itemId]
+          );
           updateItem(currentFolderDragItem.itemId, {
             parentId: currentFolderWindowDropTargetId,
-            position: { x: 0, y: 0 },
+            position: positions[0],
           });
           setFolderDragItem(null);
           setIsDesktopDropTarget(false);
@@ -697,10 +703,12 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
 
       // Check if dropped on a folder icon (move into folder)
       if (folderDropTargetId && hasDragged.current) {
-        const { updateItem } = useDesktopStore.getState();
-        // Move all dragged items into the folder
+        const { updateItem, getNextAvailablePositionsInFolder } = useDesktopStore.getState();
+        // Get available positions in the target folder, excluding the items being moved
+        const positions = getNextAvailablePositionsInFolder(folderDropTargetId, draggedItemIds.length, draggedItemIds);
+        // Move all dragged items into the folder at available positions
         draggedItemIds.forEach((id, index) => {
-          updateItem(id, { parentId: folderDropTargetId, position: { x: index % 8, y: Math.floor(index / 8) } });
+          updateItem(id, { parentId: folderDropTargetId, position: positions[index] });
         });
         resetDragState();
         return;
@@ -708,10 +716,12 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
 
       // Check if dropped on an open folder window (move into folder)
       if (folderWindowDropTargetId && hasDragged.current) {
-        const { updateItem } = useDesktopStore.getState();
-        // Move all dragged items into the folder
+        const { updateItem, getNextAvailablePositionsInFolder } = useDesktopStore.getState();
+        // Get available positions in the target folder, excluding the items being moved
+        const positions = getNextAvailablePositionsInFolder(folderWindowDropTargetId, draggedItemIds.length, draggedItemIds);
+        // Move all dragged items into the folder at available positions
         draggedItemIds.forEach((id, index) => {
-          updateItem(id, { parentId: folderWindowDropTargetId, position: { x: index % 8, y: Math.floor(index / 8) } });
+          updateItem(id, { parentId: folderWindowDropTargetId, position: positions[index] });
         });
         resetDragState();
         return;
