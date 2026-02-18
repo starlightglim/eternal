@@ -239,12 +239,15 @@ export class UserDesktop {
 
   /**
    * Get public items only (for visitor mode)
+   * Excludes trashed items from the public snapshot
    */
   private async getPublicSnapshot(): Promise<{
     items: DesktopItem[];
     profile: UserProfile | null;
   }> {
-    const publicItems = Array.from(this.items.values()).filter((item) => item.isPublic);
+    const publicItems = Array.from(this.items.values()).filter(
+      (item) => item.isPublic && !item.isTrashed
+    );
 
     // Also push to KV for fast visitor reads (if we have the UID in profile)
     if (this.profile?.uid) {
