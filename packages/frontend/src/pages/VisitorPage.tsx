@@ -3,9 +3,11 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { WindowManager } from '../components/window';
 import { DesktopIcon } from '../components/icons';
+import { MobileBrowser } from '../components/desktop/MobileBrowser';
 import { VisitorMenuBar } from '../components/menubar/VisitorMenuBar';
 import { useWindowStore } from '../stores/windowStore';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { isApiConfigured, fetchVisitorDesktop, getWallpaperUrl } from '../services/api';
 import { getTextFileContentType, type DesktopItem, type UserProfile } from '../types';
 import styles from './VisitorPage.module.css';
@@ -53,6 +55,7 @@ const mockVisitorItems: DesktopItem[] = [
 export function VisitorPage() {
   const { username } = useParams<{ username: string }>();
   const { openWindow } = useWindowStore();
+  const isMobile = useIsMobile();
 
   const [loadingState, setLoadingState] = useState<LoadingState>('loading');
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -303,6 +306,18 @@ export function VisitorPage() {
   }
 
   // Loaded state - render the visitor desktop
+  // On mobile, use MobileBrowser for better touch experience
+  if (isMobile) {
+    return (
+      <MobileBrowser
+        isVisitorMode={true}
+        visitorItems={items}
+        username={username}
+      />
+    );
+  }
+
+  // Desktop view
   return (
     <div className={styles.container}>
       <VisitorMenuBar username={username || ''} />

@@ -9,7 +9,8 @@ import { useState, useCallback } from 'react';
 import { useDesktopStore } from '../../stores/desktopStore';
 import { useWindowStore } from '../../stores/windowStore';
 import { useAuthStore } from '../../stores/authStore';
-import { FolderIcon, TextFileIcon, ImageFileIcon, LinkIcon } from '../icons/PixelIcons';
+import { WindowManager } from '../window';
+import { FolderIcon, TextFileIcon, ImageFileIcon, LinkIcon, AudioFileIcon, VideoFileIcon, PDFFileIcon } from '../icons/PixelIcons';
 import { getTextFileContentType, type DesktopItem } from '../../types';
 import styles from './MobileBrowser.module.css';
 
@@ -60,6 +61,10 @@ export function MobileBrowser({ isVisitorMode = false, visitorItems, username }:
   // Handle item tap
   const handleItemTap = useCallback(
     (item: DesktopItem) => {
+      // Calculate full-screen size for mobile viewers
+      const fullWidth = window.innerWidth;
+      const fullHeight = window.innerHeight - 100; // Leave room for chrome
+
       if (item.type === 'folder') {
         navigateToFolder(item);
       } else if (item.type === 'text') {
@@ -69,7 +74,7 @@ export function MobileBrowser({ isVisitorMode = false, visitorItems, username }:
           id: `mobile-text-${item.id}`,
           title: item.name,
           position: { x: 0, y: 0 },
-          size: { width: window.innerWidth, height: window.innerHeight - 100 },
+          size: { width: fullWidth, height: fullHeight },
           minimized: false,
           maximized: true,
           contentType,
@@ -80,10 +85,43 @@ export function MobileBrowser({ isVisitorMode = false, visitorItems, username }:
           id: `mobile-image-${item.id}`,
           title: item.name,
           position: { x: 0, y: 0 },
-          size: { width: window.innerWidth, height: window.innerHeight - 100 },
+          size: { width: fullWidth, height: fullHeight },
           minimized: false,
           maximized: true,
           contentType: 'image',
+          contentId: item.id,
+        });
+      } else if (item.type === 'video') {
+        openWindow({
+          id: `mobile-video-${item.id}`,
+          title: item.name,
+          position: { x: 0, y: 0 },
+          size: { width: fullWidth, height: fullHeight },
+          minimized: false,
+          maximized: true,
+          contentType: 'video',
+          contentId: item.id,
+        });
+      } else if (item.type === 'audio') {
+        openWindow({
+          id: `mobile-audio-${item.id}`,
+          title: item.name,
+          position: { x: 0, y: 0 },
+          size: { width: fullWidth, height: 200 }, // Shorter for audio player
+          minimized: false,
+          maximized: false,
+          contentType: 'audio',
+          contentId: item.id,
+        });
+      } else if (item.type === 'pdf') {
+        openWindow({
+          id: `mobile-pdf-${item.id}`,
+          title: item.name,
+          position: { x: 0, y: 0 },
+          size: { width: fullWidth, height: fullHeight },
+          minimized: false,
+          maximized: true,
+          contentType: 'pdf',
           contentId: item.id,
         });
       } else if (item.type === 'link' && item.url) {
@@ -100,6 +138,12 @@ export function MobileBrowser({ isVisitorMode = false, visitorItems, username }:
         return <FolderIcon size={24} />;
       case 'image':
         return <ImageFileIcon size={24} />;
+      case 'video':
+        return <VideoFileIcon size={24} />;
+      case 'audio':
+        return <AudioFileIcon size={24} />;
+      case 'pdf':
+        return <PDFFileIcon size={24} />;
       case 'link':
         return <LinkIcon size={24} />;
       case 'text':
@@ -188,6 +232,12 @@ export function MobileBrowser({ isVisitorMode = false, visitorItems, username }:
           <span>{sortedItems.length} items</span>
         </footer>
       )}
+
+      {/* Window Manager for file viewers */}
+      <WindowManager
+        isVisitorMode={isVisitorMode}
+        visitorItems={isVisitorMode ? visitorItems : undefined}
+      />
     </div>
   );
 }
