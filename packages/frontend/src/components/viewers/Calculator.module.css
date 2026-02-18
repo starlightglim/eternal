@@ -1,0 +1,148 @@
+/* Calculator - Classic Mac OS Calculator styling */
+
+.calculator {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: var(--platinum);
+  padding: 8px;
+  gap: 8px;
+  font-family: var(--font-geneva);
+}
+
+/* Display */
+.display {
+  background-color: var(--white);
+  border: 2px solid var(--black);
+  padding: 8px 12px;
+  text-align: right;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  /* Inset bevel */
+  box-shadow:
+    inset 1px 1px 0 var(--shadow),
+    inset -1px -1px 0 var(--highlight);
+}
+
+.displayText {
+  font-family: var(--font-monaco);
+  font-size: 24px;
+  color: var(--black);
+  letter-spacing: 1px;
+}
+
+/* Button grid */
+.buttons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  flex: 1;
+}
+
+/* Base button style - Classic Mac bevel */
+.buttonDigit,
+.buttonOperator,
+.buttonFunction,
+.buttonClear,
+.buttonEquals {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-geneva);
+  font-size: 16px;
+  font-weight: bold;
+  border: 1px solid var(--black);
+  border-radius: 3px;
+  cursor: pointer;
+  min-height: 36px;
+  /* Classic Mac button bevel */
+  box-shadow:
+    inset 1px 1px 0 var(--highlight),
+    inset -1px -1px 0 var(--shadow);
+}
+
+.buttonDigit,
+.buttonOperator,
+.buttonFunction,
+.buttonClear,
+.buttonEquals {
+  background-color: var(--white);
+  color: var(--black);
+}
+
+.buttonDigit:hover,
+.buttonOperator:hover,
+.buttonFunction:hover,
+.buttonClear:hover,
+.buttonEquals:hover {
+  background-color: var(--highlight);
+}
+
+.buttonDigit:active,
+.buttonOperator:active,
+.buttonFunction:active,
+.buttonClear:active,
+.buttonEquals:active {
+  background-color: var(--shadow);
+  color: var(--white);
+  box-shadow:
+    inset -1px -1px 0 var(--highlight),
+    inset 1px 1px 0 var(--shadow);
+}
+
+/* Operator buttons - slightly different color */
+.buttonOperator {
+  background-color: #e8e8e8;
+}
+
+.buttonOperator:hover {
+  background-color: #d0d0d0;
+}
+
+/* Clear button - subtle red tint */
+.buttonClear {
+  background-color: #f0d0d0;
+  color: #800000;
+}
+
+.buttonClear:hover {
+  background-color: #e0c0c0;
+}
+
+.buttonClear:active {
+  background-color: #800000;
+  color: var(--white);
+}
+
+/* Function buttons (±, %) */
+.buttonFunction {
+  background-color: #e0e0e0;
+}
+
+.buttonFunction:hover {
+  background-color: #d0d0d0;
+}
+
+/* Equals button - blue accent */
+.buttonEquals {
+  background-color: var(--selection);
+  color: var(--white);
+}
+
+.buttonEquals:hover {
+  background-color: #0000a0;
+}
+
+.buttonEquals:active {
+  background-color: #000060;
+  box-shadow:
+    inset -1px -1px 0 #0000a0,
+    inset 1px 1px 0 #000040;
+}
+
+/* Zero button spans 2 columns */
+.buttonZero {
+  grid-column: span 2;
+}

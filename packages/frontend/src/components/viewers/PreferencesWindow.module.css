@@ -305,3 +305,456 @@
 .content::-webkit-scrollbar-thumb:hover {
   background: var(--highlight);
 }
+
+/* ============================================
+   SOUND TAB
+   ============================================ */
+
+.soundTab {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.soundIcon {
+  display: flex;
+  justify-content: center;
+  padding-bottom: 8px;
+}
+
+.soundIcon svg {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.soundSection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  background: var(--platinum);
+  border: 1px solid var(--shadow);
+}
+
+.soundRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-family: var(--font-geneva);
+  font-size: 11px;
+}
+
+.checkbox {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  accent-color: var(--selection);
+}
+
+.volumeLabel {
+  flex-shrink: 0;
+  width: 60px;
+  color: var(--black);
+  font-family: var(--font-geneva);
+  font-size: 11px;
+}
+
+.volumeControl {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.volumeIcon {
+  font-size: 14px;
+  user-select: none;
+}
+
+.volumeSlider {
+  flex: 1;
+  height: 8px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--white);
+  border: 1px solid var(--shadow);
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.volumeSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 18px;
+  background: var(--platinum);
+  border: 1px solid var(--black);
+  border-radius: 0;
+  cursor: pointer;
+  box-shadow:
+    inset 1px 1px 0 var(--highlight),
+    inset -1px -1px 0 var(--shadow);
+}
+
+.volumeSlider::-moz-range-thumb {
+  width: 14px;
+  height: 18px;
+  background: var(--platinum);
+  border: 1px solid var(--black);
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.volumeSlider:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.volumeValue {
+  flex-shrink: 0;
+  width: 36px;
+  text-align: right;
+  font-family: var(--font-monaco);
+  font-size: 10px;
+  color: var(--shadow);
+}
+
+.testLabel {
+  flex-shrink: 0;
+  width: 80px;
+  color: var(--black);
+  font-family: var(--font-geneva);
+  font-size: 11px;
+}
+
+.testButtons {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.testButton {
+  padding: 4px 10px;
+  font-family: var(--font-geneva);
+  font-size: 10px;
+  background: var(--platinum);
+  border: 1px solid var(--shadow);
+  border-radius: 3px;
+  cursor: pointer;
+  /* Classic Mac button bevel */
+  box-shadow:
+    inset 1px 1px 0 var(--highlight),
+    inset -1px -1px 0 var(--shadow);
+}
+
+.testButton:hover:not(:disabled) {
+  background: var(--highlight);
+}
+
+.testButton:active:not(:disabled) {
+  background: var(--shadow);
+  color: var(--white);
+  box-shadow:
+    inset -1px -1px 0 var(--highlight),
+    inset 1px 1px 0 var(--shadow);
+}
+
+.testButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ============================================
+   THEME TAB
+   ============================================ */
+
+.themeTab {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.themeIcon {
+  display: flex;
+  justify-content: center;
+  padding-bottom: 8px;
+}
+
+.themeIcon svg {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.themeSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.themeGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.themeCard {
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  background: var(--platinum);
+  border: 2px solid var(--shadow);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 0.1s;
+}
+
+.themeCard:hover {
+  border-color: var(--black);
+}
+
+.themeCard.selectedTheme {
+  border-color: var(--selection);
+  box-shadow: 0 0 0 2px var(--selection);
+}
+
+.themePreview {
+  display: flex;
+  flex-direction: column;
+  height: 50px;
+  border: 1px solid var(--black);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.themeMenuBar {
+  height: 10px;
+  display: flex;
+  align-items: center;
+  padding: 0 4px;
+  font-size: 6px;
+  font-family: var(--font-chicago);
+}
+
+.themeDesktop {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.themeWindow {
+  width: 24px;
+  height: 20px;
+  border: 1px solid #000;
+  display: flex;
+  flex-direction: column;
+}
+
+.themeWindowTitle {
+  height: 6px;
+  display: flex;
+  align-items: center;
+  padding: 0 2px;
+}
+
+.themeWindowTitleDot {
+  width: 3px;
+  height: 3px;
+  border: 1px solid #000;
+  background: #fff;
+}
+
+.themeWindowContent {
+  flex: 1;
+}
+
+.themeName {
+  font-family: var(--font-chicago);
+  font-size: 11px;
+  font-weight: bold;
+  color: var(--black);
+  text-align: center;
+}
+
+.themeDescription {
+  font-family: var(--font-geneva);
+  font-size: 9px;
+  color: var(--shadow);
+  text-align: center;
+  margin-top: 2px;
+}
+
+.selectedTheme .themeName {
+  color: var(--selection);
+}
+
+/* ============================================
+   CUSTOM WALLPAPER SECTION
+   ============================================ */
+
+.customWallpaperSection {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--shadow);
+}
+
+.customWallpaperPreview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: var(--platinum);
+  border: 1px solid var(--shadow);
+  margin-bottom: 12px;
+}
+
+.customWallpaperImage {
+  width: 120px;
+  height: 90px;
+  object-fit: cover;
+  border: 2px solid var(--selection);
+  image-rendering: auto;
+}
+
+.customWallpaperLabel {
+  font-size: 10px;
+  color: var(--shadow);
+}
+
+.uploadSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: var(--platinum);
+  border: 1px solid var(--shadow);
+}
+
+.hiddenFileInput {
+  display: none;
+}
+
+.uploadButton {
+  padding: 8px 20px;
+  font-family: var(--font-chicago);
+  font-size: 11px;
+  background: var(--white);
+  border: 2px solid var(--black);
+  border-radius: 6px;
+  cursor: pointer;
+  /* Classic Mac rounded button bevel */
+  box-shadow:
+    inset 1px 1px 0 var(--highlight),
+    inset -1px -1px 0 var(--shadow);
+}
+
+.uploadButton:hover:not(:disabled) {
+  background: var(--highlight);
+}
+
+.uploadButton:active:not(:disabled) {
+  background: var(--shadow);
+  color: var(--white);
+  box-shadow:
+    inset -1px -1px 0 var(--highlight),
+    inset 1px 1px 0 var(--shadow);
+}
+
+.uploadButton:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.uploadHint {
+  font-size: 9px;
+  color: var(--shadow);
+}
+
+.uploadError {
+  margin-top: 8px;
+  padding: 8px;
+  font-size: 10px;
+  color: #990000;
+  background: #FFCCCC;
+  border: 1px solid #990000;
+  text-align: center;
+}
+
+/* ============================================
+   STORAGE QUOTA SECTION
+   ============================================ */
+
+.quotaSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--platinum);
+  border: 1px solid var(--shadow);
+}
+
+.quotaLabel {
+  font-weight: bold;
+  color: var(--black);
+  font-family: var(--font-chicago);
+  font-size: 11px;
+}
+
+.quotaLoading {
+  font-size: 10px;
+  color: var(--shadow);
+  font-style: italic;
+}
+
+.quotaInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.quotaBar {
+  height: 12px;
+  background: var(--white);
+  border: 1px solid var(--shadow);
+  border-radius: 0;
+  overflow: hidden;
+  /* Classic Mac inset */
+  box-shadow:
+    inset 1px 1px 0 var(--shadow),
+    inset -1px -1px 0 var(--highlight);
+}
+
+.quotaFill {
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    var(--selection) 0%,
+    #6699CC 100%
+  );
+  transition: width 0.3s ease;
+}
+
+.quotaText {
+  font-size: 10px;
+  color: var(--black);
+  font-family: var(--font-monaco);
+}
+
+.quotaFiles {
+  font-size: 9px;
+  color: var(--shadow);
+}
+
+.quotaError {
+  font-size: 10px;
+  color: #990000;
+}

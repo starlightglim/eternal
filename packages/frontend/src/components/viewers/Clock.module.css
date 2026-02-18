@@ -1,0 +1,117 @@
+/* Clock - Classic Mac OS Clock widget styling */
+
+.clock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  background-color: var(--platinum);
+  padding: 12px;
+  gap: 12px;
+  font-family: var(--font-geneva);
+}
+
+/* Analog Clock Container */
+.analogClock {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clockFace {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background-color: var(--white);
+  border: 2px solid var(--black);
+  position: relative;
+  /* Classic Mac inset shadow */
+  box-shadow:
+    inset 2px 2px 0 var(--shadow),
+    inset -2px -2px 0 var(--highlight),
+    0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Hour markers */
+.hourMarker {
+  position: absolute;
+  width: 2px;
+  height: 6px;
+  background-color: var(--black);
+  left: 50%;
+  top: 50%;
+  transform-origin: center center;
+  margin-left: -1px;
+}
+
+/* Clock hands */
+.hourHand,
+.minuteHand,
+.secondHand {
+  position: absolute;
+  left: 50%;
+  bottom: 50%;
+  transform-origin: bottom center;
+  border-radius: 1px;
+}
+
+.hourHand {
+  width: 4px;
+  height: 24px;
+  background-color: var(--black);
+  margin-left: -2px;
+}
+
+.minuteHand {
+  width: 3px;
+  height: 34px;
+  background-color: var(--black);
+  margin-left: -1.5px;
+}
+
+.secondHand {
+  width: 1px;
+  height: 38px;
+  background-color: #c00;
+  margin-left: -0.5px;
+}
+
+/* Center dot */
+.centerDot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background-color: var(--black);
+  border-radius: 50%;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Digital Display */
+.digitalDisplay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background-color: var(--white);
+  border: 2px solid var(--black);
+  padding: 8px 16px;
+  /* Inset bevel */
+  box-shadow:
+    inset 1px 1px 0 var(--shadow),
+    inset -1px -1px 0 var(--highlight);
+}
+
+.digitalTime {
+  font-family: var(--font-monaco);
+  font-size: 20px;
+  color: var(--black);
+  letter-spacing: 1px;
+}
+
+.digitalDate {
+  font-family: var(--font-geneva);
+  font-size: 11px;
+  color: var(--black);
+}

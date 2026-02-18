@@ -5,29 +5,52 @@
  * - Account info display (username, email, member since)
  * - Display name editing
  * - Wallpaper selection (integrated from WallpaperPicker)
+ * - Sound settings (enable/disable, volume)
  * - Classic Mac tabbed interface
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAuthStore } from '../../stores/authStore';
+import { useSoundStore } from '../../stores/soundStore';
+import { useThemeStore, THEMES } from '../../stores/themeStore';
 import { WALLPAPER_OPTIONS, type WallpaperId } from '../desktop/Desktop';
+import { uploadWallpaper, isApiConfigured, getWallpaperUrl, fetchQuota, type QuotaInfo } from '../../services/api';
 import styles from './PreferencesWindow.module.css';
 
-type TabId = 'account' | 'desktop';
+type TabId = 'account' | 'desktop' | 'sound' | 'theme';
 
 export function PreferencesWindow() {
   const { user, profile, setWallpaper } = useAuthStore();
+  const { enabled: soundEnabled, volume, setEnabled: setSoundEnabled, setVolume, playSound } = useSoundStore();
+  const { currentTheme, setTheme } = useThemeStore();
   const [activeTab, setActiveTab] = useState<TabId>('account');
   const [displayName, setDisplayName] = useState(profile?.displayName || '');
   const [isEditingName, setIsEditingName] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [quota, setQuota] = useState<QuotaInfo | null>(null);
+  const [quotaLoading, setQuotaLoading] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentWallpaper = profile?.wallpaper || 'default';
+  const isCustomWallpaper = currentWallpaper.startsWith('custom:');
 
   // Update display name when profile changes
   useEffect(() => {
     setDisplayName(profile?.displayName || '');
   }, [profile?.displayName]);
+
+  // Load quota when account tab is active
+  useEffect(() => {
+    if (activeTab === 'account' && isApiConfigured && !quota && !quotaLoading) {
+      setQuotaLoading(true);
+      fetchQuota()
+        .then(setQuota)
+        .catch(console.error)
+        .finally(() => setQuotaLoading(false));
+    }
+  }, [activeTab, quota, quotaLoading]);
 
   // Focus input when editing
   useEffect(() => {
@@ -58,9 +81,55 @@ export function PreferencesWindow() {
   const handleSelectWallpaper = useCallback(
     (id: WallpaperId) => {
       setWallpaper(id);
+      setUploadError(null);
     },
     [setWallpaper]
   );
+
+  const handleWallpaperUpload = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      // Validate file type
+      if (!['image/jpeg', 'image/png'].includes(file.type)) {
+        setUploadError('Only JPG and PNG files are allowed');
+        return;
+      }
+
+      // Validate file size (2MB max)
+      if (file.size > 2 * 1024 * 1024) {
+        setUploadError('File must be smaller than 2MB');
+        return;
+      }
+
+      setUploadError(null);
+      setUploadProgress(0);
+
+      try {
+        const response = await uploadWallpaper(file, (progress) => {
+          setUploadProgress(progress);
+        });
+
+        // Update the wallpaper in auth store
+        setWallpaper(response.wallpaper);
+        setUploadProgress(null);
+      } catch (err) {
+        setUploadError(err instanceof Error ? err.message : 'Upload failed');
+        setUploadProgress(null);
+      }
+
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    },
+    [setWallpaper]
+  );
+
+  const handleUploadClick = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
 
   const formatDate = (timestamp?: number) => {
     if (!timestamp) return 'Unknown';
@@ -69,6 +138,19 @@ export function PreferencesWindow() {
       month: 'long',
       day: 'numeric',
     });
+  };
+
+  const formatBytes = (bytes: number): string => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
+  };
+
+  const getQuotaPercentage = (): number => {
+    if (!quota) return 0;
+    return Math.round((quota.used / quota.limit) * 100);
   };
 
   return (
@@ -86,6 +168,18 @@ export function PreferencesWindow() {
           onClick={() => setActiveTab('desktop')}
         >
           Desktop
+        </button>
+        <button
+          className={`${styles.tab} ${activeTab === 'sound' ? styles.activeTab : ''}`}
+          onClick={() => setActiveTab('sound')}
+        >
+          Sound
+        </button>
+        <button
+          className={`${styles.tab} ${activeTab === 'theme' ? styles.activeTab : ''}`}
+          onClick={() => setActiveTab('theme')}
+        >
+          Theme
         </button>
       </div>
 
@@ -176,6 +270,33 @@ export function PreferencesWindow() {
                 </button>
               </div>
             </div>
+
+            {/* Storage Quota */}
+            {isApiConfigured && (
+              <div className={styles.quotaSection}>
+                <span className={styles.quotaLabel}>Storage:</span>
+                {quotaLoading ? (
+                  <span className={styles.quotaLoading}>Loading...</span>
+                ) : quota ? (
+                  <div className={styles.quotaInfo}>
+                    <div className={styles.quotaBar}>
+                      <div
+                        className={styles.quotaFill}
+                        style={{ width: `${getQuotaPercentage()}%` }}
+                      />
+                    </div>
+                    <span className={styles.quotaText}>
+                      {formatBytes(quota.used)} of {formatBytes(quota.limit)} used ({getQuotaPercentage()}%)
+                    </span>
+                    <span className={styles.quotaFiles}>
+                      {quota.itemCount} file{quota.itemCount !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                ) : (
+                  <span className={styles.quotaError}>Unable to load quota</span>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -196,6 +317,223 @@ export function PreferencesWindow() {
                   <span className={styles.patternName}>{option.name}</span>
                 </button>
               ))}
+            </div>
+
+            {/* Custom Wallpaper Upload Section */}
+            {isApiConfigured && (
+              <div className={styles.customWallpaperSection}>
+                <div className={styles.sectionHeader}>
+                  <span className={styles.sectionTitle}>Custom Wallpaper</span>
+                </div>
+
+                {/* Current custom wallpaper preview */}
+                {isCustomWallpaper && (
+                  <div className={styles.customWallpaperPreview}>
+                    <img
+                      src={getWallpaperUrl(currentWallpaper)}
+                      alt="Current custom wallpaper"
+                      className={styles.customWallpaperImage}
+                    />
+                    <span className={styles.customWallpaperLabel}>Current custom wallpaper</span>
+                  </div>
+                )}
+
+                {/* Upload button */}
+                <div className={styles.uploadSection}>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png"
+                    onChange={handleWallpaperUpload}
+                    className={styles.hiddenFileInput}
+                  />
+                  <button
+                    className={styles.uploadButton}
+                    onClick={handleUploadClick}
+                    disabled={uploadProgress !== null}
+                  >
+                    {uploadProgress !== null ? `Uploading... ${uploadProgress}%` : 'Upload Image'}
+                  </button>
+                  <span className={styles.uploadHint}>JPG or PNG, max 2MB</span>
+                </div>
+
+                {/* Upload error */}
+                {uploadError && (
+                  <div className={styles.uploadError}>{uploadError}</div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'sound' && (
+          <div className={styles.soundTab}>
+            {/* Speaker icon */}
+            <div className={styles.soundIcon}>
+              <svg width="48" height="48" viewBox="0 0 32 32" fill="none">
+                <rect x="4" y="10" width="8" height="12" fill="#808080" stroke="#000" strokeWidth="1" />
+                <polygon points="12,10 20,4 20,28 12,22" fill="#808080" stroke="#000" strokeWidth="1" />
+                {soundEnabled && (
+                  <>
+                    <path d="M22 12 Q26 16 22 20" stroke="#000" strokeWidth="2" fill="none" />
+                    <path d="M24 8 Q30 16 24 24" stroke="#000" strokeWidth="2" fill="none" />
+                  </>
+                )}
+                {!soundEnabled && (
+                  <line x1="22" y1="10" x2="30" y2="22" stroke="#cc0000" strokeWidth="3" />
+                )}
+              </svg>
+            </div>
+
+            <div className={styles.soundSection}>
+              {/* Enable/Disable checkbox */}
+              <div className={styles.soundRow}>
+                <label className={styles.checkboxLabel}>
+                  <input
+                    type="checkbox"
+                    checked={soundEnabled}
+                    onChange={(e) => setSoundEnabled(e.target.checked)}
+                    className={styles.checkbox}
+                  />
+                  <span>Enable system sounds</span>
+                </label>
+              </div>
+
+              {/* Volume slider */}
+              <div className={styles.soundRow}>
+                <span className={styles.volumeLabel}>Volume:</span>
+                <div className={styles.volumeControl}>
+                  <span className={styles.volumeIcon}>🔈</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={volume * 100}
+                    onChange={(e) => setVolume(Number(e.target.value) / 100)}
+                    className={styles.volumeSlider}
+                    disabled={!soundEnabled}
+                  />
+                  <span className={styles.volumeIcon}>🔊</span>
+                </div>
+                <span className={styles.volumeValue}>{Math.round(volume * 100)}%</span>
+              </div>
+
+              {/* Test sounds */}
+              <div className={styles.soundRow}>
+                <span className={styles.testLabel}>Test Sounds:</span>
+                <div className={styles.testButtons}>
+                  <button
+                    className={styles.testButton}
+                    onClick={() => playSound('click')}
+                    disabled={!soundEnabled}
+                  >
+                    Click
+                  </button>
+                  <button
+                    className={styles.testButton}
+                    onClick={() => playSound('windowOpen')}
+                    disabled={!soundEnabled}
+                  >
+                    Window
+                  </button>
+                  <button
+                    className={styles.testButton}
+                    onClick={() => playSound('alert')}
+                    disabled={!soundEnabled}
+                  >
+                    Alert
+                  </button>
+                  <button
+                    className={styles.testButton}
+                    onClick={() => playSound('trash')}
+                    disabled={!soundEnabled}
+                  >
+                    Trash
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'theme' && (
+          <div className={styles.themeTab}>
+            {/* Theme icon */}
+            <div className={styles.themeIcon}>
+              <svg width="48" height="48" viewBox="0 0 32 32" fill="none">
+                {/* Paint palette icon */}
+                <ellipse cx="16" cy="16" rx="13" ry="11" fill="#DDDDDD" stroke="#000" strokeWidth="1.5" />
+                <circle cx="10" cy="12" r="3" fill="#CC4444" stroke="#000" strokeWidth="1" />
+                <circle cx="17" cy="10" r="3" fill="#44AA44" stroke="#000" strokeWidth="1" />
+                <circle cx="23" cy="13" r="3" fill="#4488CC" stroke="#000" strokeWidth="1" />
+                <circle cx="21" cy="20" r="3" fill="#DDAA44" stroke="#000" strokeWidth="1" />
+                <ellipse cx="12" cy="19" rx="3" ry="4" fill="#FFFFFF" stroke="#000" strokeWidth="1" />
+              </svg>
+            </div>
+
+            <div className={styles.themeSection}>
+              <div className={styles.sectionHeader}>
+                <span className={styles.sectionTitle}>Appearance Theme</span>
+              </div>
+              <div className={styles.themeGrid}>
+                {Object.values(THEMES).map((theme) => (
+                  <button
+                    key={theme.id}
+                    className={`${styles.themeCard} ${currentTheme === theme.id ? styles.selectedTheme : ''}`}
+                    onClick={() => setTheme(theme.id)}
+                  >
+                    {/* Mini preview of the theme */}
+                    <div
+                      className={styles.themePreview}
+                      style={{ background: theme.colors.platinum }}
+                    >
+                      {/* Mini menu bar */}
+                      <div
+                        className={styles.themeMenuBar}
+                        style={{
+                          background: theme.colors.menuBarBg || theme.colors.white,
+                          color: theme.colors.menuBarText || theme.colors.black,
+                          borderBottom: `1px solid ${theme.colors.black}`,
+                        }}
+                      >
+                        File Edit
+                      </div>
+                      {/* Mini desktop with window */}
+                      <div className={styles.themeDesktop}>
+                        <div
+                          className={styles.themeWindow}
+                          style={{
+                            background: theme.colors.windowBg,
+                            borderColor: theme.colors.black,
+                          }}
+                        >
+                          <div
+                            className={styles.themeWindowTitle}
+                            style={{
+                              background: theme.colors.platinum,
+                              borderBottom: `1px solid ${theme.colors.shadow}`,
+                            }}
+                          >
+                            <div
+                              className={styles.themeWindowTitleDot}
+                              style={{
+                                background: theme.colors.white,
+                                borderColor: theme.colors.black,
+                              }}
+                            />
+                          </div>
+                          <div
+                            className={styles.themeWindowContent}
+                            style={{ background: theme.colors.white }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <span className={styles.themeName}>{theme.name}</span>
+                    <span className={styles.themeDescription}>{theme.description}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}

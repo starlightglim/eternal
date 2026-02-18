@@ -7,7 +7,7 @@ import { VisitorMenuBar } from '../components/menubar/VisitorMenuBar';
 import { useWindowStore } from '../stores/windowStore';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import { isApiConfigured, fetchVisitorDesktop } from '../services/api';
-import type { DesktopItem, UserProfile } from '../types';
+import { getTextFileContentType, type DesktopItem, type UserProfile } from '../types';
 import styles from './VisitorPage.module.css';
 
 const GRID_CELL_SIZE = 80;
@@ -164,6 +164,7 @@ export function VisitorPage() {
         contentId: item.id,
       });
     } else if (item.type === 'text') {
+      const contentType = getTextFileContentType(item.name);
       openWindow({
         id: `visitor-text-${item.id}`,
         title: item.name,
@@ -171,7 +172,7 @@ export function VisitorPage() {
         size: { width: 400, height: 300 },
         minimized: false,
         maximized: false,
-        contentType: 'text',
+        contentType,
         contentId: item.id,
       });
     } else if (item.type === 'image') {

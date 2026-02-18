@@ -12,11 +12,51 @@ import {
   fetchDesktop as apiFetchDesktop,
 } from '../services/api';
 import { useAlertStore } from './alertStore';
+import { useSoundStore, type SoundType } from './soundStore';
 
 // Helper to show errors via alertStore
 const showError = (message: string, title?: string) => {
   useAlertStore.getState().showError(message, title);
 };
+
+// Helper to play sounds
+const playSound = (type: SoundType) => {
+  useSoundStore.getState().playSound(type);
+};
+
+// Folder view preferences (persisted to localStorage)
+export type SortOrder = 'name' | 'date' | 'kind' | 'none';
+
+const FOLDER_PREFS_KEY = 'eternalos-folder-prefs';
+
+interface FolderPrefs {
+  [folderId: string]: {
+    sortOrder: SortOrder;
+  };
+}
+
+// Get preferences for a folder (returns 'none' if not set)
+export function getFolderSortOrder(folderId: string | null): SortOrder {
+  try {
+    const prefs: FolderPrefs = JSON.parse(localStorage.getItem(FOLDER_PREFS_KEY) || '{}');
+    const key = folderId ?? 'desktop';
+    return prefs[key]?.sortOrder || 'none';
+  } catch {
+    return 'none';
+  }
+}
+
+// Set sort preference for a folder
+export function setFolderSortOrder(folderId: string | null, sortOrder: SortOrder): void {
+  try {
+    const prefs: FolderPrefs = JSON.parse(localStorage.getItem(FOLDER_PREFS_KEY) || '{}');
+    const key = folderId ?? 'desktop';
+    prefs[key] = { sortOrder };
+    localStorage.setItem(FOLDER_PREFS_KEY, JSON.stringify(prefs));
+  } catch {
+    // Silently fail if localStorage isn't available
+  }
+}
 
 interface UploadProgress {
   id: string;
@@ -74,6 +114,13 @@ interface DesktopStore {
 
   // Fetch from API
   loadDesktop: () => Promise<void>;
+
+  // Trash operations
+  moveToTrash: (ids: string[]) => void;
+  restoreFromTrash: (ids: string[]) => void;
+  emptyTrash: () => void;
+  getTrashedItems: () => DesktopItem[];
+  getTrashCount: () => number;
 }
 
 // Mock data for demo mode (when API not configured)
@@ -271,6 +318,9 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
   },
 
   moveItem: (id, position) => {
+    // Play drop sound
+    playSound('drop');
+
     // Update local state immediately for responsive UI
     set((state) => {
       const newItems = state.items.map((item) =>
@@ -388,6 +438,9 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
     const newItems = [...otherItems, ...updatedItems];
     set({ items: newItems });
 
+    // Persist the sort preference
+    setFolderSortOrder(parentId, 'name');
+
     if (isApiConfigured) {
       cacheItems(newItems);
       const updates = updatedItems.map((item) => ({
@@ -419,6 +472,9 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
 
     const newItems = [...otherItems, ...updatedItems];
     set({ items: newItems });
+
+    // Persist the sort preference
+    setFolderSortOrder(parentId, 'date');
 
     if (isApiConfigured) {
       cacheItems(newItems);
@@ -463,6 +519,9 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
 
     const newItems = [...otherItems, ...updatedItems];
     set({ items: newItems });
+
+    // Persist the sort preference
+    setFolderSortOrder(parentId, 'kind');
 
     if (isApiConfigured) {
       cacheItems(newItems);
@@ -684,5 +743,103 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
         );
       }
     }
+  },
+
+  // ============================================
+  // TRASH OPERATIONS
+  // ============================================
+
+  moveToTrash: (ids) => {
+    const now = Date.now();
+    set((state) => {
+      const newItems = state.items.map((item) =>
+        ids.includes(item.id)
+          ? { ...item, isTrashed: true, trashedAt: now, updatedAt: now }
+          : item
+      );
+      if (isApiConfigured) {
+        cacheItems(newItems);
+      }
+      return {
+        items: newItems,
+        selectedIds: new Set([...state.selectedIds].filter((id) => !ids.includes(id))),
+      };
+    });
+
+    // Play trash sound
+    playSound('trash');
+
+    // Sync to API if configured
+    if (isApiConfigured) {
+      const updates = ids.map((id) => ({
+        id,
+        updates: { isTrashed: true, trashedAt: now },
+      }));
+      apiUpdateItems(updates).catch((error) => {
+        console.error('Failed to move items to trash:', error);
+      });
+    }
+  },
+
+  restoreFromTrash: (ids) => {
+    set((state) => {
+      const newItems = state.items.map((item) =>
+        ids.includes(item.id)
+          ? { ...item, isTrashed: false, trashedAt: undefined, updatedAt: Date.now() }
+          : item
+      );
+      if (isApiConfigured) {
+        cacheItems(newItems);
+      }
+      return { items: newItems };
+    });
+
+    // Sync to API if configured
+    if (isApiConfigured) {
+      const updates = ids.map((id) => ({
+        id,
+        updates: { isTrashed: false, trashedAt: undefined },
+      }));
+      apiUpdateItems(updates).catch((error) => {
+        console.error('Failed to restore items from trash:', error);
+      });
+    }
+  },
+
+  emptyTrash: () => {
+    const trashedItems = get().items.filter((item) => item.isTrashed);
+    const trashedIds = trashedItems.map((item) => item.id);
+
+    if (trashedIds.length === 0) return;
+
+    // Play empty trash sound
+    playSound('emptyTrash');
+
+    // Remove from local state
+    set((state) => {
+      const newItems = state.items.filter((item) => !item.isTrashed);
+      if (isApiConfigured) {
+        cacheItems(newItems);
+      }
+      return { items: newItems };
+    });
+
+    // Delete from API
+    if (isApiConfigured) {
+      // Delete each trashed item
+      trashedIds.forEach((id) => {
+        apiDeleteItem(id).catch((error) => {
+          console.error('Failed to permanently delete item:', error);
+        });
+      });
+    }
+  },
+
+  getTrashedItems: () => {
+    return get().items.filter((item) => item.isTrashed);
+  },
+
+  getTrashCount: () => {
+    return get().items.filter((item) => item.isTrashed).length;
   },
 }));

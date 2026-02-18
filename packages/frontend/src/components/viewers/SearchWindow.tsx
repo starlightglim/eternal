@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useDesktopStore } from '../../stores/desktopStore';
 import { useWindowStore } from '../../stores/windowStore';
-import type { DesktopItem } from '../../types';
+import { getTextFileContentType, type DesktopItem } from '../../types';
 import styles from './SearchWindow.module.css';
 
 /**
@@ -39,7 +39,8 @@ export function SearchWindow() {
           contentId: item.id,
         });
       } else if (item.type === 'text') {
-        // Open text viewer
+        // Open appropriate viewer based on file extension
+        const contentType = getTextFileContentType(item.name);
         openWindow({
           id: `text-${item.id}`,
           title: item.name,
@@ -47,7 +48,7 @@ export function SearchWindow() {
           size: { width: 500, height: 400 },
           minimized: false,
           maximized: false,
-          contentType: 'text',
+          contentType,
           contentId: item.id,
         });
       } else if (item.type === 'image') {

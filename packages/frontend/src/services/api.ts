@@ -101,6 +101,37 @@ export async function logout(): Promise<void> {
   setAuthToken(null);
 }
 
+// ============ Password Reset API ============
+
+export interface ForgotPasswordResponse {
+  success: boolean;
+  message: string;
+  resetToken?: string; // Only in development
+  resetUrl?: string; // Only in development
+}
+
+export async function forgotPassword(email: string): Promise<ForgotPasswordResponse> {
+  return apiRequest<ForgotPasswordResponse>('/api/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
+export interface ResetPasswordResponse {
+  success: boolean;
+  message: string;
+}
+
+export async function resetPassword(
+  token: string,
+  newPassword: string
+): Promise<ResetPasswordResponse> {
+  return apiRequest<ResetPasswordResponse>('/api/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ token, newPassword }),
+  });
+}
+
 // ============ Desktop API ============
 
 export interface DesktopResponse {
@@ -242,10 +273,88 @@ export async function fetchVisitorDesktop(username: string): Promise<VisitorResp
 
 /**
  * Get the URL for a file stored in R2.
+ * Includes auth token as query param since img/video/audio tags can't send headers.
  * @param r2Key - The full R2 key path (e.g., "uid/itemId/filename")
  */
 export function getFileUrl(r2Key: string): string {
-  return `${API_URL}/api/files/${r2Key}`;
+  const tokenParam = authToken ? `?token=${encodeURIComponent(authToken)}` : '';
+  return `${API_URL}/api/files/${r2Key}${tokenParam}`;
+}
+
+/**
+ * Get the URL for a custom wallpaper stored in R2.
+ * @param wallpaperValue - The wallpaper value (e.g., "custom:uid/wallpaper/id/filename")
+ */
+export function getWallpaperUrl(wallpaperValue: string): string {
+  // Custom wallpapers are prefixed with "custom:"
+  if (wallpaperValue.startsWith('custom:')) {
+    const r2Key = wallpaperValue.slice('custom:'.length);
+    return `${API_URL}/api/wallpaper/${r2Key}`;
+  }
+  return '';
+}
+
+// ============ Wallpaper Upload API ============
+
+export interface WallpaperUploadResponse {
+  success: boolean;
+  wallpaper: string;
+  r2Key: string;
+  profile: UserProfile;
+}
+
+export async function uploadWallpaper(
+  file: File,
+  onProgress?: (progress: number) => void
+): Promise<WallpaperUploadResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  // Use XMLHttpRequest for progress tracking
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+
+    xhr.upload.addEventListener('progress', (event) => {
+      if (event.lengthComputable && onProgress) {
+        const progress = Math.round((event.loaded / event.total) * 100);
+        onProgress(progress);
+      }
+    });
+
+    xhr.addEventListener('load', () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const response = JSON.parse(xhr.responseText);
+          resolve(response);
+        } catch {
+          reject(new Error('Invalid response from server'));
+        }
+      } else {
+        try {
+          const error = JSON.parse(xhr.responseText);
+          reject(new Error(error.error || `HTTP ${xhr.status}`));
+        } catch {
+          reject(new Error(`Wallpaper upload failed: HTTP ${xhr.status}`));
+        }
+      }
+    });
+
+    xhr.addEventListener('error', () => {
+      reject(new Error('Network error during wallpaper upload'));
+    });
+
+    xhr.addEventListener('abort', () => {
+      reject(new Error('Wallpaper upload cancelled'));
+    });
+
+    xhr.open('POST', `${API_URL}/api/wallpaper`);
+
+    if (authToken) {
+      xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);
+    }
+
+    xhr.send(formData);
+  });
 }
 
 // ============ Assistant API ============
@@ -267,4 +376,17 @@ export async function sendAssistantMessage(
     method: 'POST',
     body: JSON.stringify({ message, conversationHistory }),
   });
+}
+
+// ============ Quota API ============
+
+export interface QuotaInfo {
+  used: number;      // Bytes used
+  limit: number;     // Quota limit in bytes
+  remaining: number; // Bytes remaining
+  itemCount: number; // Number of items with files
+}
+
+export async function fetchQuota(): Promise<QuotaInfo> {
+  return apiRequest<QuotaInfo>('/api/quota');
 }

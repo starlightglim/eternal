@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useDesktopStore } from '../../stores/desktopStore';
 import { useWindowStore } from '../../stores/windowStore';
 import { isApiConfigured } from '../../services/api';
+import { ContextMenu, type ContextMenuItem } from '../ui';
 import styles from './TextViewer.module.css';
 
 interface TextViewerProps {
@@ -32,6 +33,7 @@ export function TextViewer({
   const [isEditingName, setIsEditingName] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const { updateItem } = useDesktopStore();
@@ -145,8 +147,29 @@ export function TextViewer({
     URL.revokeObjectURL(downloadUrl);
   }, [content, fileName]);
 
+  // Context menu handlers
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  }, []);
+
+  const closeContextMenu = useCallback(() => {
+    setContextMenu(null);
+  }, []);
+
+  const getContextMenuItems = useCallback((): ContextMenuItem[] => {
+    return [
+      {
+        id: 'download',
+        label: 'Download',
+        shortcut: '⌘S',
+        action: handleDownload,
+      },
+    ];
+  }, [handleDownload]);
+
   return (
-    <div className={styles.textViewer}>
+    <div className={styles.textViewer} onContextMenu={handleContextMenu}>
       {/* Title bar with file info */}
       <div className={styles.toolbar}>
         {isEditingName ? (
@@ -208,14 +231,16 @@ export function TextViewer({
             {content.split('\n').length} lines
           </span>
         </div>
-        <button
-          className={styles.downloadButton}
-          onClick={handleDownload}
-          title="Download"
-        >
-          Download
-        </button>
       </div>
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <ContextMenu
+          items={getContextMenuItems()}
+          position={contextMenu}
+          onClose={closeContextMenu}
+        />
+      )}
     </div>
   );
 }

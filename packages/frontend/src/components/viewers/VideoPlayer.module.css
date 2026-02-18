@@ -1,0 +1,208 @@
+/* VideoPlayer - Classic Mac OS-style video player */
+
+.container {
+  width: 100%;
+  height: 100%;
+  background-color: #000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Video display area */
+.videoWrapper {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #000;
+  min-height: 0;
+}
+
+.video {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  cursor: pointer;
+}
+
+.loadingOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.7);
+  color: var(--white);
+  font-family: var(--font-system);
+  font-size: 12px;
+}
+
+/* Controls bar */
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--platinum);
+  border-top: 1px solid var(--black);
+  box-shadow:
+    inset 0 1px 0 var(--white);
+}
+
+/* Play/Pause button */
+.playButton {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--platinum);
+  border: 2px solid var(--black);
+  border-radius: 2px;
+  cursor: pointer;
+  box-shadow:
+    inset 1px 1px 0 var(--white),
+    inset -1px -1px 0 var(--shadow);
+}
+
+.playButton:hover {
+  background: #d0d0d0;
+}
+
+.playButton:active {
+  box-shadow:
+    inset 1px 1px 0 var(--shadow),
+    inset -1px -1px 0 var(--white);
+}
+
+.playButton:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.playButton svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* Progress bar */
+.progressContainer {
+  flex: 1;
+  height: 16px;
+  padding: 4px 0;
+  cursor: pointer;
+}
+
+.progressTrack {
+  width: 100%;
+  height: 8px;
+  background: #fff;
+  border: 1px solid var(--black);
+  border-radius: 1px;
+  position: relative;
+  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: linear-gradient(180deg, #4080ff 0%, #2060d0 100%);
+  transition: width 0.1s linear;
+}
+
+/* Time display */
+.timeDisplay {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--black);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 55px;
+}
+
+.timeSeparator {
+  opacity: 0.6;
+}
+
+/* Fullscreen button */
+.fullscreenButton {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--platinum);
+  border: 2px solid var(--black);
+  border-radius: 2px;
+  cursor: pointer;
+  box-shadow:
+    inset 1px 1px 0 var(--white),
+    inset -1px -1px 0 var(--shadow);
+}
+
+.fullscreenButton:hover {
+  background: #d0d0d0;
+}
+
+.fullscreenButton:active {
+  box-shadow:
+    inset 1px 1px 0 var(--shadow),
+    inset -1px -1px 0 var(--white);
+}
+
+.fullscreenButton svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* Error state */
+.error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--white);
+  font-family: var(--font-system);
+  font-size: 12px;
+  background-color: #000;
+}
+
+/* Demo mode */
+.demoMode {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 12px;
+  text-align: center;
+  background: #1a1a1a;
+}
+
+.demoIcon {
+  opacity: 0.6;
+}
+
+.demoText {
+  font-family: var(--font-system);
+  font-size: 12px;
+  color: var(--white);
+  margin: 0;
+}
+
+.demoSubtext {
+  font-family: var(--font-system);
+  font-size: 10px;
+  color: #808080;
+  margin: 0;
+}

@@ -184,3 +184,36 @@
   padding: 8px;
   border: 1px dashed var(--shadow);
 }
+
+.instructions {
+  font-family: var(--font-geneva);
+  font-size: 11px;
+  color: var(--black);
+  text-align: center;
+  margin-bottom: 16px;
+  line-height: 1.4;
+}
+
+.successMessage {
+  font-family: var(--font-chicago);
+  font-size: 11px;
+  color: #006600;
+  background: #CCFFCC;
+  padding: 12px;
+  border: 1px solid #006600;
+  text-align: center;
+  margin-bottom: 16px;
+  line-height: 1.4;
+}
+
+.devNotice {
+  font-family: var(--font-geneva);
+  font-size: 10px;
+  color: #666600;
+  background: #FFFFCC;
+  padding: 8px;
+  border: 1px solid #666600;
+  text-align: center;
+  margin-bottom: 16px;
+  line-height: 1.4;
+}

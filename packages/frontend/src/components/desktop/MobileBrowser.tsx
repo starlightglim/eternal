@@ -10,7 +10,7 @@ import { useDesktopStore } from '../../stores/desktopStore';
 import { useWindowStore } from '../../stores/windowStore';
 import { useAuthStore } from '../../stores/authStore';
 import { FolderIcon, TextFileIcon, ImageFileIcon, LinkIcon } from '../icons/PixelIcons';
-import type { DesktopItem } from '../../types';
+import { getTextFileContentType, type DesktopItem } from '../../types';
 import styles from './MobileBrowser.module.css';
 
 interface MobileBrowserProps {
@@ -63,7 +63,8 @@ export function MobileBrowser({ isVisitorMode = false, visitorItems, username }:
       if (item.type === 'folder') {
         navigateToFolder(item);
       } else if (item.type === 'text') {
-        // Open in a modal-style view
+        // Open in appropriate viewer based on file extension
+        const contentType = getTextFileContentType(item.name);
         openWindow({
           id: `mobile-text-${item.id}`,
           title: item.name,
@@ -71,7 +72,7 @@ export function MobileBrowser({ isVisitorMode = false, visitorItems, username }:
           size: { width: window.innerWidth, height: window.innerHeight - 100 },
           minimized: false,
           maximized: true,
-          contentType: 'text',
+          contentType,
           contentId: item.id,
         });
       } else if (item.type === 'image') {

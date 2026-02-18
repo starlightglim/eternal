@@ -114,3 +114,15 @@
   -webkit-font-smoothing: none;
   -moz-osx-font-smoothing: unset;
 }
+
+/* ============================================
+   WINDOW DROP TARGET
+   Highlight when an item is being dragged over
+   this folder window from the desktop
+   ============================================ */
+
+.windowDropTarget {
+  background: var(--highlight);
+  outline: 2px dashed var(--selection);
+  outline-offset: -2px;
+}

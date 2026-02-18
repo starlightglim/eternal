@@ -4,7 +4,9 @@ import { useWindowStore } from '../../stores/windowStore';
 import { useDesktopStore } from '../../stores/desktopStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useClipboardStore } from '../../stores/clipboardStore';
+import { useAlertStore } from '../../stores/alertStore';
 import { isApiConfigured } from '../../services/api';
+import { downloadDesktopExport } from '../../utils/exportDesktop';
 import type { MenuItem } from '../../types';
 import styles from './MenuBar.module.css';
 
@@ -19,9 +21,10 @@ import styles from './MenuBar.module.css';
  */
 export function MenuBar() {
   const { windows, closeWindow, getTopWindow, openWindow } = useWindowStore();
-  const { selectedIds, addItem, items, deselectAll, selectAll, removeItem, cleanUp, sortByName, sortByDate, sortByKind, pasteItems, duplicateItems } = useDesktopStore();
+  const { selectedIds, addItem, items, deselectAll, selectAll, removeItem, cleanUp, sortByName, sortByDate, sortByKind, pasteItems, duplicateItems, emptyTrash, getTrashCount } = useDesktopStore();
   const { profile, logout } = useAuthStore();
   const { clipboard, cut, copy, clear: clearClipboard, hasItems: hasClipboardItems } = useClipboardStore();
+  const { showConfirm } = useAlertStore();
   const navigate = useNavigate();
 
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
@@ -75,10 +78,22 @@ export function MenuBar() {
   }, [selectedIds, deselectAll, removeItem]);
 
   const handleEmptyTrash = useCallback(() => {
-    // In Phase 3, trash is just immediate deletion
-    // Phase 4+ will have a proper trash folder
+    const trashCount = getTrashCount();
+    if (trashCount === 0) {
+      setActiveMenu(null);
+      return;
+    }
+
+    showConfirm(
+      `Are you sure you want to permanently delete ${trashCount} item${trashCount > 1 ? 's' : ''} in the Trash? This cannot be undone.`,
+      () => {
+        emptyTrash();
+      },
+      undefined,
+      'Empty Trash'
+    );
     setActiveMenu(null);
-  }, []);
+  }, [getTrashCount, emptyTrash, showConfirm]);
 
   const handleAbout = useCallback(() => {
     openWindow({
@@ -110,6 +125,32 @@ export function MenuBar() {
       minimized: false,
       maximized: false,
       contentType: 'assistant',
+    });
+    setActiveMenu(null);
+  }, [openWindow]);
+
+  const handleOpenCalculator = useCallback(() => {
+    openWindow({
+      id: 'calculator',
+      title: 'Calculator',
+      position: { x: 200, y: 100 },
+      size: { width: 200, height: 280 },
+      minimized: false,
+      maximized: false,
+      contentType: 'calculator',
+    });
+    setActiveMenu(null);
+  }, [openWindow]);
+
+  const handleOpenClock = useCallback(() => {
+    openWindow({
+      id: 'clock',
+      title: 'Clock',
+      position: { x: 250, y: 80 },
+      size: { width: 160, height: 220 },
+      minimized: false,
+      maximized: false,
+      contentType: 'clock',
     });
     setActiveMenu(null);
   }, [openWindow]);
@@ -147,10 +188,14 @@ export function MenuBar() {
   }, [selectAll]);
 
   const handleCleanUp = useCallback(() => {
-    // Arrange all desktop icons in a neat grid
-    cleanUp(null);
+    // Arrange icons in a neat grid (focused folder or desktop)
+    const topWindow = getTopWindow();
+    const targetFolder = topWindow && topWindow.contentType === 'folder' && topWindow.contentId
+      ? topWindow.contentId
+      : null;
+    cleanUp(targetFolder);
     setActiveMenu(null);
-  }, [cleanUp]);
+  }, [cleanUp, getTopWindow]);
 
   const handleCut = useCallback(() => {
     if (selectedIds.size === 0) return;
@@ -179,20 +224,33 @@ export function MenuBar() {
     setActiveMenu(null);
   }, [selectedIds, duplicateItems]);
 
+  // Helper to get the target folder for sorting
+  // If top window is a folder, sort that folder; otherwise sort desktop
+  const getTargetFolderForSort = useCallback((): string | null => {
+    const topWindow = getTopWindow();
+    if (topWindow && topWindow.contentType === 'folder' && topWindow.contentId) {
+      return topWindow.contentId;
+    }
+    return null; // Desktop
+  }, [getTopWindow]);
+
   const handleSortByName = useCallback(() => {
-    sortByName(null);
+    const targetFolder = getTargetFolderForSort();
+    sortByName(targetFolder);
     setActiveMenu(null);
-  }, [sortByName]);
+  }, [sortByName, getTargetFolderForSort]);
 
   const handleSortByDate = useCallback(() => {
-    sortByDate(null);
+    const targetFolder = getTargetFolderForSort();
+    sortByDate(targetFolder);
     setActiveMenu(null);
-  }, [sortByDate]);
+  }, [sortByDate, getTargetFolderForSort]);
 
   const handleSortByKind = useCallback(() => {
-    sortByKind(null);
+    const targetFolder = getTargetFolderForSort();
+    sortByKind(targetFolder);
     setActiveMenu(null);
-  }, [sortByKind]);
+  }, [sortByKind, getTargetFolderForSort]);
 
   const handleFind = useCallback(() => {
     openWindow({
@@ -212,6 +270,15 @@ export function MenuBar() {
     await logout();
     navigate('/login');
   }, [logout, navigate]);
+
+  const handleExportDesktop = useCallback(() => {
+    downloadDesktopExport({
+      items,
+      username: profile?.username || 'user',
+      wallpaper: profile?.wallpaper || 'default',
+    });
+    setActiveMenu(null);
+  }, [items, profile]);
 
   // ============================================
   // EFFECTS
@@ -320,6 +387,8 @@ export function MenuBar() {
       { divider: true, label: '' },
       { label: 'Get Info', shortcut: '⌘I', disabled: selectedIds.size === 0 },
       { label: 'Find...', shortcut: '⌘F', action: handleFind },
+      { divider: true, label: '' },
+      { label: 'Export Desktop...', action: handleExportDesktop },
     ],
     edit: [
       { label: 'Undo', shortcut: '⌘Z', disabled: true },
@@ -339,7 +408,10 @@ export function MenuBar() {
       { label: 'Clean Up', action: handleCleanUp },
     ],
     special: [
+      { label: 'Calculator', action: handleOpenCalculator },
+      { label: 'Clock', action: handleOpenClock },
       { label: 'Desk Assistant', action: handleOpenAssistant },
+      { divider: true, label: '' },
       { label: 'Desktop Patterns...', action: handleOpenWallpaperPicker },
       { label: 'Preferences...', action: handleOpenPreferences },
       { divider: true, label: '' },

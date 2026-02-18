@@ -13,7 +13,7 @@ class_name = "UserDesktop"
 
 [[migrations]]
 tag = "v1"
-new_classes = ["UserDesktop"]
+new_sqlite_classes = ["UserDesktop"]
 
 # KV Namespaces
 [[kv_namespaces]]
@@ -34,10 +34,13 @@ bucket_name = "eternalos-files"
 [ai]
 binding = "AI"
 
-# Development variables (for local dev only)
-# In production, use: wrangler secret put JWT_SECRET
-[vars]
-JWT_SECRET = "dev-secret-change-in-production-abc123xyz"
+# JWT_SECRET is set via: wrangler secret put JWT_SECRET
+# For local dev, set JWT_SECRET in .dev.vars file
+
+# Scheduled triggers (cron jobs)
+# Clean up old trashed items daily at 3:00 AM UTC
+[triggers]
+crons = ["0 3 * * *"]
 
 # Development settings
 [dev]

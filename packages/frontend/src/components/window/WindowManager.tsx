@@ -3,6 +3,13 @@ import { useWindowStore } from '../../stores/windowStore';
 import { useDesktopStore } from '../../stores/desktopStore';
 import { ImageViewer } from '../viewers/ImageViewer';
 import { TextViewer } from '../viewers/TextViewer';
+import { MarkdownViewer } from '../viewers/MarkdownViewer';
+import { CodeViewer } from '../viewers/CodeViewer';
+import { AudioPlayer } from '../viewers/AudioPlayer';
+import { VideoPlayer } from '../viewers/VideoPlayer';
+import { PDFViewer } from '../viewers/PDFViewer';
+import { Calculator } from '../viewers/Calculator';
+import { Clock } from '../viewers/Clock';
 import { GetInfo } from '../viewers/GetInfo';
 import { WallpaperPicker } from '../viewers/WallpaperPicker';
 import { WelcomeReadMe } from '../viewers/WelcomeReadMe';
@@ -10,18 +17,20 @@ import { SearchWindow } from '../viewers/SearchWindow';
 import { PreferencesWindow } from '../viewers/PreferencesWindow';
 import { DeskAssistant } from '../assistant';
 import { FolderView } from './FolderView';
+import { TrashView } from './TrashView';
 import type { DesktopItem } from '../../types';
 
 interface WindowManagerProps {
   isVisitorMode?: boolean;
   visitorItems?: DesktopItem[];
+  folderWindowDropTargetId?: string | null;
 }
 
 /**
  * WindowManager - renders all open windows
  * Manages which window is active (top z-index)
  */
-export function WindowManager({ isVisitorMode = false, visitorItems }: WindowManagerProps) {
+export function WindowManager({ isVisitorMode = false, visitorItems, folderWindowDropTargetId }: WindowManagerProps) {
   const windows = useWindowStore((state) => state.windows);
 
   // Find the active window (highest z-index among non-minimized)
@@ -52,6 +61,7 @@ export function WindowManager({ isVisitorMode = false, visitorItems }: WindowMan
             contentId={win.contentId}
             isVisitorMode={isVisitorMode}
             visitorItems={visitorItems}
+            folderWindowDropTargetId={folderWindowDropTargetId}
           />
         </Window>
       ))}
@@ -69,12 +79,14 @@ function WindowContent({
   contentId,
   isVisitorMode = false,
   visitorItems,
+  folderWindowDropTargetId,
 }: {
   windowId: string;
   contentType: string;
   contentId?: string;
   isVisitorMode?: boolean;
   visitorItems?: DesktopItem[];
+  folderWindowDropTargetId?: string | null;
 }) {
   const getItem = useDesktopStore((state) => state.getItem);
 
@@ -92,6 +104,7 @@ function WindowContent({
           folderId={contentId || null}
           visitorItems={isVisitorMode ? visitorItems : undefined}
           isVisitorMode={isVisitorMode}
+          isDropTarget={folderWindowDropTargetId === contentId}
         />
       );
 
@@ -143,6 +156,54 @@ function WindowContent({
           name={item.name}
           textContent={item.textContent}
           isOwner={!isVisitorMode} // Read-only in visitor mode
+        />
+      );
+
+    case 'markdown':
+      if (!item) {
+        return (
+          <div
+            style={{
+              padding: '8px',
+              fontFamily: 'var(--font-monaco)',
+              fontSize: '12px',
+            }}
+          >
+            <p style={{ color: 'var(--shadow)' }}>Markdown file not found</p>
+          </div>
+        );
+      }
+      return (
+        <MarkdownViewer
+          itemId={item.id}
+          windowId={windowId}
+          name={item.name}
+          textContent={item.textContent}
+          isOwner={!isVisitorMode}
+        />
+      );
+
+    case 'code':
+      if (!item) {
+        return (
+          <div
+            style={{
+              padding: '8px',
+              fontFamily: 'var(--font-monaco)',
+              fontSize: '12px',
+            }}
+          >
+            <p style={{ color: 'var(--shadow)' }}>Code file not found</p>
+          </div>
+        );
+      }
+      return (
+        <CodeViewer
+          itemId={item.id}
+          windowId={windowId}
+          name={item.name}
+          textContent={item.textContent}
+          isOwner={!isVisitorMode}
         />
       );
 
@@ -215,6 +276,69 @@ function WindowContent({
 
     case 'preferences':
       return <PreferencesWindow />;
+
+    case 'trash':
+      return <TrashView />;
+
+    case 'audio':
+      if (!item) {
+        return (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%',
+              backgroundColor: 'var(--platinum)',
+            }}
+          >
+            <p style={{ color: 'var(--shadow)', fontSize: '12px' }}>Audio file not found</p>
+          </div>
+        );
+      }
+      return <AudioPlayer itemId={item.id} />;
+
+    case 'video':
+      if (!item) {
+        return (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%',
+              backgroundColor: '#000',
+            }}
+          >
+            <p style={{ color: 'var(--white)', fontSize: '12px' }}>Video file not found</p>
+          </div>
+        );
+      }
+      return <VideoPlayer itemId={item.id} />;
+
+    case 'pdf':
+      if (!item) {
+        return (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%',
+              backgroundColor: 'var(--platinum)',
+            }}
+          >
+            <p style={{ color: 'var(--black)', fontSize: '12px' }}>PDF file not found</p>
+          </div>
+        );
+      }
+      return <PDFViewer itemId={item.id} />;
+
+    case 'calculator':
+      return <Calculator />;
+
+    case 'clock':
+      return <Clock />;
 
     default:
       return null;

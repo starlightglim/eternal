@@ -1,17 +1,30 @@
 import { useCallback, useState, useRef } from 'react';
 import { useDesktopStore } from '../../stores/desktopStore';
 import { useWindowStore } from '../../stores/windowStore';
-import { FolderIcon, ImageFileIcon, TextFileIcon, LinkIcon } from '../icons/PixelIcons';
-import type { DesktopItem } from '../../types';
+import { FolderIcon, ImageFileIcon, TextFileIcon, LinkIcon, AudioFileIcon, VideoFileIcon, PDFFileIcon } from '../icons/PixelIcons';
+import { getTextFileContentType, type DesktopItem } from '../../types';
 import styles from './FolderView.module.css';
 
 // Counter for staggering window positions
 let windowOffsetCounter = 0;
 
+// Custom events for cross-component drag communication
+export const FOLDER_DRAG_START = 'folder-drag-start';
+export const FOLDER_DRAG_MOVE = 'folder-drag-move';
+export const FOLDER_DRAG_END = 'folder-drag-end';
+
+export interface FolderDragEvent {
+  itemId: string;
+  sourceFolderId: string | null;
+  clientX: number;
+  clientY: number;
+}
+
 interface FolderViewProps {
   folderId: string | null;
   visitorItems?: DesktopItem[];
   isVisitorMode?: boolean;
+  isDropTarget?: boolean; // True when a desktop item is being dragged over this folder window
 }
 
 /**
@@ -19,7 +32,7 @@ interface FolderViewProps {
  * Classic Mac OS folder view with icon grid
  * Supports drag-and-drop for moving items between folders
  */
-export function FolderView({ folderId, visitorItems, isVisitorMode = false }: FolderViewProps) {
+export function FolderView({ folderId, visitorItems, isVisitorMode = false, isDropTarget = false }: FolderViewProps) {
   const getItemsByParent = useDesktopStore((state) => state.getItemsByParent);
   const updateItem = useDesktopStore((state) => state.updateItem);
   const openWindow = useWindowStore((state) => state.openWindow);
@@ -32,14 +45,29 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false }: Fo
   const hasDragged = useRef(false);
 
   // If visitorItems is provided, filter from those; otherwise use the store
-  const items = visitorItems
+  // Always filter out trashed items
+  const items = (visitorItems
     ? visitorItems.filter((item) => item.parentId === folderId)
-    : getItemsByParent(folderId);
+    : getItemsByParent(folderId)
+  ).filter((item) => !item.isTrashed);
 
   // Handle double-click to open item
   const handleDoubleClick = useCallback(
     (itemId: string, itemType: string, itemName: string) => {
-      const contentType = itemType === 'folder' ? 'folder' : itemType;
+      // Determine content type based on item type and file extension
+      let contentType: string = itemType === 'folder' ? 'folder' : itemType;
+      if (itemType === 'text') {
+        contentType = getTextFileContentType(itemName);
+      }
+      // Set appropriate window size based on media type
+      let windowSize = { width: 400, height: 300 };
+      if (itemType === 'audio') {
+        windowSize = { width: 320, height: 240 };
+      } else if (itemType === 'video') {
+        windowSize = { width: 480, height: 360 };
+      } else if (itemType === 'pdf') {
+        windowSize = { width: 550, height: 700 };
+      }
       // Stagger window positions using a counter instead of Math.random
       windowOffsetCounter = (windowOffsetCounter + 1) % 10;
       const offset = windowOffsetCounter * 20;
@@ -47,10 +75,10 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false }: Fo
         id: `window-${itemId}`,
         title: itemName,
         position: { x: 100 + offset, y: 50 + offset },
-        size: { width: 400, height: 300 },
+        size: windowSize,
         minimized: false,
         maximized: false,
-        contentType: contentType as 'folder' | 'image' | 'text' | 'get-info' | 'about',
+        contentType: contentType as 'folder' | 'image' | 'text' | 'markdown' | 'code' | 'get-info' | 'about' | 'audio' | 'video' | 'pdf',
         contentId: itemId,
       });
     },
@@ -75,9 +103,21 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false }: Fo
       dragStartPos.current = { x: e.clientX, y: e.clientY };
       hasDragged.current = false;
 
+      // Dispatch drag start event for Desktop to track
+      window.dispatchEvent(
+        new CustomEvent<FolderDragEvent>(FOLDER_DRAG_START, {
+          detail: {
+            itemId,
+            sourceFolderId: folderId,
+            clientX: e.clientX,
+            clientY: e.clientY,
+          },
+        })
+      );
+
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
     },
-    [isVisitorMode]
+    [isVisitorMode, folderId]
   );
 
   // Handle pointer move during drag
@@ -91,9 +131,21 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false }: Fo
       // Only consider it a drag if moved more than 5 pixels
       if (dx > 5 || dy > 5) {
         hasDragged.current = true;
+
+        // Dispatch drag move event for Desktop to track (for cross-window drops)
+        window.dispatchEvent(
+          new CustomEvent<FolderDragEvent>(FOLDER_DRAG_MOVE, {
+            detail: {
+              itemId: draggingId,
+              sourceFolderId: folderId,
+              clientX: e.clientX,
+              clientY: e.clientY,
+            },
+          })
+        );
       }
 
-      // Find if we're over a folder (drop target detection)
+      // Find if we're over a folder (drop target detection within this folder view)
       const elements = document.elementsFromPoint(e.clientX, e.clientY);
       let newDropTarget: string | null = null;
 
@@ -111,12 +163,25 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false }: Fo
 
       setFolderDropTargetId(newDropTarget);
     },
-    [draggingId]
+    [draggingId, folderId]
   );
 
   // Handle pointer up (end drag)
   const handlePointerUp = useCallback(
     (e: React.PointerEvent) => {
+      // Dispatch drag end event for Desktop to potentially handle the drop
+      // The event contains drop coordinates so Desktop can determine if it's a valid drop target
+      const dragEndEvent = new CustomEvent<FolderDragEvent>(FOLDER_DRAG_END, {
+        detail: {
+          itemId: draggingId || '',
+          sourceFolderId: folderId,
+          clientX: e.clientX,
+          clientY: e.clientY,
+        },
+      });
+      window.dispatchEvent(dragEndEvent);
+
+      // If we dropped on a folder within this folder view, handle it here
       if (draggingId && hasDragged.current && folderDropTargetId) {
         // Move item to the target folder
         updateItem(draggingId, {
@@ -131,7 +196,7 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false }: Fo
       dragStartPos.current = null;
       hasDragged.current = false;
     },
-    [draggingId, folderDropTargetId, updateItem]
+    [draggingId, folderDropTargetId, updateItem, folderId]
   );
 
   // Clear selection when clicking empty area
@@ -150,6 +215,12 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false }: Fo
         return <TextFileIcon size={32} />;
       case 'link':
         return <LinkIcon size={32} />;
+      case 'audio':
+        return <AudioFileIcon size={32} />;
+      case 'video':
+        return <VideoFileIcon size={32} />;
+      case 'pdf':
+        return <PDFFileIcon size={32} />;
       default:
         return <TextFileIcon size={32} />;
     }
@@ -157,7 +228,10 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false }: Fo
 
   if (items.length === 0) {
     return (
-      <div className={styles.emptyFolder}>
+      <div
+        className={`${styles.emptyFolder} ${isDropTarget ? styles.windowDropTarget : ''}`}
+        data-folder-window-id={folderId}
+      >
         <p>This folder is empty</p>
       </div>
     );
@@ -165,7 +239,8 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false }: Fo
 
   return (
     <div
-      className={styles.folderView}
+      className={`${styles.folderView} ${isDropTarget ? styles.windowDropTarget : ''}`}
+      data-folder-window-id={folderId}
       onClick={handleBackgroundClick}
       onPointerMove={draggingId ? handlePointerMove : undefined}
       onPointerUp={draggingId ? handlePointerUp : undefined}

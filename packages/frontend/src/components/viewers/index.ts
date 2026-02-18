@@ -3,3 +3,8 @@ export { TextViewer } from './TextViewer';
 export { GetInfo } from './GetInfo';
 export { WallpaperPicker } from './WallpaperPicker';
 export { WelcomeReadMe } from './WelcomeReadMe';
+export { AudioPlayer } from './AudioPlayer';
+export { VideoPlayer } from './VideoPlayer';
+export { PDFViewer } from './PDFViewer';
+export { Calculator } from './Calculator';
+export { Clock } from './Clock';

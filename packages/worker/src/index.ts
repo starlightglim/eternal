@@ -6,11 +6,19 @@
  */
 
 import { UserDesktop } from './durable-objects/UserDesktop';
-import { handleSignup, handleLogin, handleLogout } from './routes/auth';
-import { handleUpload, handleServeFile } from './routes/upload';
+import { handleSignup, handleLogin, handleLogout, handleForgotPassword, handleResetPassword, handleRefreshToken } from './routes/auth';
+import { handleUpload, handleServeFile, handleWallpaperUpload, handleServeWallpaper } from './routes/upload';
 import { handleVisit } from './routes/visit';
 import { handleAssistant } from './routes/assistant';
 import { requireAuth, authenticate } from './middleware/auth';
+import {
+  checkRateLimit,
+  rateLimitResponse,
+  addRateLimitHeaders,
+  RATE_LIMIT_AUTH,
+  RATE_LIMIT_API,
+  type RateLimitResult,
+} from './middleware/rateLimit';
 
 export interface Env {
   // KV Namespaces
@@ -28,6 +36,10 @@ export interface Env {
 
   // Secrets
   JWT_SECRET: string;
+
+  // Environment settings
+  ENVIRONMENT?: 'development' | 'production';
+  ALLOWED_ORIGINS?: string; // Comma-separated list of allowed origins for production
 }
 
 export { UserDesktop };
@@ -45,24 +57,109 @@ function withCors(response: Response, corsHeaders: Record<string, string>): Resp
   });
 }
 
-export default {
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    const url = new URL(request.url);
-    const path = url.pathname;
+// Get CORS headers based on environment and request origin
+function getCorsHeaders(request: Request, env: Env): Record<string, string> {
+  const origin = request.headers.get('Origin') || '';
+  const isProduction = env.ENVIRONMENT === 'production';
 
-    // CORS headers for development
-    const corsHeaders = {
+  // In development, allow all origins
+  if (!isProduction) {
+    return {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     };
+  }
+
+  // In production, check against allowed origins
+  const allowedOrigins = env.ALLOWED_ORIGINS
+    ? env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
+    : [];
+
+  // Always allow the worker's own origin (for same-origin requests)
+  const requestUrl = new URL(request.url);
+  const selfOrigin = `${requestUrl.protocol}//${requestUrl.host}`;
+  allowedOrigins.push(selfOrigin);
+
+  // Check if the request origin is allowed
+  const isAllowed = allowedOrigins.includes(origin);
+
+  return {
+    'Access-Control-Allow-Origin': isAllowed ? origin : '',
+    'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Credentials': 'true',
+    'Vary': 'Origin', // Important for caching with different origins
+  };
+}
+
+export default {
+  /**
+   * Scheduled handler - runs daily to clean up old trashed items
+   * Cron: 0 3 * * * (3:00 AM UTC daily)
+   */
+  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+    console.log('Running scheduled trash cleanup...');
+
+    // Get all user UIDs from KV
+    const allUsersJson = await env.AUTH_KV.get('all_users');
+    if (!allUsersJson) {
+      console.log('No users found, skipping cleanup');
+      return;
+    }
+
+    const userUids = JSON.parse(allUsersJson) as string[];
+    console.log(`Processing ${userUids.length} users for trash cleanup`);
+
+    let totalDeleted = 0;
+    let totalR2Deleted = 0;
+
+    // Process each user's trash
+    for (const uid of userUids) {
+      try {
+        const doId = env.USER_DESKTOP.idFromName(uid);
+        const stub = env.USER_DESKTOP.get(doId);
+        const response = await stub.fetch(new Request('http://internal/trash/cleanup', {
+          method: 'POST',
+        }));
+
+        const result = await response.json() as { deleted: number; r2Keys: string[] };
+
+        if (result.deleted > 0) {
+          console.log(`User ${uid}: deleted ${result.deleted} old trash items`);
+          totalDeleted += result.deleted;
+
+          // Clean up R2 files
+          if (result.r2Keys.length > 0) {
+            await Promise.all(result.r2Keys.map((key) => env.ETERNALOS_FILES.delete(key)));
+            totalR2Deleted += result.r2Keys.length;
+          }
+        }
+      } catch (error) {
+        console.error(`Error cleaning trash for user ${uid}:`, error);
+      }
+    }
+
+    console.log(`Scheduled cleanup complete: ${totalDeleted} items deleted, ${totalR2Deleted} R2 files cleaned up`);
+  },
+
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    const url = new URL(request.url);
+    const path = url.pathname;
+
+    // Get environment-aware CORS headers
+    const corsHeaders = getCorsHeaders(request, env);
 
     // Handle CORS preflight
     if (request.method === 'OPTIONS') {
+      // In production, reject requests from disallowed origins
+      if (env.ENVIRONMENT === 'production' && !corsHeaders['Access-Control-Allow-Origin']) {
+        return new Response('CORS origin not allowed', { status: 403 });
+      }
       return new Response(null, { headers: corsHeaders });
     }
 
-    // Health check
+    // Health check (no rate limiting)
     if (path === '/api/health') {
       return Response.json({ status: 'ok', timestamp: Date.now() }, { headers: corsHeaders });
     }
@@ -70,24 +167,71 @@ export default {
     // Route to appropriate handler
     try {
       let response: Response;
+      let rateLimitResult: RateLimitResult | null = null;
 
-      // Auth routes
+      // Determine rate limit config based on path
+      const isAuthRoute = path.startsWith('/api/auth/');
+      const rateLimitConfig = isAuthRoute ? RATE_LIMIT_AUTH : RATE_LIMIT_API;
+
+      // Check rate limit (skip for file serving to avoid latency)
+      const skipRateLimit = path.startsWith('/api/files/') || path.startsWith('/api/wallpaper/');
+      if (!skipRateLimit) {
+        rateLimitResult = await checkRateLimit(request, env, rateLimitConfig);
+        if (!rateLimitResult.allowed) {
+          return withCors(rateLimitResponse(rateLimitResult), corsHeaders);
+        }
+      }
+
+      // Auth routes (60 req/min limit)
       if (path === '/api/auth/signup' && request.method === 'POST') {
         response = await handleSignup(request, env);
+        if (rateLimitResult) {
+          response = addRateLimitHeaders(response, rateLimitResult, rateLimitConfig);
+        }
         return withCors(response, corsHeaders);
       }
 
       if (path === '/api/auth/login' && request.method === 'POST') {
         response = await handleLogin(request, env);
+        if (rateLimitResult) {
+          response = addRateLimitHeaders(response, rateLimitResult, rateLimitConfig);
+        }
         return withCors(response, corsHeaders);
       }
 
       if (path === '/api/auth/logout' && request.method === 'POST') {
         response = await handleLogout(request, env);
+        if (rateLimitResult) {
+          response = addRateLimitHeaders(response, rateLimitResult, rateLimitConfig);
+        }
         return withCors(response, corsHeaders);
       }
 
-      // Desktop routes (require auth)
+      if (path === '/api/auth/forgot-password' && request.method === 'POST') {
+        response = await handleForgotPassword(request, env);
+        if (rateLimitResult) {
+          response = addRateLimitHeaders(response, rateLimitResult, rateLimitConfig);
+        }
+        return withCors(response, corsHeaders);
+      }
+
+      if (path === '/api/auth/reset-password' && request.method === 'POST') {
+        response = await handleResetPassword(request, env);
+        if (rateLimitResult) {
+          response = addRateLimitHeaders(response, rateLimitResult, rateLimitConfig);
+        }
+        return withCors(response, corsHeaders);
+      }
+
+      if (path === '/api/auth/refresh' && request.method === 'POST') {
+        response = await handleRefreshToken(request, env);
+        if (rateLimitResult) {
+          response = addRateLimitHeaders(response, rateLimitResult, rateLimitConfig);
+        }
+        return withCors(response, corsHeaders);
+      }
+
+      // Desktop routes (require auth, 300 req/min limit)
       if (path === '/api/desktop' && request.method === 'GET') {
         const authResult = await requireAuth(request, env);
         if (authResult instanceof Response) {
@@ -165,6 +309,30 @@ export default {
         return withCors(response, corsHeaders);
       }
 
+      // Custom wallpaper upload
+      if (path === '/api/wallpaper' && request.method === 'POST') {
+        const authResult = await requireAuth(request, env);
+        if (authResult instanceof Response) {
+          return withCors(authResult, corsHeaders);
+        }
+        response = await handleWallpaperUpload(request, env, authResult);
+        return withCors(response, corsHeaders);
+      }
+
+      // Wallpaper serving: /api/wallpaper/:uid/:wallpaperId/:filename
+      if (path.startsWith('/api/wallpaper/') && request.method === 'GET') {
+        const parts = path.slice('/api/wallpaper/'.length).split('/');
+        if (parts.length < 3) {
+          return Response.json({ error: 'Invalid wallpaper path' }, { status: 400, headers: corsHeaders });
+        }
+
+        const [uid, wallpaperId, ...filenameParts] = parts;
+        const filename = filenameParts.join('/');
+
+        response = await handleServeWallpaper(request, env, uid, wallpaperId, filename);
+        return withCors(response, corsHeaders);
+      }
+
       // File serving: /api/files/:uid/:itemId/:filename
       if (path.startsWith('/api/files/') && request.method === 'GET') {
         const parts = path.slice('/api/files/'.length).split('/');
@@ -200,6 +368,103 @@ export default {
         }
         response = await handleAssistant(request, env, authResult);
         return withCors(response, corsHeaders);
+      }
+
+      // Profile routes (require auth)
+      // GET /api/profile - Get user profile
+      if (path === '/api/profile' && request.method === 'GET') {
+        const authResult = await requireAuth(request, env);
+        if (authResult instanceof Response) {
+          return withCors(authResult, corsHeaders);
+        }
+
+        const doId = env.USER_DESKTOP.idFromName(authResult.uid);
+        const stub = env.USER_DESKTOP.get(doId);
+        const doResponse = await stub.fetch(new Request('http://internal/profile'));
+        return withCors(doResponse, corsHeaders);
+      }
+
+      // PATCH /api/profile - Update user profile
+      if (path === '/api/profile' && request.method === 'PATCH') {
+        const authResult = await requireAuth(request, env);
+        if (authResult instanceof Response) {
+          return withCors(authResult, corsHeaders);
+        }
+
+        const doId = env.USER_DESKTOP.idFromName(authResult.uid);
+        const stub = env.USER_DESKTOP.get(doId);
+        const body = await request.text();
+        const doResponse = await stub.fetch(new Request('http://internal/profile', {
+          method: 'PATCH',
+          body,
+        }));
+        return withCors(doResponse, corsHeaders);
+      }
+
+      // Quota route (requires auth)
+      // GET /api/quota - Get storage quota usage
+      if (path === '/api/quota' && request.method === 'GET') {
+        const authResult = await requireAuth(request, env);
+        if (authResult instanceof Response) {
+          return withCors(authResult, corsHeaders);
+        }
+
+        const doId = env.USER_DESKTOP.idFromName(authResult.uid);
+        const stub = env.USER_DESKTOP.get(doId);
+        const doResponse = await stub.fetch(new Request('http://internal/quota'));
+        return withCors(doResponse, corsHeaders);
+      }
+
+      // Trash routes (require auth)
+      // GET /api/trash - List trashed items
+      if (path === '/api/trash' && request.method === 'GET') {
+        const authResult = await requireAuth(request, env);
+        if (authResult instanceof Response) {
+          return withCors(authResult, corsHeaders);
+        }
+
+        const doId = env.USER_DESKTOP.idFromName(authResult.uid);
+        const stub = env.USER_DESKTOP.get(doId);
+        const doResponse = await stub.fetch(new Request('http://internal/trash'));
+        return withCors(doResponse, corsHeaders);
+      }
+
+      // POST /api/trash/restore/:id - Restore item from trash
+      if (path.startsWith('/api/trash/restore/') && request.method === 'POST') {
+        const authResult = await requireAuth(request, env);
+        if (authResult instanceof Response) {
+          return withCors(authResult, corsHeaders);
+        }
+
+        const itemId = path.slice('/api/trash/restore/'.length);
+        const doId = env.USER_DESKTOP.idFromName(authResult.uid);
+        const stub = env.USER_DESKTOP.get(doId);
+        const doResponse = await stub.fetch(new Request(`http://internal/trash/restore/${itemId}`, {
+          method: 'POST',
+        }));
+        return withCors(doResponse, corsHeaders);
+      }
+
+      // DELETE /api/trash - Empty trash
+      if (path === '/api/trash' && request.method === 'DELETE') {
+        const authResult = await requireAuth(request, env);
+        if (authResult instanceof Response) {
+          return withCors(authResult, corsHeaders);
+        }
+
+        const doId = env.USER_DESKTOP.idFromName(authResult.uid);
+        const stub = env.USER_DESKTOP.get(doId);
+        const doResponse = await stub.fetch(new Request('http://internal/trash', {
+          method: 'DELETE',
+        }));
+
+        // Clean up R2 files for deleted items
+        const result = await doResponse.json() as { deleted: number; r2Keys: string[] };
+        if (result.r2Keys.length > 0) {
+          await Promise.all(result.r2Keys.map((key) => env.ETERNALOS_FILES.delete(key)));
+        }
+
+        return withCors(Response.json(result), corsHeaders);
       }
 
       // 404 for unmatched routes

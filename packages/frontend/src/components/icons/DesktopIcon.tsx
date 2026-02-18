@@ -1,6 +1,6 @@
 import { useCallback, useRef } from 'react';
 import type { DesktopItem } from '../../types';
-import { FolderIcon, TextFileIcon, ImageFileIcon, LinkIcon } from './PixelIcons';
+import { FolderIcon, TextFileIcon, ImageFileIcon, LinkIcon, AudioFileIcon, VideoFileIcon, PDFFileIcon } from './PixelIcons';
 import styles from './DesktopIcon.module.css';
 
 interface DesktopIconProps {
@@ -142,6 +142,9 @@ export function DesktopIcon({
         {item.type === 'text' && <TextFileIcon size={32} />}
         {item.type === 'image' && <ImageFileIcon size={32} />}
         {item.type === 'link' && <LinkIcon size={32} />}
+        {item.type === 'audio' && <AudioFileIcon size={32} />}
+        {item.type === 'video' && <VideoFileIcon size={32} />}
+        {item.type === 'pdf' && <PDFFileIcon size={32} />}
       </div>
       <div className={`${styles.iconLabel} ${isSelected ? styles.labelSelected : ''}`}>
         <span>{item.name}</span>

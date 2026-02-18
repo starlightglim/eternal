@@ -10,6 +10,16 @@
 import type { Env } from '../index';
 import type { DesktopItem, UserProfile } from '../types';
 
+// Default storage quota: 100MB per user
+export const DEFAULT_QUOTA_BYTES = 100 * 1024 * 1024;
+
+export interface QuotaInfo {
+  used: number;      // Bytes used
+  limit: number;     // Quota limit in bytes
+  remaining: number; // Bytes remaining
+  itemCount: number; // Number of items with files
+}
+
 export class UserDesktop {
   private state: DurableObjectState;
   private env: Env;
@@ -88,11 +98,61 @@ export class UserDesktop {
         return Response.json(snapshot);
       }
 
-      // POST /profile - Initialize or update profile
+      // POST /profile - Initialize or update profile (full replace)
       if (path === '/profile' && method === 'POST') {
         const profileData = await request.json() as UserProfile;
         await this.setProfile(profileData);
         return Response.json({ success: true });
+      }
+
+      // PATCH /profile - Partial update profile
+      if (path === '/profile' && method === 'PATCH') {
+        const updates = await request.json() as Partial<UserProfile>;
+        const updatedProfile = await this.updateProfile(updates);
+        return Response.json({ success: true, profile: updatedProfile });
+      }
+
+      // GET /profile - Get profile
+      if (path === '/profile' && method === 'GET') {
+        return Response.json({ profile: this.profile });
+      }
+
+      // GET /trash - Get trashed items
+      if (path === '/trash' && method === 'GET') {
+        const trashedItems = await this.getTrashedItems();
+        return Response.json({ items: trashedItems });
+      }
+
+      // POST /trash/restore/:id - Restore item from trash
+      if (path.startsWith('/trash/restore/') && method === 'POST') {
+        const id = path.slice('/trash/restore/'.length);
+        const restored = await this.restoreFromTrash(id);
+        return Response.json(restored);
+      }
+
+      // DELETE /trash - Empty trash (permanently delete all trashed items)
+      if (path === '/trash' && method === 'DELETE') {
+        const deleted = await this.emptyTrash();
+        return Response.json(deleted);
+      }
+
+      // POST /trash/cleanup - Delete items trashed more than 30 days ago
+      if (path === '/trash/cleanup' && method === 'POST') {
+        const cleaned = await this.cleanupOldTrash();
+        return Response.json(cleaned);
+      }
+
+      // GET /quota - Get storage quota usage
+      if (path === '/quota' && method === 'GET') {
+        const quota = await this.getQuota();
+        return Response.json(quota);
+      }
+
+      // POST /quota/check - Check if a file of given size would fit
+      if (path === '/quota/check' && method === 'POST') {
+        const { fileSize } = await request.json() as { fileSize: number };
+        const result = await this.checkQuota(fileSize);
+        return Response.json(result);
       }
 
       return Response.json({ error: 'Not found' }, { status: 404 });
@@ -202,11 +262,38 @@ export class UserDesktop {
   }
 
   /**
-   * Set user profile
+   * Set user profile (full replace)
    */
   private async setProfile(profile: UserProfile): Promise<void> {
     this.profile = profile;
     await this.state.storage.put('profile', profile);
+  }
+
+  /**
+   * Update user profile (partial update)
+   */
+  private async updateProfile(updates: Partial<UserProfile>): Promise<UserProfile | null> {
+    if (!this.profile) {
+      return null;
+    }
+
+    // Only allow updating certain fields
+    const allowedFields: (keyof UserProfile)[] = ['displayName', 'wallpaper'];
+    const filteredUpdates: Partial<UserProfile> = {};
+
+    for (const field of allowedFields) {
+      if (updates[field] !== undefined) {
+        (filteredUpdates as Record<string, unknown>)[field] = updates[field];
+      }
+    }
+
+    this.profile = {
+      ...this.profile,
+      ...filteredUpdates,
+    };
+
+    await this.state.storage.put('profile', this.profile);
+    return this.profile;
   }
 
   /**
@@ -215,5 +302,117 @@ export class UserDesktop {
   private async saveItems(): Promise<void> {
     const itemsArray = Array.from(this.items.values());
     await this.state.storage.put('items', itemsArray);
+  }
+
+  /**
+   * Get all trashed items
+   */
+  private async getTrashedItems(): Promise<DesktopItem[]> {
+    return Array.from(this.items.values()).filter((item) => item.isTrashed === true);
+  }
+
+  /**
+   * Restore an item from trash
+   */
+  private async restoreFromTrash(id: string): Promise<{ restored: boolean; item?: DesktopItem }> {
+    const item = this.items.get(id);
+    if (!item || !item.isTrashed) {
+      return { restored: false };
+    }
+
+    const restoredItem: DesktopItem = {
+      ...item,
+      isTrashed: false,
+      trashedAt: undefined,
+      updatedAt: Date.now(),
+    };
+
+    this.items.set(id, restoredItem);
+    await this.saveItems();
+
+    return { restored: true, item: restoredItem };
+  }
+
+  /**
+   * Empty trash - permanently delete all trashed items and return r2Keys for cleanup
+   */
+  private async emptyTrash(): Promise<{ deleted: number; r2Keys: string[] }> {
+    const trashedItems = Array.from(this.items.values()).filter((item) => item.isTrashed === true);
+    const r2Keys: string[] = [];
+    let deletedCount = 0;
+
+    for (const item of trashedItems) {
+      if (item.r2Key) {
+        r2Keys.push(item.r2Key);
+      }
+      this.items.delete(item.id);
+      deletedCount++;
+    }
+
+    if (deletedCount > 0) {
+      await this.saveItems();
+    }
+
+    return { deleted: deletedCount, r2Keys };
+  }
+
+  /**
+   * Cleanup old trashed items - permanently delete items trashed more than 30 days ago
+   */
+  private async cleanupOldTrash(): Promise<{ deleted: number; r2Keys: string[] }> {
+    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+    const oldTrashedItems = Array.from(this.items.values()).filter(
+      (item) => item.isTrashed === true && item.trashedAt && item.trashedAt < thirtyDaysAgo
+    );
+
+    const r2Keys: string[] = [];
+    let deletedCount = 0;
+
+    for (const item of oldTrashedItems) {
+      if (item.r2Key) {
+        r2Keys.push(item.r2Key);
+      }
+      this.items.delete(item.id);
+      deletedCount++;
+    }
+
+    if (deletedCount > 0) {
+      await this.saveItems();
+    }
+
+    return { deleted: deletedCount, r2Keys };
+  }
+
+  /**
+   * Get storage quota usage
+   * Calculates total bytes used by summing fileSize of all items
+   */
+  private async getQuota(): Promise<QuotaInfo> {
+    let usedBytes = 0;
+    let itemCount = 0;
+
+    for (const item of this.items.values()) {
+      // Only count non-trashed items with file sizes
+      if (!item.isTrashed && item.fileSize) {
+        usedBytes += item.fileSize;
+        itemCount++;
+      }
+    }
+
+    return {
+      used: usedBytes,
+      limit: DEFAULT_QUOTA_BYTES,
+      remaining: Math.max(0, DEFAULT_QUOTA_BYTES - usedBytes),
+      itemCount,
+    };
+  }
+
+  /**
+   * Check if there's enough quota for a file of the given size
+   */
+  public async checkQuota(fileSize: number): Promise<{ allowed: boolean; quota: QuotaInfo }> {
+    const quota = await this.getQuota();
+    const allowed = (quota.used + fileSize) <= quota.limit;
+    return { allowed, quota };
   }
 }

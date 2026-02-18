@@ -129,6 +129,10 @@ export function LoginPage() {
             <span>No account? </span>
             <Link to="/signup" className={styles.link}>Sign Up</Link>
           </div>
+
+          <div className={styles.linkSection}>
+            <Link to="/forgot-password" className={styles.link}>Forgot Password?</Link>
+          </div>
         </div>
       </div>
     </div>

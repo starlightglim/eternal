@@ -1,0 +1,197 @@
+/* CodeViewer - Classic Mac code editor style */
+
+.codeViewer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--white);
+}
+
+/* ============================================
+   TOOLBAR
+   ============================================ */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  background: var(--platinum);
+  border-bottom: 1px solid var(--shadow);
+  min-height: 24px;
+}
+
+.fileName {
+  font-family: var(--font-chicago);
+  font-size: 11px;
+  color: var(--black);
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+.fileNameEditable {
+  cursor: pointer;
+}
+
+.fileNameEditable:hover {
+  text-decoration: underline;
+}
+
+.fileNameInput {
+  font-family: var(--font-chicago);
+  font-size: 11px;
+  padding: 1px 4px;
+  border: 1px solid var(--black);
+  background: var(--white);
+  outline: none;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+.toolbarRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.languageBadge {
+  font-family: var(--font-geneva);
+  font-size: 9px;
+  padding: 1px 6px;
+  background: var(--highlight);
+  border: 1px solid var(--shadow);
+  color: var(--black);
+  text-transform: uppercase;
+}
+
+.readOnly {
+  font-family: var(--font-geneva);
+  font-size: 9px;
+  color: var(--shadow);
+  font-style: italic;
+}
+
+/* ============================================
+   CODE CONTENT
+   ============================================ */
+
+.content {
+  flex: 1;
+  display: flex;
+  overflow: auto;
+  background: #f5f5f5;
+}
+
+/* Line numbers column */
+.lineNumbers {
+  flex-shrink: 0;
+  padding: 8px 0;
+  background: var(--platinum);
+  border-right: 1px solid var(--shadow);
+  user-select: none;
+}
+
+.lineNumber {
+  font-family: var(--font-monaco);
+  font-size: 10px;
+  color: var(--shadow);
+  text-align: right;
+  padding: 0 8px;
+  min-width: 32px;
+  height: 14px;
+  line-height: 14px;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+/* Code area */
+.codeContent {
+  flex: 1;
+  margin: 0;
+  padding: 8px 12px;
+  font-family: var(--font-monaco);
+  font-size: 10px;
+  line-height: 14px;
+  color: var(--black);
+  white-space: pre;
+  overflow-x: auto;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+/* Syntax highlighting colors */
+.codeContent :global(.keyword) {
+  color: #0000ff;
+  font-weight: bold;
+}
+
+.codeContent :global(.builtin) {
+  color: #008080;
+}
+
+.codeContent :global(.string) {
+  color: #008000;
+}
+
+.codeContent :global(.comment) {
+  color: #808080;
+  font-style: italic;
+}
+
+.codeContent :global(.number) {
+  color: #ff6600;
+}
+
+.codeContent :global(.function) {
+  color: #660066;
+}
+
+.codeContent :global(.empty) {
+  color: var(--shadow);
+}
+
+/* ============================================
+   STATUS BAR
+   ============================================ */
+
+.statusBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  background: var(--platinum);
+  border-top: 1px solid var(--shadow);
+  min-height: 24px;
+}
+
+.statusLeft {
+  display: flex;
+  gap: 12px;
+}
+
+.lineCount,
+.charCount {
+  font-family: var(--font-geneva);
+  font-size: 9px;
+  color: var(--shadow);
+}
+
+.downloadButton {
+  font-family: var(--font-chicago);
+  font-size: 10px;
+  padding: 2px 8px;
+  background: var(--white);
+  border: 1px solid var(--black);
+  cursor: pointer;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+.downloadButton:hover {
+  background: var(--highlight);
+}
+
+.downloadButton:active {
+  background: var(--black);
+  color: var(--white);
+}

@@ -90,6 +90,94 @@ export function ImageFileIcon({ className, size = 32 }: IconProps) {
 }
 
 /**
+ * Audio File Icon - Speaker/music note style
+ */
+export function AudioFileIcon({ className, size = 32 }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 32 32"
+      className={className}
+      style={{ imageRendering: 'pixelated' }}
+    >
+      {/* CD/Record disc */}
+      <circle cx="16" cy="16" r="12" fill="#2a2a2a" stroke="#000" strokeWidth="1" />
+      <circle cx="16" cy="16" r="10" fill="#3a3a3a" stroke="none" />
+      {/* Grooves */}
+      <circle cx="16" cy="16" r="8" fill="none" stroke="#222" strokeWidth="1" />
+      <circle cx="16" cy="16" r="6" fill="none" stroke="#222" strokeWidth="1" />
+      {/* Center hole */}
+      <circle cx="16" cy="16" r="3" fill="#808080" stroke="#000" strokeWidth="1" />
+      <circle cx="16" cy="16" r="1" fill="#000" />
+      {/* Shine */}
+      <path d="M10 10 Q12 8 14 10" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1" />
+    </svg>
+  );
+}
+
+/**
+ * Video File Icon - Film reel / clapperboard style
+ */
+export function VideoFileIcon({ className, size = 32 }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 32 32"
+      className={className}
+      style={{ imageRendering: 'pixelated' }}
+    >
+      {/* Film frame body */}
+      <rect x="4" y="6" width="24" height="20" fill="#2a2a2a" stroke="#000" strokeWidth="1" />
+      {/* Screen area */}
+      <rect x="8" y="10" width="16" height="12" fill="#4080ff" stroke="#000" strokeWidth="1" />
+      {/* Play triangle */}
+      <polygon points="14,13 14,19 19,16" fill="#fff" />
+      {/* Film sprocket holes - left */}
+      <rect x="5" y="8" width="2" height="2" fill="#808080" />
+      <rect x="5" y="12" width="2" height="2" fill="#808080" />
+      <rect x="5" y="16" width="2" height="2" fill="#808080" />
+      <rect x="5" y="20" width="2" height="2" fill="#808080" />
+      {/* Film sprocket holes - right */}
+      <rect x="25" y="8" width="2" height="2" fill="#808080" />
+      <rect x="25" y="12" width="2" height="2" fill="#808080" />
+      <rect x="25" y="16" width="2" height="2" fill="#808080" />
+      <rect x="25" y="20" width="2" height="2" fill="#808080" />
+    </svg>
+  );
+}
+
+/**
+ * PDF File Icon - Document with red PDF badge
+ */
+export function PDFFileIcon({ className, size = 32 }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 32 32"
+      className={className}
+      style={{ imageRendering: 'pixelated' }}
+    >
+      {/* Page */}
+      <path
+        d="M6 2 L6 30 L26 30 L26 8 L20 2 Z"
+        fill="#FFFFFF"
+        stroke="#000"
+        strokeWidth="1"
+      />
+      {/* Folded corner */}
+      <path d="M20 2 L20 8 L26 8" fill="#C0C0C0" stroke="#000" strokeWidth="1" />
+      {/* PDF badge background */}
+      <rect x="8" y="14" width="16" height="10" fill="#cc0000" stroke="#000" strokeWidth="1" />
+      {/* PDF text */}
+      <text x="10" y="22" fontFamily="sans-serif" fontSize="7" fontWeight="bold" fill="#fff">PDF</text>
+    </svg>
+  );
+}
+
+/**
  * Link/URL Icon
  */
 export function LinkIcon({ className, size = 32 }: IconProps) {

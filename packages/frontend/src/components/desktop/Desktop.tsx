@@ -8,8 +8,14 @@ import { useWindowStore } from '../../stores/windowStore';
 import { useDesktopStore } from '../../stores/desktopStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useDesktopSync } from '../../hooks/useDesktopSync';
-import { isApiConfigured } from '../../services/api';
-import type { DesktopItem } from '../../types';
+import { isApiConfigured, getWallpaperUrl } from '../../services/api';
+import { getTextFileContentType, type DesktopItem } from '../../types';
+import {
+  FOLDER_DRAG_START,
+  FOLDER_DRAG_MOVE,
+  FOLDER_DRAG_END,
+  type FolderDragEvent,
+} from '../window/FolderView';
 import styles from './Desktop.module.css';
 
 // Available wallpaper patterns
@@ -55,6 +61,8 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
     moveItem,
     getItemsByParent,
     removeItem,
+    moveToTrash,
+    getTrashCount,
     uploadFile,
     loadDesktop,
     loading,
@@ -102,7 +110,7 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
   // Trash state
   const [trashSelected, setTrashSelected] = useState(false);
   const [isDropTarget, setIsDropTarget] = useState(false);
-  const [trashedItemCount, setTrashedItemCount] = useState(0);
+  const trashedItemCount = getTrashCount();
 
   // Assistant icon state
   const [assistantSelected, setAssistantSelected] = useState(false);
@@ -116,8 +124,9 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
     targetItem: DesktopItem | null;
   } | null>(null);
 
-  // Folder drop target state (for drag-to-folder)
+  // Folder drop target state (for drag-to-folder icons and folder windows)
   const [folderDropTargetId, setFolderDropTargetId] = useState<string | null>(null);
+  const [folderWindowDropTargetId, setFolderWindowDropTargetId] = useState<string | null>(null);
 
   // Selection rectangle state (for marquee select)
   const [selectionRect, setSelectionRect] = useState<{
@@ -128,8 +137,17 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
   } | null>(null);
   const isSelectingRef = useRef(false);
 
-  // Get root-level items (parentId === null)
-  const rootItems = getItemsByParent(null);
+  // Cross-component drag state (for items dragged from FolderView)
+  const [folderDragItem, setFolderDragItem] = useState<{
+    itemId: string;
+    sourceFolderId: string | null;
+  } | null>(null);
+  const folderDragPos = useRef<{ x: number; y: number } | null>(null);
+  // Track whether desktop surface is a valid drop target
+  const [isDesktopDropTarget, setIsDesktopDropTarget] = useState(false);
+
+  // Get root-level items (parentId === null), excluding trashed items
+  const rootItems = getItemsByParent(null).filter((item) => !item.isTrashed);
 
   // Check if position is occupied by another item
   const isPositionOccupied = useCallback(
@@ -173,6 +191,180 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
     [isPositionOccupied]
   );
 
+  // Listen for drag events from FolderView (cross-component drag)
+  useEffect(() => {
+    if (isVisitorMode) return;
+
+    const handleFolderDragStart = (e: Event) => {
+      const event = e as CustomEvent<FolderDragEvent>;
+      setFolderDragItem({
+        itemId: event.detail.itemId,
+        sourceFolderId: event.detail.sourceFolderId,
+      });
+      folderDragPos.current = { x: event.detail.clientX, y: event.detail.clientY };
+    };
+
+    const handleFolderDragMove = (e: Event) => {
+      const event = e as CustomEvent<FolderDragEvent>;
+      folderDragPos.current = { x: event.detail.clientX, y: event.detail.clientY };
+
+      // Check if cursor is over the desktop surface (not over windows)
+      const desktopEl = document.querySelector('[data-desktop]');
+      if (desktopEl) {
+        const desktopRect = desktopEl.getBoundingClientRect();
+        const isOverDesktop =
+          event.detail.clientX >= desktopRect.left &&
+          event.detail.clientX <= desktopRect.right &&
+          event.detail.clientY >= desktopRect.top &&
+          event.detail.clientY <= desktopRect.bottom;
+
+        // Check if we're over a window (which would block the desktop)
+        const elements = document.elementsFromPoint(event.detail.clientX, event.detail.clientY);
+        let isOverWindow = false;
+        let overFolderWindowId: string | null = null;
+        for (const el of elements) {
+          const windowEl = (el as HTMLElement).closest('[data-window]');
+          const folderWindowEl = (el as HTMLElement).closest('[data-folder-window-id]');
+          if (folderWindowEl) {
+            overFolderWindowId = folderWindowEl.getAttribute('data-folder-window-id');
+            // Don't count being over the source folder as "over a window"
+            if (overFolderWindowId !== event.detail.sourceFolderId) {
+              isOverWindow = true;
+            }
+            break;
+          } else if (windowEl) {
+            isOverWindow = true;
+            break;
+          }
+        }
+
+        // Check if over trash
+        const trashRect = document.querySelector('[data-trash]')?.getBoundingClientRect();
+        let isOverTrash = false;
+        if (trashRect) {
+          isOverTrash =
+            event.detail.clientX >= trashRect.left &&
+            event.detail.clientX <= trashRect.right &&
+            event.detail.clientY >= trashRect.top &&
+            event.detail.clientY <= trashRect.bottom;
+        }
+
+        // Update drop target indicators
+        setIsDesktopDropTarget(isOverDesktop && !isOverWindow && !isOverTrash);
+        setIsDropTarget(isOverTrash);
+
+        // Check for folder window drop targets (different from source folder)
+        if (overFolderWindowId && overFolderWindowId !== event.detail.sourceFolderId) {
+          setFolderWindowDropTargetId(overFolderWindowId);
+        } else {
+          setFolderWindowDropTargetId(null);
+        }
+      }
+    };
+
+    const handleFolderDragEnd = (e: Event) => {
+      const event = e as CustomEvent<FolderDragEvent>;
+      const { updateItem, moveToTrash: storeMovToTrash } = useDesktopStore.getState();
+      const currentFolderDragItem = folderDragItem;
+      const currentFolderWindowDropTargetId = folderWindowDropTargetId;
+
+      if (currentFolderDragItem && currentFolderDragItem.itemId) {
+        // Check if dropped on trash
+        const trashRect = document.querySelector('[data-trash]')?.getBoundingClientRect();
+        if (trashRect) {
+          const isOverTrash =
+            event.detail.clientX >= trashRect.left &&
+            event.detail.clientX <= trashRect.right &&
+            event.detail.clientY >= trashRect.top &&
+            event.detail.clientY <= trashRect.bottom;
+          if (isOverTrash) {
+            storeMovToTrash([currentFolderDragItem.itemId]);
+            setFolderDragItem(null);
+            setIsDesktopDropTarget(false);
+            setIsDropTarget(false);
+            setFolderWindowDropTargetId(null);
+            return;
+          }
+        }
+
+        // Check if dropped on a different folder window
+        if (currentFolderWindowDropTargetId && currentFolderWindowDropTargetId !== currentFolderDragItem.sourceFolderId) {
+          updateItem(currentFolderDragItem.itemId, {
+            parentId: currentFolderWindowDropTargetId,
+            position: { x: 0, y: 0 },
+          });
+          setFolderDragItem(null);
+          setIsDesktopDropTarget(false);
+          setIsDropTarget(false);
+          setFolderWindowDropTargetId(null);
+          return;
+        }
+
+        // Check if dropped on desktop surface
+        const desktopEl = document.querySelector('[data-desktop]');
+        if (desktopEl) {
+          const desktopRect = desktopEl.getBoundingClientRect();
+          const isOverDesktop =
+            event.detail.clientX >= desktopRect.left &&
+            event.detail.clientX <= desktopRect.right &&
+            event.detail.clientY >= desktopRect.top &&
+            event.detail.clientY <= desktopRect.bottom;
+
+          // Check if we're over a window
+          const elements = document.elementsFromPoint(event.detail.clientX, event.detail.clientY);
+          let isOverWindow = false;
+          for (const el of elements) {
+            const windowEl = (el as HTMLElement).closest('[data-window]');
+            const folderWindowEl = (el as HTMLElement).closest('[data-folder-window-id]');
+            // Being over the source folder counts as being over desktop for drop purposes
+            if (folderWindowEl) {
+              const folderId = folderWindowEl.getAttribute('data-folder-window-id');
+              if (folderId !== currentFolderDragItem.sourceFolderId) {
+                isOverWindow = true;
+                break;
+              }
+            } else if (windowEl) {
+              isOverWindow = true;
+              break;
+            }
+          }
+
+          if (isOverDesktop && !isOverWindow) {
+            // Calculate grid position from drop location
+            const dropX = event.detail.clientX - desktopRect.left;
+            const dropY = event.detail.clientY - desktopRect.top;
+            const gridX = Math.floor(dropX / GRID_CELL_SIZE);
+            const gridY = Math.floor(dropY / GRID_CELL_SIZE);
+
+            // Find nearest available position
+            const finalPos = findNearestAvailablePosition(gridX, gridY);
+
+            // Move item to desktop (parentId = null)
+            updateItem(currentFolderDragItem.itemId, {
+              parentId: null,
+              position: finalPos,
+            });
+          }
+        }
+      }
+
+      setFolderDragItem(null);
+      setIsDesktopDropTarget(false);
+      setIsDropTarget(false);
+      setFolderWindowDropTargetId(null);
+    };
+
+    window.addEventListener(FOLDER_DRAG_START, handleFolderDragStart);
+    window.addEventListener(FOLDER_DRAG_MOVE, handleFolderDragMove);
+    window.addEventListener(FOLDER_DRAG_END, handleFolderDragEnd);
+
+    return () => {
+      window.removeEventListener(FOLDER_DRAG_START, handleFolderDragStart);
+      window.removeEventListener(FOLDER_DRAG_MOVE, handleFolderDragMove);
+      window.removeEventListener(FOLDER_DRAG_END, handleFolderDragEnd);
+    };
+  }, [isVisitorMode, folderDragItem, folderWindowDropTargetId, findNearestAvailablePosition]);
+
   // Click on empty desktop area - deselect all
   const handleDesktopClick = useCallback(
     (e: React.MouseEvent) => {
@@ -211,6 +403,8 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
           contentId: item.id,
         });
       } else if (item.type === 'text') {
+        // Determine viewer type based on file extension
+        const contentType = getTextFileContentType(item.name);
         openWindow({
           id: `text-${item.id}`,
           title: item.name,
@@ -218,7 +412,7 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
           size: { width: 400, height: 300 },
           minimized: false,
           maximized: false,
-          contentType: 'text',
+          contentType,
           contentId: item.id,
         });
       } else if (item.type === 'image') {
@@ -230,6 +424,39 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
           minimized: false,
           maximized: false,
           contentType: 'image',
+          contentId: item.id,
+        });
+      } else if (item.type === 'audio') {
+        openWindow({
+          id: `audio-${item.id}`,
+          title: item.name,
+          position: { x: 140 + Math.random() * 100, y: 100 + Math.random() * 100 },
+          size: { width: 320, height: 240 },
+          minimized: false,
+          maximized: false,
+          contentType: 'audio',
+          contentId: item.id,
+        });
+      } else if (item.type === 'video') {
+        openWindow({
+          id: `video-${item.id}`,
+          title: item.name,
+          position: { x: 100 + Math.random() * 100, y: 80 + Math.random() * 100 },
+          size: { width: 480, height: 360 },
+          minimized: false,
+          maximized: false,
+          contentType: 'video',
+          contentId: item.id,
+        });
+      } else if (item.type === 'pdf') {
+        openWindow({
+          id: `pdf-${item.id}`,
+          title: item.name,
+          position: { x: 80 + Math.random() * 100, y: 40 + Math.random() * 80 },
+          size: { width: 550, height: 700 },
+          minimized: false,
+          maximized: false,
+          contentType: 'pdf',
           contentId: item.id,
         });
       } else if (item.type === 'link' && item.url) {
@@ -350,6 +577,28 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
         }
         setFolderDropTargetId(foundFolderTarget);
 
+        // Check if over an open folder window (for drag-into-window)
+        let foundFolderWindowTarget: string | null = null;
+        const elements = document.elementsFromPoint(clientX, clientY);
+        for (const el of elements) {
+          const folderWindowEl = (el as HTMLElement).closest('[data-folder-window-id]');
+          if (folderWindowEl) {
+            const windowFolderId = folderWindowEl.getAttribute('data-folder-window-id');
+            // Don't allow dropping an item into itself or items that are part of the multi-select
+            if (windowFolderId && windowFolderId !== draggingId) {
+              // Also verify this isn't a folder we're dragging (prevent dropping folder into itself)
+              const draggedIds = draggedItemsStartPos.current
+                ? Array.from(draggedItemsStartPos.current.keys())
+                : [draggingId];
+              if (!draggedIds.includes(windowFolderId)) {
+                foundFolderWindowTarget = windowFolderId;
+                break;
+              }
+            }
+          }
+        }
+        setFolderWindowDropTargetId(foundFolderWindowTarget);
+
         rafId.current = null;
       });
     },
@@ -370,6 +619,7 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
         setDragOffset(null);
         setIsDropTarget(false);
         setFolderDropTargetId(null);
+        setFolderWindowDropTargetId(null);
         return;
       }
 
@@ -390,18 +640,18 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
 
         if (isOverTrash && hasDragged.current) {
           // Move all dragged items to trash
-          setTrashedItemCount((c) => c + draggedItemIds.length);
-          draggedItemIds.forEach((id) => removeItem(id));
+          moveToTrash(draggedItemIds);
           setDraggingId(null);
           setDragOffset(null);
           setIsDropTarget(false);
           setFolderDropTargetId(null);
+          setFolderWindowDropTargetId(null);
           draggedItemsStartPos.current = null;
           return;
         }
       }
 
-      // Check if dropped on a folder (move into folder)
+      // Check if dropped on a folder icon (move into folder)
       if (folderDropTargetId && hasDragged.current) {
         const { updateItem } = useDesktopStore.getState();
         // Move all dragged items into the folder
@@ -412,6 +662,23 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
         setDragOffset(null);
         setIsDropTarget(false);
         setFolderDropTargetId(null);
+        setFolderWindowDropTargetId(null);
+        draggedItemsStartPos.current = null;
+        return;
+      }
+
+      // Check if dropped on an open folder window (move into folder)
+      if (folderWindowDropTargetId && hasDragged.current) {
+        const { updateItem } = useDesktopStore.getState();
+        // Move all dragged items into the folder
+        draggedItemIds.forEach((id, index) => {
+          updateItem(id, { parentId: folderWindowDropTargetId, position: { x: index % 8, y: Math.floor(index / 8) } });
+        });
+        setDraggingId(null);
+        setDragOffset(null);
+        setIsDropTarget(false);
+        setFolderDropTargetId(null);
+        setFolderWindowDropTargetId(null);
         draggedItemsStartPos.current = null;
         return;
       }
@@ -427,8 +694,8 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
           draggedItemIds.forEach((id) => {
             const startPos = draggedItemsStartPos.current!.get(id);
             if (startPos) {
-              let newX = Math.max(0, startPos.x + deltaGridX);
-              let newY = Math.max(0, startPos.y + deltaGridY);
+              const newX = Math.max(0, startPos.x + deltaGridX);
+              const newY = Math.max(0, startPos.y + deltaGridY);
               // Note: We don't check for overlaps between selected items themselves
               moveItem(id, { x: newX, y: newY });
             }
@@ -448,9 +715,10 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
       setDragOffset(null);
       setIsDropTarget(false);
       setFolderDropTargetId(null);
+      setFolderWindowDropTargetId(null);
       draggedItemsStartPos.current = null;
     },
-    [draggingId, dragOffset, moveItem, removeItem, findNearestAvailablePosition, folderDropTargetId]
+    [draggingId, dragOffset, moveItem, moveToTrash, findNearestAvailablePosition, folderDropTargetId, folderWindowDropTargetId]
   );
 
   // Trash handlers
@@ -461,16 +729,15 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
   }, [deselectAll]);
 
   const handleTrashDoubleClick = useCallback(() => {
-    // Open trash window (shows trashed items)
+    // Open trash window (shows trashed items with restore options)
     openWindow({
       id: 'trash-window',
       title: 'Trash',
       position: { x: 200, y: 150 },
-      size: { width: 300, height: 250 },
+      size: { width: 350, height: 300 },
       minimized: false,
       maximized: false,
-      contentType: 'folder',
-      contentId: 'trash',
+      contentType: 'trash',
     });
   }, [openWindow]);
 
@@ -744,9 +1011,7 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
       // Handle Delete/Backspace to trash selected items
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedArray.length > 0) {
         e.preventDefault();
-        selectedArray.forEach((id) => {
-          removeItem(id);
-        });
+        moveToTrash(selectedArray);
         deselectAll();
         return;
       }
@@ -797,7 +1062,7 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [selectedIds, rootItems, selectItem, deselectAll, handleIconDoubleClick, removeItem, windows, focusWindow]);
+  }, [selectedIds, rootItems, selectItem, deselectAll, handleIconDoubleClick, moveToTrash, removeItem, windows, focusWindow]);
 
   // Right-click on desktop (empty area)
   const handleDesktopContextMenu = useCallback(
@@ -894,7 +1159,12 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
           label: 'Move to Trash',
           shortcut: '⌘⌫',
           action: () => {
-            removeItem(item.id);
+            // Move all selected items to trash, not just the right-clicked one
+            const idsToTrash = selectedIds.size > 0 && selectedIds.has(item.id)
+              ? Array.from(selectedIds)
+              : [item.id];
+            moveToTrash(idsToTrash);
+            deselectAll();
           },
         },
       ];
@@ -981,7 +1251,7 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
         },
       ];
     }
-  }, [contextMenu, handleIconDoubleClick, openWindow, removeItem, findNearestAvailablePosition, cleanUp, selectAll]);
+  }, [contextMenu, deselectAll, handleIconDoubleClick, openWindow, moveToTrash, removeItem, selectedIds, findNearestAvailablePosition, cleanUp, selectAll]);
 
   return (
     <>
@@ -993,7 +1263,13 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
 
       <div
         data-desktop
-        className={`${styles.desktop} ${isFileDragOver ? styles.dragOver : ''} wallpaper-${profile?.wallpaper || 'default'}`}
+        className={`${styles.desktop} ${isFileDragOver ? styles.dragOver : ''} ${isDesktopDropTarget ? styles.desktopDropTarget : ''} ${profile?.wallpaper?.startsWith('custom:') ? '' : `wallpaper-${profile?.wallpaper || 'default'}`}`}
+        style={profile?.wallpaper?.startsWith('custom:') ? {
+          backgroundImage: `url(${getWallpaperUrl(profile.wallpaper)})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+        } : undefined}
         onClick={handleDesktopClick}
         onContextMenu={handleDesktopContextMenu}
         onPointerDown={handleSelectionStart}
@@ -1047,7 +1323,7 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
       )}
 
         {/* Window Manager renders all open windows */}
-        <WindowManager />
+        <WindowManager folderWindowDropTargetId={folderWindowDropTargetId} />
 
         {/* Upload Progress indicator */}
         {!isVisitorMode && <UploadProgress />}

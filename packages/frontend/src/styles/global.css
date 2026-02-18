@@ -161,6 +161,13 @@ button:active, .button:active {
    SCROLLBAR STYLES (RETRO MAC)
    ============================================ */
 
+/* Firefox scrollbar styling */
+* {
+  scrollbar-width: auto;
+  scrollbar-color: var(--platinum) var(--shadow);
+}
+
+/* Webkit scrollbar styling (Chrome, Safari, Edge) */
 ::-webkit-scrollbar {
   width: 16px;
   height: 16px;

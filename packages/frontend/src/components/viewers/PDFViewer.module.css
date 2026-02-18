@@ -1,0 +1,154 @@
+/* PDFViewer - Classic Mac OS-style PDF document viewer */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background-color: var(--platinum);
+  overflow: hidden;
+}
+
+/* Toolbar */
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
+  background-color: var(--platinum);
+  border-bottom: 1px solid var(--shadow);
+  min-height: 28px;
+  flex-shrink: 0;
+}
+
+.toolbarLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbarRight {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.fileName {
+  font-family: 'ChiKareGo2', 'Chicago', 'Geneva', sans-serif;
+  font-size: 11px;
+  color: var(--black);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.toolbarButton {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  font-family: 'ChiKareGo2', 'Chicago', 'Geneva', sans-serif;
+  font-size: 10px;
+  color: var(--black);
+  background-color: var(--platinum);
+  border: 1px solid var(--black);
+  border-radius: 0;
+  cursor: pointer;
+  /* Classic Mac button bevel */
+  box-shadow:
+    inset 1px 1px 0 var(--highlight),
+    inset -1px -1px 0 var(--shadow);
+}
+
+.toolbarButton:hover {
+  background-color: var(--highlight);
+}
+
+.toolbarButton:active {
+  box-shadow:
+    inset -1px -1px 0 var(--highlight),
+    inset 1px 1px 0 var(--shadow);
+}
+
+.toolbarButton svg {
+  flex-shrink: 0;
+}
+
+/* PDF Display */
+.pdfWrapper {
+  flex: 1;
+  position: relative;
+  background-color: #525659;
+  overflow: hidden;
+}
+
+.pdfObject,
+.pdfFrame {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.loadingOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(192, 192, 192, 0.9);
+  font-family: 'ChiKareGo2', 'Chicago', 'Geneva', sans-serif;
+  font-size: 12px;
+  color: var(--black);
+}
+
+/* Demo mode */
+.demoMode {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  background-color: var(--platinum);
+}
+
+.demoIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.demoText {
+  font-family: 'ChiKareGo2', 'Chicago', 'Geneva', sans-serif;
+  font-size: 12px;
+  color: var(--black);
+  text-align: center;
+  margin: 0;
+}
+
+.demoSubtext {
+  font-family: 'Geneva', sans-serif;
+  font-size: 10px;
+  color: var(--shadow);
+  text-align: center;
+  margin: 0;
+}
+
+/* Error state */
+.error {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'ChiKareGo2', 'Chicago', 'Geneva', sans-serif;
+  font-size: 12px;
+  color: var(--black);
+  background-color: var(--platinum);
+  padding: 24px;
+  text-align: center;
+}

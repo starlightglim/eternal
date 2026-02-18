@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useDesktopStore } from '../../stores/desktopStore';
 import { useWindowStore } from '../../stores/windowStore';
 import { isApiConfigured, getFileUrl } from '../../services/api';
+import { ContextMenu, type ContextMenuItem } from '../ui';
 import styles from './ImageViewer.module.css';
 
 interface ImageViewerProps {
@@ -34,6 +35,7 @@ export function ImageViewer({
   const [error, setError] = useState<string | null>(null);
   const [fileName, setFileName] = useState(name);
   const [isEditingName, setIsEditingName] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const { updateItem } = useDesktopStore();
   const { updateWindowTitle } = useWindowStore();
@@ -103,6 +105,31 @@ export function ImageViewer({
     }
   }, [imageUrl, fileName]);
 
+  // Context menu handlers
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  }, []);
+
+  const closeContextMenu = useCallback(() => {
+    setContextMenu(null);
+  }, []);
+
+  const getContextMenuItems = useCallback((): ContextMenuItem[] => {
+    const items: ContextMenuItem[] = [];
+
+    if (imageUrl) {
+      items.push({
+        id: 'download',
+        label: 'Download',
+        shortcut: '⌘S',
+        action: handleDownload,
+      });
+    }
+
+    return items;
+  }, [imageUrl, handleDownload]);
+
   useEffect(() => {
     function loadImage() {
       setLoading(true);
@@ -132,7 +159,7 @@ export function ImageViewer({
   }, [r2Key]);
 
   return (
-    <div className={styles.imageViewer}>
+    <div className={styles.imageViewer} onContextMenu={handleContextMenu}>
       {/* Pixel-art frame border */}
       <div className={styles.frame}>
         <div className={styles.frameInner}>
@@ -212,17 +239,17 @@ export function ImageViewer({
         )}
         <div className={styles.infoBarRight}>
           {mimeType && <span className={styles.fileType}>{mimeType}</span>}
-          {imageUrl && (
-            <button
-              className={styles.downloadButton}
-              onClick={handleDownload}
-              title="Download"
-            >
-              Download
-            </button>
-          )}
         </div>
       </div>
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <ContextMenu
+          items={getContextMenuItems()}
+          position={contextMenu}
+          onClose={closeContextMenu}
+        />
+      )}
     </div>
   );
 }

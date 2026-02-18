@@ -1,0 +1,228 @@
+/* TrashView - Classic Mac OS trash contents view */
+
+.trashView {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--white);
+}
+
+/* ============================================
+   TOOLBAR
+   ============================================ */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background: var(--platinum);
+  border-bottom: 1px solid var(--shadow);
+  flex-shrink: 0;
+}
+
+.toolbarButton {
+  font-family: var(--font-geneva);
+  font-size: 10px;
+  padding: 3px 10px;
+  background: var(--platinum);
+  border: 1px solid var(--shadow);
+  border-radius: 3px;
+  cursor: pointer;
+  /* Classic Mac button bevel */
+  box-shadow:
+    inset 1px 1px 0 var(--highlight),
+    inset -1px -1px 0 var(--shadow);
+  /* Pixel-perfect text */
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+.toolbarButton:hover:not(:disabled) {
+  background: var(--highlight);
+}
+
+.toolbarButton:active:not(:disabled) {
+  background: var(--shadow);
+  color: var(--white);
+  box-shadow:
+    inset -1px -1px 0 var(--highlight),
+    inset 1px 1px 0 var(--shadow);
+}
+
+.toolbarButton:disabled {
+  color: var(--shadow);
+  cursor: default;
+}
+
+.emptyButton {
+  color: #800000;
+}
+
+.emptyButton:hover:not(:disabled) {
+  background: #ffdddd;
+}
+
+.toolbarSpacer {
+  flex: 1;
+}
+
+/* ============================================
+   EMPTY STATE
+   ============================================ */
+
+.emptyTrash {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 12px;
+  padding: 24px;
+}
+
+.emptyTrash p {
+  font-family: var(--font-geneva);
+  font-size: 12px;
+  color: var(--shadow);
+  margin: 0;
+  /* Pixel-perfect text */
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+.emptyIcon {
+  opacity: 0.5;
+}
+
+/* ============================================
+   ITEM LIST
+   ============================================ */
+
+.itemList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px;
+  min-height: 0;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.item:hover {
+  background: var(--highlight);
+}
+
+.item.selected {
+  background: var(--selection);
+}
+
+.item.selected .itemName,
+.item.selected .itemMeta {
+  color: var(--selection-text);
+}
+
+/* ============================================
+   ITEM ICON
+   ============================================ */
+
+.itemIcon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  /* Pixel-perfect icons */
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.itemIcon svg {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* ============================================
+   ITEM INFO
+   ============================================ */
+
+.itemInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.itemName {
+  font-family: var(--font-geneva);
+  font-size: 11px;
+  color: var(--black);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  /* Pixel-perfect text */
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+.itemMeta {
+  font-family: var(--font-geneva);
+  font-size: 9px;
+  color: var(--shadow);
+  /* Pixel-perfect text */
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+/* ============================================
+   STATUS BAR
+   ============================================ */
+
+.statusBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 8px;
+  background: var(--platinum);
+  border-top: 1px solid var(--shadow);
+  font-family: var(--font-geneva);
+  font-size: 10px;
+  color: var(--shadow);
+  flex-shrink: 0;
+  /* Pixel-perfect text */
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+.hint {
+  font-style: italic;
+}
+
+/* ============================================
+   SCROLLBAR STYLING
+   ============================================ */
+
+.itemList::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.itemList::-webkit-scrollbar-track {
+  background: var(--platinum);
+}
+
+.itemList::-webkit-scrollbar-thumb {
+  background: var(--platinum);
+  border: 1px solid var(--black);
+  border-top-color: var(--highlight);
+  border-left-color: var(--highlight);
+  border-bottom-color: var(--shadow);
+  border-right-color: var(--shadow);
+}

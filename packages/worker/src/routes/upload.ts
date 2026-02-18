@@ -10,8 +10,9 @@
 import type { Env } from '../index';
 import type { AuthContext } from '../middleware/auth';
 import type { DesktopItem } from '../types';
+import { sanitizeFilename, sanitizeText } from '../utils/sanitize';
 
-// Allowed MIME types
+// Allowed MIME types for regular file uploads
 const ALLOWED_TYPES: Record<string, string> = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
@@ -21,8 +22,17 @@ const ALLOWED_TYPES: Record<string, string> = {
   'text/markdown': 'md',
 };
 
-// Max file size: 10MB
+// Allowed MIME types for wallpaper uploads (images only)
+const WALLPAPER_ALLOWED_TYPES: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+};
+
+// Max file size: 10MB for regular files
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
+// Max wallpaper size: 2MB
+const MAX_WALLPAPER_SIZE = 2 * 1024 * 1024;
 
 /**
  * Handle file upload
@@ -73,6 +83,37 @@ export async function handleUpload(
       );
     }
 
+    // Check storage quota
+    const doId = env.USER_DESKTOP.idFromName(auth.uid);
+    const stub = env.USER_DESKTOP.get(doId);
+    const quotaCheckResponse = await stub.fetch(
+      new Request('http://internal/quota/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileSize: fileBlob.size }),
+      })
+    );
+
+    if (!quotaCheckResponse.ok) {
+      return Response.json(
+        { error: 'Failed to check storage quota' },
+        { status: 500 }
+      );
+    }
+
+    const quotaCheck = await quotaCheckResponse.json() as { allowed: boolean; quota: { used: number; limit: number; remaining: number } };
+    if (!quotaCheck.allowed) {
+      const usedMB = (quotaCheck.quota.used / 1024 / 1024).toFixed(1);
+      const limitMB = (quotaCheck.quota.limit / 1024 / 1024).toFixed(0);
+      return Response.json(
+        {
+          error: `Storage quota exceeded. You're using ${usedMB}MB of ${limitMB}MB. Delete some files or empty your trash to free up space.`,
+          quota: quotaCheck.quota,
+        },
+        { status: 413 } // 413 Payload Too Large
+      );
+    }
+
     // Generate item ID and R2 key
     const itemId = crypto.randomUUID();
     const originalName = fileBlob.name || `file.${ALLOWED_TYPES[mimeType]}`;
@@ -92,8 +133,9 @@ export async function handleUpload(
       },
     });
 
-    // Parse optional metadata from form
-    const customName = formData.get('name') as string | null;
+    // Parse optional metadata from form (sanitize user input)
+    const customNameRaw = formData.get('name') as string | null;
+    const customName = customNameRaw ? sanitizeText(customNameRaw, 255) : null;
     const parentId = formData.get('parentId') as string | null;
     const positionStr = formData.get('position') as string | null;
     const isPublicStr = formData.get('isPublic') as string | null;
@@ -110,10 +152,7 @@ export async function handleUpload(
     // Determine item type based on MIME type
     const itemType = mimeType.startsWith('image/') ? 'image' : 'text';
 
-    // Create desktop item in Durable Object
-    const doId = env.USER_DESKTOP.idFromName(auth.uid);
-    const stub = env.USER_DESKTOP.get(doId);
-
+    // Create desktop item in Durable Object (reuse doId and stub from quota check)
     const itemData = {
       id: itemId, // Use pre-generated ID to match R2 key
       type: itemType,
@@ -258,16 +297,194 @@ async function checkItemIsPublic(
   return item?.isPublic ?? false;
 }
 
+// Note: sanitizeFilename is now imported from utils/sanitize.ts
+// which provides a more comprehensive implementation with:
+// - Path traversal prevention (removes .., /, \)
+// - Control character removal
+// - Problematic character replacement (<>:"|?*)
+// - Proper extension handling
+// - Length limiting
+
 /**
- * Sanitize filename to remove potentially problematic characters
+ * Handle custom wallpaper upload
+ * POST /api/wallpaper
+ *
+ * Expects multipart/form-data with:
+ * - file: The wallpaper image file (jpg/png, max 2MB)
  */
-function sanitizeFilename(name: string): string {
-  // Remove path separators and null bytes
-  let sanitized = name.replace(/[/\\:\0]/g, '_');
-  // Limit length
-  if (sanitized.length > 255) {
-    const ext = sanitized.split('.').pop() || '';
-    sanitized = sanitized.slice(0, 250 - ext.length) + '.' + ext;
+export async function handleWallpaperUpload(
+  request: Request,
+  env: Env,
+  auth: AuthContext
+): Promise<Response> {
+  try {
+    // Parse multipart form data
+    const formData = await request.formData();
+    const file = formData.get('file');
+
+    if (!file || typeof file === 'string') {
+      return Response.json(
+        { error: 'No file provided' },
+        { status: 400 }
+      );
+    }
+
+    const fileBlob = file as File;
+
+    // Validate file type (only jpg/png for wallpapers)
+    const mimeType = fileBlob.type;
+    if (!WALLPAPER_ALLOWED_TYPES[mimeType]) {
+      return Response.json(
+        { error: `Invalid file type: ${mimeType}. Only JPG and PNG allowed for wallpapers.` },
+        { status: 400 }
+      );
+    }
+
+    // Validate file size (max 2MB for wallpapers)
+    if (fileBlob.size > MAX_WALLPAPER_SIZE) {
+      return Response.json(
+        { error: `File too large. Maximum wallpaper size: ${MAX_WALLPAPER_SIZE / 1024 / 1024}MB` },
+        { status: 400 }
+      );
+    }
+
+    // Check storage quota (wallpapers count against quota too)
+    const doId = env.USER_DESKTOP.idFromName(auth.uid);
+    const stub = env.USER_DESKTOP.get(doId);
+    const quotaCheckResponse = await stub.fetch(
+      new Request('http://internal/quota/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileSize: fileBlob.size }),
+      })
+    );
+
+    if (!quotaCheckResponse.ok) {
+      return Response.json(
+        { error: 'Failed to check storage quota' },
+        { status: 500 }
+      );
+    }
+
+    const quotaCheck = await quotaCheckResponse.json() as { allowed: boolean; quota: { used: number; limit: number; remaining: number } };
+    if (!quotaCheck.allowed) {
+      const usedMB = (quotaCheck.quota.used / 1024 / 1024).toFixed(1);
+      const limitMB = (quotaCheck.quota.limit / 1024 / 1024).toFixed(0);
+      return Response.json(
+        {
+          error: `Storage quota exceeded. You're using ${usedMB}MB of ${limitMB}MB. Delete some files to free up space.`,
+          quota: quotaCheck.quota,
+        },
+        { status: 413 }
+      );
+    }
+
+    // Generate unique wallpaper ID
+    const wallpaperId = crypto.randomUUID();
+    const ext = WALLPAPER_ALLOWED_TYPES[mimeType];
+    const filename = `wallpaper.${ext}`;
+    const r2Key = `${auth.uid}/wallpaper/${wallpaperId}/${filename}`;
+
+    // Upload to R2
+    const fileBuffer = await fileBlob.arrayBuffer();
+    await env.ETERNALOS_FILES.put(r2Key, fileBuffer, {
+      httpMetadata: {
+        contentType: mimeType,
+      },
+      customMetadata: {
+        uploadedBy: auth.uid,
+        wallpaperId,
+        type: 'custom-wallpaper',
+      },
+    });
+
+    // Update the user's profile with the new wallpaper (reuse doId and stub from quota check)
+    // Store just the path parts needed for URL construction (uid/wallpaperId/filename)
+    // The "wallpaper" segment is already in the API path, so we don't include it here
+    const wallpaperValue = `custom:${auth.uid}/${wallpaperId}/${filename}`;
+
+    const profileResponse = await stub.fetch(
+      new Request('http://internal/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallpaper: wallpaperValue }),
+      })
+    );
+
+    if (!profileResponse.ok) {
+      // Cleanup R2 if profile update fails
+      await env.ETERNALOS_FILES.delete(r2Key);
+      return Response.json(
+        { error: 'Failed to update profile with new wallpaper' },
+        { status: 500 }
+      );
+    }
+
+    const updatedProfile = await profileResponse.json();
+
+    return Response.json({
+      success: true,
+      wallpaper: wallpaperValue,
+      r2Key,
+      profile: updatedProfile,
+    });
+
+  } catch (error) {
+    console.error('Wallpaper upload error:', error);
+    return Response.json(
+      { error: error instanceof Error ? error.message : 'Wallpaper upload failed' },
+      { status: 500 }
+    );
   }
-  return sanitized;
+}
+
+/**
+ * Serve wallpaper from R2
+ * GET /api/wallpaper/:uid/:wallpaperId/:filename
+ *
+ * Wallpapers are always public (accessible by visitors)
+ */
+export async function handleServeWallpaper(
+  request: Request,
+  env: Env,
+  uid: string,
+  wallpaperId: string,
+  filename: string
+): Promise<Response> {
+  try {
+    // Construct R2 key
+    const r2Key = `${uid}/wallpaper/${wallpaperId}/${filename}`;
+
+    // Fetch from R2
+    const object = await env.ETERNALOS_FILES.get(r2Key);
+
+    if (!object) {
+      return Response.json(
+        { error: 'Wallpaper not found' },
+        { status: 404 }
+      );
+    }
+
+    // Build response with proper headers
+    const headers = new Headers();
+    headers.set('Content-Type', object.httpMetadata?.contentType || 'image/jpeg');
+    headers.set('Content-Length', object.size.toString());
+    headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+    headers.set('ETag', object.httpEtag);
+
+    // Handle conditional requests
+    const ifNoneMatch = request.headers.get('If-None-Match');
+    if (ifNoneMatch === object.httpEtag) {
+      return new Response(null, { status: 304, headers });
+    }
+
+    return new Response(object.body, { headers });
+
+  } catch (error) {
+    console.error('Serve wallpaper error:', error);
+    return Response.json(
+      { error: 'Failed to serve wallpaper' },
+      { status: 500 }
+    );
+  }
 }

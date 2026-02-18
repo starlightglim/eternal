@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { WindowState } from '../types';
+import { useSoundStore } from './soundStore';
 
 interface WindowStore {
   windows: WindowState[];
@@ -46,9 +47,15 @@ export const useWindowStore = create<WindowStore>((set, get) => ({
       windows: [...windows, newWindow],
       nextZIndex: nextZIndex + 1,
     });
+
+    // Play window open sound
+    useSoundStore.getState().playSound('windowOpen');
   },
 
   closeWindow: (id) => {
+    // Play window close sound
+    useSoundStore.getState().playSound('windowClose');
+
     set((state) => ({
       windows: state.windows.filter((w) => w.id !== id),
     }));

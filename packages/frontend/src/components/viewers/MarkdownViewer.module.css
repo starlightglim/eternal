@@ -1,0 +1,257 @@
+/* MarkdownViewer - Classic Mac document viewer */
+
+.markdownViewer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--white);
+}
+
+/* ============================================
+   TOOLBAR
+   ============================================ */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  background: var(--platinum);
+  border-bottom: 1px solid var(--shadow);
+  min-height: 24px;
+}
+
+.fileName {
+  font-family: var(--font-chicago);
+  font-size: 11px;
+  color: var(--black);
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+.fileNameEditable {
+  cursor: pointer;
+}
+
+.fileNameEditable:hover {
+  text-decoration: underline;
+}
+
+.fileNameInput {
+  font-family: var(--font-chicago);
+  font-size: 11px;
+  padding: 1px 4px;
+  border: 1px solid var(--black);
+  background: var(--white);
+  outline: none;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+.toolbarRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.viewToggle {
+  font-family: var(--font-chicago);
+  font-size: 10px;
+  padding: 2px 8px;
+  background: var(--white);
+  border: 1px solid var(--black);
+  cursor: pointer;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+.viewToggle:hover {
+  background: var(--highlight);
+}
+
+.viewToggle.active {
+  background: var(--black);
+  color: var(--white);
+}
+
+.readOnly {
+  font-family: var(--font-geneva);
+  font-size: 9px;
+  color: var(--shadow);
+  font-style: italic;
+}
+
+/* ============================================
+   CONTENT AREA
+   ============================================ */
+
+.content {
+  flex: 1;
+  overflow: auto;
+  padding: 12px 16px;
+}
+
+/* Source view - monospace code */
+.sourceView {
+  margin: 0;
+  font-family: var(--font-monaco);
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--black);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+/* Rendered markdown view */
+.renderedView {
+  font-family: var(--font-geneva);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--black);
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+/* Markdown element styles */
+.renderedView h1 {
+  font-family: var(--font-chicago);
+  font-size: 18px;
+  font-weight: normal;
+  margin: 0 0 12px 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--shadow);
+}
+
+.renderedView h2 {
+  font-family: var(--font-chicago);
+  font-size: 16px;
+  font-weight: normal;
+  margin: 16px 0 8px 0;
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--highlight);
+}
+
+.renderedView h3 {
+  font-family: var(--font-chicago);
+  font-size: 14px;
+  font-weight: normal;
+  margin: 12px 0 6px 0;
+}
+
+.renderedView h4,
+.renderedView h5,
+.renderedView h6 {
+  font-family: var(--font-chicago);
+  font-size: 12px;
+  font-weight: normal;
+  margin: 10px 0 4px 0;
+}
+
+.renderedView p {
+  margin: 0 0 10px 0;
+}
+
+.renderedView ul,
+.renderedView ol {
+  margin: 0 0 10px 0;
+  padding-left: 20px;
+}
+
+.renderedView li {
+  margin: 2px 0;
+}
+
+.renderedView blockquote {
+  margin: 10px 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--shadow);
+  background: var(--highlight);
+  color: var(--shadow);
+  font-style: italic;
+}
+
+.renderedView hr {
+  border: none;
+  border-top: 1px solid var(--shadow);
+  margin: 16px 0;
+}
+
+.renderedView a {
+  color: var(--selection);
+  text-decoration: underline;
+}
+
+.renderedView a:hover {
+  color: var(--black);
+}
+
+.renderedView strong {
+  font-weight: bold;
+}
+
+.renderedView em {
+  font-style: italic;
+}
+
+/* Inline code */
+.renderedView :global(.inlineCode) {
+  font-family: var(--font-monaco);
+  font-size: 11px;
+  background: var(--highlight);
+  padding: 1px 4px;
+  border: 1px solid var(--shadow);
+}
+
+/* Code blocks */
+.renderedView :global(.codeBlock) {
+  font-family: var(--font-monaco);
+  font-size: 11px;
+  background: var(--platinum);
+  border: 1px solid var(--shadow);
+  padding: 8px 12px;
+  margin: 10px 0;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+/* ============================================
+   STATUS BAR
+   ============================================ */
+
+.statusBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  background: var(--platinum);
+  border-top: 1px solid var(--shadow);
+  min-height: 24px;
+}
+
+.charCount {
+  font-family: var(--font-geneva);
+  font-size: 9px;
+  color: var(--shadow);
+}
+
+.downloadButton {
+  font-family: var(--font-chicago);
+  font-size: 10px;
+  padding: 2px 8px;
+  background: var(--white);
+  border: 1px solid var(--black);
+  cursor: pointer;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+.downloadButton:hover {
+  background: var(--highlight);
+}
+
+.downloadButton:active {
+  background: var(--black);
+  color: var(--white);
+}
