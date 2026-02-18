@@ -181,6 +181,117 @@ export function MenuBar() {
     setActiveMenu(null);
   }, [openWindow]);
 
+  const handleOpen = useCallback(() => {
+    // Open each selected item
+    if (selectedIds.size === 0) return;
+
+    selectedIds.forEach((id) => {
+      const item = items.find((i) => i.id === id);
+      if (!item) return;
+
+      if (item.type === 'folder') {
+        openWindow({
+          id: `folder-${item.id}`,
+          title: item.name,
+          position: { x: 100 + Math.random() * 100, y: 100 + Math.random() * 100 },
+          size: { width: 400, height: 300 },
+          minimized: false,
+          maximized: false,
+          contentType: 'folder',
+          contentId: item.id,
+        });
+      } else if (item.type === 'text') {
+        openWindow({
+          id: `text-${item.id}`,
+          title: item.name,
+          position: { x: 150 + Math.random() * 100, y: 120 + Math.random() * 100 },
+          size: { width: 400, height: 300 },
+          minimized: false,
+          maximized: false,
+          contentType: 'text',
+          contentId: item.id,
+        });
+      } else if (item.type === 'image') {
+        openWindow({
+          id: `image-${item.id}`,
+          title: item.name,
+          position: { x: 120 + Math.random() * 100, y: 80 + Math.random() * 100 },
+          size: { width: 450, height: 350 },
+          minimized: false,
+          maximized: false,
+          contentType: 'image',
+          contentId: item.id,
+        });
+      } else if (item.type === 'audio') {
+        openWindow({
+          id: `audio-${item.id}`,
+          title: item.name,
+          position: { x: 140 + Math.random() * 100, y: 100 + Math.random() * 100 },
+          size: { width: 320, height: 240 },
+          minimized: false,
+          maximized: false,
+          contentType: 'audio',
+          contentId: item.id,
+        });
+      } else if (item.type === 'video') {
+        openWindow({
+          id: `video-${item.id}`,
+          title: item.name,
+          position: { x: 100 + Math.random() * 100, y: 80 + Math.random() * 100 },
+          size: { width: 480, height: 360 },
+          minimized: false,
+          maximized: false,
+          contentType: 'video',
+          contentId: item.id,
+        });
+      } else if (item.type === 'pdf') {
+        openWindow({
+          id: `pdf-${item.id}`,
+          title: item.name,
+          position: { x: 80 + Math.random() * 100, y: 40 + Math.random() * 80 },
+          size: { width: 550, height: 700 },
+          minimized: false,
+          maximized: false,
+          contentType: 'pdf',
+          contentId: item.id,
+        });
+      } else if (item.type === 'link') {
+        openWindow({
+          id: `link-${item.id}`,
+          title: item.name,
+          position: { x: 80 + Math.random() * 100, y: 60 + Math.random() * 80 },
+          size: { width: 640, height: 480 },
+          minimized: false,
+          maximized: false,
+          contentType: 'link',
+          contentId: item.id,
+        });
+      }
+    });
+    setActiveMenu(null);
+  }, [selectedIds, items, openWindow]);
+
+  const handleGetInfo = useCallback(() => {
+    if (selectedIds.size === 0) return;
+
+    // Open Get Info window for first selected item
+    const firstId = Array.from(selectedIds)[0];
+    const item = items.find((i) => i.id === firstId);
+    if (!item) return;
+
+    openWindow({
+      id: `info-${item.id}`,
+      title: `${item.name} Info`,
+      position: { x: 200, y: 150 },
+      size: { width: 280, height: 320 },
+      minimized: false,
+      maximized: false,
+      contentType: 'get-info',
+      contentId: item.id,
+    });
+    setActiveMenu(null);
+  }, [selectedIds, items, openWindow]);
+
   const handleSelectAll = useCallback(() => {
     // Select all items on the desktop (root level)
     selectAll(null);
@@ -314,9 +425,15 @@ export function MenuBar() {
       if (isMeta && e.key === 'n') {
         e.preventDefault();
         handleNewFolder();
+      } else if (isMeta && e.key === 'o') {
+        e.preventDefault();
+        handleOpen();
       } else if (isMeta && e.key === 'w') {
         e.preventDefault();
         handleCloseWindow();
+      } else if (isMeta && e.key === 'i') {
+        e.preventDefault();
+        handleGetInfo();
       } else if (isMeta && (e.key === 'Backspace' || e.key === 'Delete')) {
         e.preventDefault();
         handleTrashSelected();
@@ -343,7 +460,7 @@ export function MenuBar() {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [handleNewFolder, handleCloseWindow, handleTrashSelected, handleSelectAll, handleCut, handleCopy, handlePaste, handleDuplicate, handleFind]);
+  }, [handleNewFolder, handleOpen, handleCloseWindow, handleGetInfo, handleTrashSelected, handleSelectAll, handleCut, handleCopy, handlePaste, handleDuplicate, handleFind]);
 
   // ============================================
   // OTHER HANDLERS
@@ -377,15 +494,15 @@ export function MenuBar() {
     apple: [
       { label: 'About EternalOS...', action: handleAbout },
       { divider: true, label: '' },
-      { label: 'Preferences...', disabled: true },
+      { label: 'Preferences...', action: handleOpenPreferences },
     ],
     file: [
       { label: 'New Folder', shortcut: '⌘N', action: handleNewFolder },
       { divider: true, label: '' },
-      { label: 'Open', shortcut: '⌘O', disabled: true },
+      { label: 'Open', shortcut: '⌘O', action: handleOpen, disabled: selectedIds.size === 0 },
       { label: 'Close Window', shortcut: '⌘W', action: handleCloseWindow, disabled: windows.length === 0 },
       { divider: true, label: '' },
-      { label: 'Get Info', shortcut: '⌘I', disabled: selectedIds.size === 0 },
+      { label: 'Get Info', shortcut: '⌘I', action: handleGetInfo, disabled: selectedIds.size === 0 },
       { label: 'Find...', shortcut: '⌘F', action: handleFind },
       { divider: true, label: '' },
       { label: 'Export Desktop...', action: handleExportDesktop },
