@@ -4,9 +4,13 @@
  * Displays a pixelated thumbnail preview of media files (images, videos).
  * Uses the actual file content scaled down with pixelated rendering
  * for that authentic retro Mac aesthetic.
+ *
+ * Implements Intersection Observer-based lazy loading to prevent fetching
+ * full images for icons that are not visible in the viewport (e.g., icons
+ * in closed folders or scrolled off-screen).
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { getFileUrl } from '../../services/api';
 import styles from './ThumbnailIcon.module.css';
 
@@ -26,6 +30,10 @@ interface ThumbnailIconProps {
 /**
  * ThumbnailIcon displays a pixelated preview of an image file.
  * Falls back to loading state or error state gracefully.
+ *
+ * Uses Intersection Observer to defer image loading until the icon
+ * is visible in the viewport. This prevents unnecessary network requests
+ * for thumbnails that aren't yet visible to the user.
  */
 export function ThumbnailIcon({
   r2Key,
@@ -34,11 +42,52 @@ export function ThumbnailIcon({
   size = 32,
   isSelected = false,
 }: ThumbnailIconProps) {
-  const [loadState, setLoadState] = useState<'loading' | 'loaded' | 'error'>('loading');
+  // Track whether the icon is visible in the viewport
+  const [isVisible, setIsVisible] = useState(false);
+  // Track image load state: 'idle' (waiting for visibility), 'loading', 'loaded', 'error'
+  const [loadState, setLoadState] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Use thumbnail key if available, otherwise use full image
   const imageKey = thumbnailKey || r2Key;
   const imageUrl = getFileUrl(imageKey);
+
+  // Set up Intersection Observer to detect when icon enters viewport
+  useEffect(() => {
+    const element = containerRef.current;
+    if (!element) return;
+
+    // If IntersectionObserver is not available (old browsers), load immediately
+    if (typeof IntersectionObserver === 'undefined') {
+      setIsVisible(true);
+      setLoadState('loading');
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry.isIntersecting) {
+          // Icon is now visible - start loading the image
+          setIsVisible(true);
+          setLoadState('loading');
+          // Once visible, we don't need to observe anymore
+          observer.disconnect();
+        }
+      },
+      {
+        // Load when within 100px of viewport (slight preload for smoother UX)
+        rootMargin: '100px',
+        threshold: 0,
+      }
+    );
+
+    observer.observe(element);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
 
   const handleLoad = useCallback(() => {
     setLoadState('loaded');
@@ -48,13 +97,17 @@ export function ThumbnailIcon({
     setLoadState('error');
   }, []);
 
+  // Show loading state when idle (not yet visible) or actively loading
+  const showLoading = loadState === 'idle' || loadState === 'loading';
+
   return (
     <div
+      ref={containerRef}
       className={`${styles.thumbnailContainer} ${isSelected ? styles.selected : ''}`}
       style={{ width: size, height: size }}
     >
-      {/* Loading placeholder */}
-      {loadState === 'loading' && (
+      {/* Loading placeholder - shown until image loads or errors */}
+      {showLoading && (
         <div className={styles.placeholder}>
           <div className={styles.loadingDots}>
             <span />
@@ -76,16 +129,18 @@ export function ThumbnailIcon({
         </div>
       )}
 
-      {/* Actual thumbnail image */}
-      <img
-        src={imageUrl}
-        alt={alt}
-        className={`${styles.thumbnail} ${loadState === 'loaded' ? styles.visible : ''}`}
-        onLoad={handleLoad}
-        onError={handleError}
-        loading="lazy"
-        draggable={false}
-      />
+      {/* Actual thumbnail image - only rendered when visible in viewport */}
+      {isVisible && (
+        <img
+          src={imageUrl}
+          alt={alt}
+          className={`${styles.thumbnail} ${loadState === 'loaded' ? styles.visible : ''}`}
+          onLoad={handleLoad}
+          onError={handleError}
+          loading="lazy"
+          draggable={false}
+        />
+      )}
 
       {/* Pixelated border frame for that retro Mac look */}
       <div className={styles.frame} />

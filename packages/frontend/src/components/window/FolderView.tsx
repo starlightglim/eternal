@@ -2,6 +2,7 @@ import { useCallback, useState, useRef, useEffect } from 'react';
 import { useDesktopStore } from '../../stores/desktopStore';
 import { useWindowStore } from '../../stores/windowStore';
 import { FolderIcon, ImageFileIcon, TextFileIcon, LinkIcon, AudioFileIcon, VideoFileIcon, PDFFileIcon } from '../icons/PixelIcons';
+import { ThumbnailIcon } from '../icons/ThumbnailIcon';
 import { getTextFileContentType, type DesktopItem } from '../../types';
 import styles from './FolderView.module.css';
 
@@ -258,12 +259,24 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false, isDr
     setSelectedId(null);
   }, []);
 
-  // Get icon for item type
-  const getIcon = (type: string) => {
-    switch (type) {
+  // Get icon for item - images with r2Key use ThumbnailIcon for preview
+  const getIcon = (item: DesktopItem) => {
+    switch (item.type) {
       case 'folder':
         return <FolderIcon size={32} />;
       case 'image':
+        // Use thumbnail preview for images that have been uploaded
+        if (item.r2Key) {
+          return (
+            <ThumbnailIcon
+              r2Key={item.r2Key}
+              thumbnailKey={item.thumbnailKey}
+              alt={item.name}
+              size={32}
+              isSelected={selectedId === item.id}
+            />
+          );
+        }
         return <ImageFileIcon size={32} />;
       case 'text':
         return <TextFileIcon size={32} />;
@@ -321,7 +334,7 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false, isDr
             }}
             onPointerDown={(e) => handlePointerDown(e, item.id)}
           >
-            <div className={styles.itemIcon}>{getIcon(item.type)}</div>
+            <div className={styles.itemIcon}>{getIcon(item)}</div>
             <span className={styles.itemName}>{item.name}</span>
           </div>
         ))}
