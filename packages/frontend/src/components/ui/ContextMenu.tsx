@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useState, useLayoutEffect } from 'react';
 import styles from './ContextMenu.module.css';
 
 export interface ContextMenuItem {
@@ -21,7 +21,7 @@ interface ContextMenuProps {
  * ContextMenu - Classic Mac OS style right-click context menu
  *
  * Features:
- * - Positioned at click location
+ * - Positioned at click location, adjusted to stay within viewport
  * - Hover highlight with inverted colors
  * - Keyboard shortcut display
  * - Dividers between groups
@@ -29,11 +29,12 @@ interface ContextMenuProps {
  */
 export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
+  const [adjustedPos, setAdjustedPos] = useState(position);
 
-  // Adjust position to keep menu within viewport
-  const adjustedPosition = useCallback(() => {
+  // Adjust position to keep menu within viewport - runs synchronously before paint
+  useLayoutEffect(() => {
     const menu = menuRef.current;
-    if (!menu) return position;
+    if (!menu) return;
 
     const rect = menu.getBoundingClientRect();
     const viewportWidth = window.innerWidth;
@@ -46,15 +47,15 @@ export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
     if (x + rect.width > viewportWidth) {
       x = viewportWidth - rect.width - 8;
     }
-    if (x < 0) x = 8;
+    if (x < 8) x = 8;
 
     // Keep menu within vertical bounds
     if (y + rect.height > viewportHeight) {
       y = viewportHeight - rect.height - 8;
     }
-    if (y < 0) y = 8;
+    if (y < 8) y = 8;
 
-    return { x, y };
+    setAdjustedPos({ x, y });
   }, [position]);
 
   // Close on click outside
@@ -82,16 +83,6 @@ export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
     };
   }, [onClose]);
 
-  // Position adjustment after render
-  useEffect(() => {
-    const menu = menuRef.current;
-    if (!menu) return;
-
-    const adjusted = adjustedPosition();
-    menu.style.left = `${adjusted.x}px`;
-    menu.style.top = `${adjusted.y}px`;
-  }, [adjustedPosition]);
-
   const handleItemClick = (item: ContextMenuItem) => {
     if (item.disabled || item.divider) return;
 
@@ -105,7 +96,7 @@ export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
     <div
       ref={menuRef}
       className={styles.menu}
-      style={{ left: position.x, top: position.y }}
+      style={{ left: adjustedPos.x, top: adjustedPos.y }}
       onContextMenu={(e) => e.preventDefault()}
     >
       {items.map((item, index) => {
