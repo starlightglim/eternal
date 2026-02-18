@@ -70,7 +70,8 @@
   cursor: default;
 }
 
-.breadcrumbItem:not(:disabled):hover {
+.breadcrumbItem:not(:disabled):hover,
+.breadcrumbItem:not(:disabled):active {
   text-decoration: underline;
 }
 

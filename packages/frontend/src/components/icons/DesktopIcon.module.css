@@ -72,8 +72,9 @@
   transform: translateZ(0);
 }
 
-/* Hover state - subtle feedback */
-.desktopIcon:hover .iconLabel:not(.labelSelected) {
+/* Hover/active state - subtle feedback (supports touch devices) */
+.desktopIcon:hover .iconLabel:not(.labelSelected),
+.desktopIcon:active .iconLabel:not(.labelSelected) {
   background-color: rgba(0, 0, 128, 0.1);
 }
 

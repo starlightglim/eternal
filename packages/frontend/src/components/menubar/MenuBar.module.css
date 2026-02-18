@@ -92,8 +92,9 @@
   background: var(--white);
 }
 
-/* Hover state - inverted colors */
-.dropdownItem:hover:not(.disabled):not(.divider) {
+/* Hover/active state - inverted colors (supports touch devices) */
+.dropdownItem:hover:not(.disabled):not(.divider),
+.dropdownItem:active:not(.disabled):not(.divider) {
   background: var(--selection);
   color: var(--selection-text);
 }

@@ -27,7 +27,8 @@
   -moz-osx-font-smoothing: unset;
 }
 
-.item:hover {
+.item:hover,
+.item:active {
   background: var(--selection);
   color: var(--selection-text);
 }
