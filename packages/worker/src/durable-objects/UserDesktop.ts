@@ -8,7 +8,7 @@
  */
 
 import type { Env } from '../index';
-import type { DesktopItem, UserProfile } from '../types';
+import type { DesktopItem, UserProfile, GuestbookConfig, GuestbookEntry } from '../types';
 
 // Default storage quota: 100MB per user
 export const DEFAULT_QUOTA_BYTES = 100 * 1024 * 1024;
@@ -155,6 +155,17 @@ export class UserDesktop {
         return Response.json(result);
       }
 
+      // POST /guestbook/:itemId - Add guestbook entry
+      if (path.startsWith('/guestbook/') && method === 'POST') {
+        const itemId = path.slice('/guestbook/'.length);
+        const entry = await request.json() as { name: string; message: string };
+        const result = await this.addGuestbookEntry(itemId, entry);
+        if (!result.success) {
+          return Response.json({ error: result.error }, { status: 400 });
+        }
+        return Response.json(result);
+      }
+
       return Response.json({ error: 'Not found' }, { status: 404 });
 
     } catch (error) {
@@ -186,6 +197,9 @@ export class UserDesktop {
       fileSize: partial.fileSize,
       textContent: partial.textContent,
       url: partial.url,
+      customIcon: partial.customIcon,
+      widgetType: partial.widgetType,
+      widgetConfig: partial.widgetConfig,
     };
 
     this.items.set(item.id, item);
@@ -281,7 +295,14 @@ export class UserDesktop {
     }
 
     // Only allow updating certain fields
-    const allowedFields: (keyof UserProfile)[] = ['displayName', 'wallpaper'];
+    const allowedFields: (keyof UserProfile)[] = [
+      'displayName',
+      'wallpaper',
+      'accentColor',
+      'desktopColor',
+      'windowBgColor',
+      'fontSmoothing',
+    ];
     const filteredUpdates: Partial<UserProfile> = {};
 
     for (const field of allowedFields) {
@@ -417,5 +438,56 @@ export class UserDesktop {
     const quota = await this.getQuota();
     const allowed = (quota.used + fileSize) <= quota.limit;
     return { allowed, quota };
+  }
+
+  /**
+   * Add a guestbook entry to a widget
+   */
+  private async addGuestbookEntry(
+    itemId: string,
+    entry: { name: string; message: string }
+  ): Promise<{ success: boolean; error?: string; entries?: GuestbookEntry[] }> {
+    const item = this.items.get(itemId);
+
+    if (!item) {
+      return { success: false, error: 'Widget not found' };
+    }
+
+    if (item.type !== 'widget' || item.widgetType !== 'guestbook') {
+      return { success: false, error: 'Item is not a guestbook widget' };
+    }
+
+    if (!item.isPublic) {
+      return { success: false, error: 'Guestbook is not public' };
+    }
+
+    // Get current config
+    const currentConfig = (item.widgetConfig || { entries: [] }) as GuestbookConfig;
+    const entries = currentConfig.entries || [];
+
+    // Add new entry
+    const newEntry: GuestbookEntry = {
+      name: entry.name.trim().slice(0, 50),
+      message: entry.message.trim().slice(0, 500),
+      timestamp: Date.now(),
+    };
+
+    const updatedEntries = [...entries, newEntry];
+
+    // Keep max 100 entries to prevent unbounded growth
+    const trimmedEntries = updatedEntries.slice(-100);
+
+    // Update item
+    const updatedConfig: GuestbookConfig = { entries: trimmedEntries };
+    const updatedItem: DesktopItem = {
+      ...item,
+      widgetConfig: updatedConfig,
+      updatedAt: Date.now(),
+    };
+
+    this.items.set(itemId, updatedItem);
+    await this.saveItems();
+
+    return { success: true, entries: trimmedEntries };
   }
 }

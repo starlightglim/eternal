@@ -3,6 +3,8 @@ import { useDesktopStore } from '../../stores/desktopStore';
 import { useWindowStore } from '../../stores/windowStore';
 import { FolderIcon, ImageFileIcon, TextFileIcon, LinkIcon, AudioFileIcon, VideoFileIcon, PDFFileIcon } from '../icons/PixelIcons';
 import { ThumbnailIcon } from '../icons/ThumbnailIcon';
+import { renderCustomIcon, CUSTOM_ICON_LIBRARY, type CustomIconId } from '../icons/CustomIconLibrary';
+import { getCustomIconUrl } from '../../services/api';
 import { getTextFileContentType, type DesktopItem } from '../../types';
 import styles from './FolderView.module.css';
 
@@ -34,7 +36,8 @@ interface FolderViewProps {
  * Supports drag-and-drop for moving items between folders
  */
 export function FolderView({ folderId, visitorItems, isVisitorMode = false, isDropTarget = false }: FolderViewProps) {
-  const getItemsByParent = useDesktopStore((state) => state.getItemsByParent);
+  // Subscribe to items directly so component re-renders when items change
+  const storeItems = useDesktopStore((state) => state.items);
   const updateItem = useDesktopStore((state) => state.updateItem);
   const getNextAvailablePositionsInFolder = useDesktopStore((state) => state.getNextAvailablePositionsInFolder);
   const openWindow = useWindowStore((state) => state.openWindow);
@@ -53,7 +56,7 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false, isDr
   // Always filter out trashed items
   const items = (visitorItems
     ? visitorItems.filter((item) => item.parentId === folderId)
-    : getItemsByParent(folderId)
+    : storeItems.filter((item) => item.parentId === folderId)
   ).filter((item) => !item.isTrashed);
 
   // Handle double-click to open item
@@ -261,6 +264,24 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false, isDr
 
   // Get icon for item - images with r2Key use ThumbnailIcon for preview
   const getIcon = (item: DesktopItem) => {
+    // Custom icon takes precedence if set
+    if (item.customIcon) {
+      // Check if it's an uploaded icon (starts with "upload:") or a library icon
+      if (item.customIcon.startsWith('upload:')) {
+        return (
+          <img
+            src={getCustomIconUrl(item.customIcon)}
+            alt={item.name}
+            width={32}
+            height={32}
+            style={{ imageRendering: 'pixelated' }}
+          />
+        );
+      } else if (CUSTOM_ICON_LIBRARY[item.customIcon as CustomIconId]) {
+        return renderCustomIcon(item.customIcon, 32);
+      }
+    }
+
     switch (item.type) {
       case 'folder':
         return <FolderIcon size={32} />;

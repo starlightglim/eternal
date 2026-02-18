@@ -20,19 +20,21 @@ import { AppearancePanel } from '../viewers/AppearancePanel';
 import { DeskAssistant } from '../assistant';
 import { FolderView } from './FolderView';
 import { TrashView } from './TrashView';
+import { WidgetRenderer } from '../widgets';
 import type { DesktopItem } from '../../types';
 
 interface WindowManagerProps {
   isVisitorMode?: boolean;
   visitorItems?: DesktopItem[];
   folderWindowDropTargetId?: string | null;
+  ownerUid?: string;
 }
 
 /**
  * WindowManager - renders all open windows
  * Manages which window is active (top z-index)
  */
-export function WindowManager({ isVisitorMode = false, visitorItems, folderWindowDropTargetId }: WindowManagerProps) {
+export function WindowManager({ isVisitorMode = false, visitorItems, folderWindowDropTargetId, ownerUid }: WindowManagerProps) {
   const windows = useWindowStore((state) => state.windows);
 
   // Find the active window (highest z-index among non-minimized)
@@ -64,6 +66,7 @@ export function WindowManager({ isVisitorMode = false, visitorItems, folderWindo
             isVisitorMode={isVisitorMode}
             visitorItems={visitorItems}
             folderWindowDropTargetId={folderWindowDropTargetId}
+            ownerUid={ownerUid}
           />
         </Window>
       ))}
@@ -82,6 +85,7 @@ function WindowContent({
   isVisitorMode = false,
   visitorItems,
   folderWindowDropTargetId,
+  ownerUid,
 }: {
   windowId: string;
   contentType: string;
@@ -89,6 +93,7 @@ function WindowContent({
   isVisitorMode?: boolean;
   visitorItems?: DesktopItem[];
   folderWindowDropTargetId?: string | null;
+  ownerUid?: string;
 }) {
   const getItem = useDesktopStore((state) => state.getItem);
 
@@ -362,6 +367,24 @@ function WindowContent({
         );
       }
       return <WebsiteViewer itemId={item.id} url={item.url} name={item.name} />;
+
+    case 'widget':
+      if (!item) {
+        return (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%',
+              backgroundColor: 'var(--platinum)',
+            }}
+          >
+            <p style={{ color: 'var(--shadow)', fontSize: '12px' }}>Widget not found</p>
+          </div>
+        );
+      }
+      return <WidgetRenderer item={item} isOwner={!isVisitorMode} ownerUid={ownerUid} />;
 
     default:
       return null;

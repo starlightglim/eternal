@@ -235,6 +235,11 @@ interface VisitorApiResponse {
   username: string;
   displayName: string;
   wallpaper?: string;
+  // Custom appearance settings
+  accentColor?: string;
+  desktopColor?: string;
+  windowBgColor?: string;
+  fontSmoothing?: boolean;
   items: DesktopItem[];
 }
 
@@ -264,6 +269,10 @@ export async function fetchVisitorDesktop(username: string): Promise<VisitorResp
       username: data.username,
       displayName: data.displayName,
       wallpaper: data.wallpaper,
+      accentColor: data.accentColor,
+      desktopColor: data.desktopColor,
+      windowBgColor: data.windowBgColor,
+      fontSmoothing: data.fontSmoothing,
       createdAt: 0, // Not exposed to visitors
     },
   };
@@ -387,6 +396,11 @@ export async function sendAssistantMessage(
 export interface ProfileUpdateRequest {
   displayName?: string;
   wallpaper?: string;
+  // Custom appearance settings
+  accentColor?: string;
+  desktopColor?: string;
+  windowBgColor?: string;
+  fontSmoothing?: boolean;
 }
 
 export interface ProfileUpdateResponse {
@@ -394,6 +408,10 @@ export interface ProfileUpdateResponse {
   profile: {
     displayName?: string;
     wallpaper?: string;
+    accentColor?: string;
+    desktopColor?: string;
+    windowBgColor?: string;
+    fontSmoothing?: boolean;
   };
 }
 
@@ -415,4 +433,109 @@ export interface QuotaInfo {
 
 export async function fetchQuota(): Promise<QuotaInfo> {
   return apiRequest<QuotaInfo>('/api/quota');
+}
+
+// ============ Custom Icon API ============
+
+export interface IconUploadResponse {
+  success: boolean;
+  customIcon: string;  // The value to store in item.customIcon (e.g., "upload:uid/icons/itemId.png")
+  r2Key: string;
+  item: DesktopItem;
+}
+
+/**
+ * Upload a custom icon for a desktop item
+ * @param file - PNG file (max 50KB, 32x32 or 64x64 recommended)
+ * @param itemId - The desktop item ID to associate the icon with
+ */
+export async function uploadCustomIcon(
+  file: File,
+  itemId: string
+): Promise<IconUploadResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('itemId', itemId);
+
+  const response = await fetch(`${API_URL}/api/icon`, {
+    method: 'POST',
+    headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : {},
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Upload failed' }));
+    throw new Error(error.error || `HTTP ${response.status}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Get the URL for a custom icon stored in R2.
+ * @param customIconValue - The customIcon value (e.g., "upload:uid/icons/itemId.png")
+ */
+export function getCustomIconUrl(customIconValue: string): string {
+  // Uploaded icons are prefixed with "upload:"
+  if (customIconValue.startsWith('upload:')) {
+    const r2Key = customIconValue.slice('upload:'.length);
+    // Extract uid and itemId from the r2Key: uid/icons/itemId.png
+    const parts = r2Key.split('/');
+    if (parts.length >= 3) {
+      const uid = parts[0];
+      const itemId = parts[2].replace('.png', '');
+      return `${API_URL}/api/icon/${encodeURIComponent(uid)}/${encodeURIComponent(itemId)}/icon.png`;
+    }
+  }
+  return '';
+}
+
+// ============ Guestbook API ============
+
+export interface GuestbookEntryInput {
+  name: string;
+  message: string;
+}
+
+export interface GuestbookEntry {
+  name: string;
+  message: string;
+  timestamp: number;
+}
+
+export interface GuestbookPostResponse {
+  success: boolean;
+  error?: string;
+  entries?: GuestbookEntry[];
+}
+
+/**
+ * Post a guestbook entry (no auth required, rate limited)
+ * @param ownerUid - The UID of the desktop owner
+ * @param itemId - The widget item ID
+ * @param entry - The entry to post
+ */
+export async function postGuestbookEntry(
+  ownerUid: string,
+  itemId: string,
+  entry: GuestbookEntryInput
+): Promise<GuestbookPostResponse> {
+  const response = await fetch(`${API_URL}/api/guestbook/${encodeURIComponent(ownerUid)}/${encodeURIComponent(itemId)}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(entry),
+  });
+
+  if (!response.ok) {
+    if (response.status === 429) {
+      const error = await response.json().catch(() => ({ error: 'Rate limit exceeded' }));
+      return { success: false, error: error.error || 'You can only sign once per hour. Please try again later.' };
+    }
+    const error = await response.json().catch(() => ({ error: 'Request failed' }));
+    return { success: false, error: error.error || `HTTP ${response.status}` };
+  }
+
+  return response.json();
 }

@@ -85,3 +85,10 @@
   background-color: rgba(0, 0, 128, 0.15);
   border-radius: 4px;
 }
+
+/* Uploaded custom icon - pixelated rendering */
+.uploadedIcon {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}

@@ -2,9 +2,58 @@
  * Shared TypeScript types for EternalOS Worker
  */
 
+/**
+ * Widget types for Layer 3 customization
+ */
+export type WidgetType = 'sticky-note' | 'guestbook' | 'music-player' | 'pixel-canvas' | 'link-board';
+
+/**
+ * Widget configuration types
+ */
+export interface StickyNoteConfig {
+  color: string;
+  text: string;
+}
+
+export interface GuestbookEntry {
+  name: string;
+  message: string;
+  timestamp: number;
+}
+
+export interface GuestbookConfig {
+  entries: GuestbookEntry[];
+}
+
+export interface MusicTrack {
+  title: string;
+  url: string;
+}
+
+export interface MusicPlayerConfig {
+  tracks: MusicTrack[];
+}
+
+export interface PixelCanvasConfig {
+  grid: number[][];
+  palette: string[];
+}
+
+export interface LinkBoardLink {
+  title: string;
+  url: string;
+  icon?: string;
+}
+
+export interface LinkBoardConfig {
+  links: LinkBoardLink[];
+}
+
+export type WidgetConfig = StickyNoteConfig | GuestbookConfig | MusicPlayerConfig | PixelCanvasConfig | LinkBoardConfig;
+
 export interface DesktopItem {
   id: string;
-  type: 'folder' | 'image' | 'text' | 'link' | 'audio' | 'video' | 'pdf';
+  type: 'folder' | 'image' | 'text' | 'link' | 'audio' | 'video' | 'pdf' | 'widget';
   name: string;
   parentId: string | null; // null = root desktop
   position: { x: number; y: number };
@@ -20,6 +69,11 @@ export interface DesktopItem {
   fileSize?: number;
   textContent?: string; // for text files (small files stored inline)
   url?: string; // for link items
+  // Custom icon (Layer 2 customization)
+  customIcon?: string; // ID of custom icon from library, or R2 key for uploaded icon
+  // Widget fields (Layer 3 customization)
+  widgetType?: WidgetType;
+  widgetConfig?: WidgetConfig;
 }
 
 export interface UserProfile {
@@ -28,6 +82,11 @@ export interface UserProfile {
   displayName: string;
   wallpaper: string; // pattern name or R2 key
   createdAt: number;
+  // Custom appearance settings (Layer 1 customization)
+  accentColor?: string;     // Hex color for selection, highlights
+  desktopColor?: string;    // Hex color for desktop background
+  windowBgColor?: string;   // Hex color for window content area
+  fontSmoothing?: boolean;  // Override theme's font smoothing
 }
 
 export interface UserRecord {

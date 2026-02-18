@@ -3,10 +3,59 @@
 /**
  * Desktop item types
  */
-export type DesktopItemType = 'folder' | 'image' | 'text' | 'link' | 'audio' | 'video' | 'pdf';
+export type DesktopItemType = 'folder' | 'image' | 'text' | 'link' | 'audio' | 'video' | 'pdf' | 'widget';
 
 /**
- * Represents a single item on the desktop (file, folder, etc.)
+ * Widget types for Layer 3 customization
+ */
+export type WidgetType = 'sticky-note' | 'guestbook' | 'music-player' | 'pixel-canvas' | 'link-board';
+
+/**
+ * Widget configuration types
+ */
+export interface StickyNoteConfig {
+  color: string; // Hex color for background
+  text: string;
+}
+
+export interface GuestbookEntry {
+  name: string;
+  message: string;
+  timestamp: number;
+}
+
+export interface GuestbookConfig {
+  entries: GuestbookEntry[];
+}
+
+export interface MusicTrack {
+  title: string;
+  url: string;
+}
+
+export interface MusicPlayerConfig {
+  tracks: MusicTrack[];
+}
+
+export interface PixelCanvasConfig {
+  grid: number[][]; // 16x16 grid of color indices
+  palette: string[]; // 8 hex colors
+}
+
+export interface LinkBoardLink {
+  title: string;
+  url: string;
+  icon?: string;
+}
+
+export interface LinkBoardConfig {
+  links: LinkBoardLink[];
+}
+
+export type WidgetConfig = StickyNoteConfig | GuestbookConfig | MusicPlayerConfig | PixelCanvasConfig | LinkBoardConfig;
+
+/**
+ * Represents a single item on the desktop (file, folder, widget, etc.)
  */
 export interface DesktopItem {
   id: string;
@@ -27,6 +76,11 @@ export interface DesktopItem {
   fileSize?: number;
   textContent?: string; // for text files
   url?: string; // for link files
+  // Custom icon (Layer 2 customization)
+  customIcon?: string; // ID of custom icon from library, or R2 key for uploaded icon
+  // Widget fields (Layer 3 customization)
+  widgetType?: WidgetType;
+  widgetConfig?: WidgetConfig;
 }
 
 /**
@@ -45,7 +99,7 @@ export interface WindowState {
   preMaximizedPosition?: { x: number; y: number };
   preMaximizedSize?: { width: number; height: number };
   // Content information
-  contentType: 'folder' | 'image' | 'text' | 'markdown' | 'code' | 'get-info' | 'about' | 'assistant' | 'wallpaper' | 'welcome' | 'search' | 'preferences' | 'trash' | 'audio' | 'video' | 'pdf' | 'calculator' | 'clock' | 'link' | 'appearance';
+  contentType: 'folder' | 'image' | 'text' | 'markdown' | 'code' | 'get-info' | 'about' | 'assistant' | 'wallpaper' | 'welcome' | 'search' | 'preferences' | 'trash' | 'audio' | 'video' | 'pdf' | 'calculator' | 'clock' | 'link' | 'appearance' | 'widget';
   contentId?: string; // Reference to DesktopItem id if applicable
 }
 
@@ -58,6 +112,11 @@ export interface UserProfile {
   displayName?: string;
   wallpaper?: string;
   createdAt: number; // unix timestamp (ms)
+  // Custom appearance settings (Layer 1 customization)
+  accentColor?: string;     // Hex color for selection, highlights
+  desktopColor?: string;    // Hex color for desktop background
+  windowBgColor?: string;   // Hex color for window content area
+  fontSmoothing?: boolean;  // Override theme's font smoothing
 }
 
 /**

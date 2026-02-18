@@ -267,6 +267,41 @@ export function TrashFullIcon({ className, size = 32 }: IconProps) {
 }
 
 /**
+ * Widget Icon - Puzzle piece style for desktop widgets
+ */
+export function WidgetIcon({ className, size = 32 }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 32 32"
+      className={className}
+      style={{ imageRendering: 'pixelated' }}
+    >
+      {/* Main puzzle piece body */}
+      <path
+        d="M4 8 L10 8 L10 6 Q12 4 14 6 L14 8 L24 8 L24 14 L26 14 Q28 16 26 18 L24 18 L24 28 L14 28 L14 26 Q12 24 10 26 L10 28 L4 28 Z"
+        fill="#9B59B6"
+        stroke="#000"
+        strokeWidth="1"
+      />
+      {/* Highlight */}
+      <path
+        d="M5 9 L10 9 L10 7"
+        fill="none"
+        stroke="#C39BD3"
+        strokeWidth="1"
+      />
+      {/* Inner detail */}
+      <rect x="12" y="14" width="8" height="8" fill="#8E44AD" stroke="none" />
+      {/* Sparkle effect */}
+      <rect x="8" y="12" width="2" height="2" fill="#FFFFFF" />
+      <rect x="20" y="20" width="2" height="2" fill="#FFFFFF" />
+    </svg>
+  );
+}
+
+/**
  * Desk Assistant Icon - Classic Mac terminal/computer icon
  */
 export function AssistantIcon({ className, size = 32 }: IconProps) {

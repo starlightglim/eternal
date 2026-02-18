@@ -95,20 +95,35 @@ export async function handleSignup(request: Request, env: Env): Promise<Response
   const normalizedUsername = sanitizeUsername(username);
 
   // Check if email already exists
-  const existingUser = await env.AUTH_KV.get(`user:${normalizedEmail}`);
+  let existingUser: string | null;
+  try {
+    existingUser = await env.AUTH_KV.get(`user:${normalizedEmail}`);
+  } catch (e) {
+    return Response.json({ error: 'signup_step_1_check_email', details: String(e) }, { status: 500 });
+  }
   if (existingUser) {
     return Response.json({ error: 'Email already registered' }, { status: 409 });
   }
 
   // Check if username is taken
-  const existingUsername = await env.AUTH_KV.get(`username:${normalizedUsername}`);
+  let existingUsername: string | null;
+  try {
+    existingUsername = await env.AUTH_KV.get(`username:${normalizedUsername}`);
+  } catch (e) {
+    return Response.json({ error: 'signup_step_2_check_username', details: String(e) }, { status: 500 });
+  }
   if (existingUsername) {
     return Response.json({ error: 'Username already taken' }, { status: 409 });
   }
 
   // Generate user ID and hash password
   const uid = crypto.randomUUID();
-  const passwordHash = await hashPassword(password);
+  let passwordHash: string;
+  try {
+    passwordHash = await hashPassword(password);
+  } catch (e) {
+    return Response.json({ error: 'signup_step_3_hash_password', details: String(e) }, { status: 500 });
+  }
   const now = Date.now();
 
   // Create user record
@@ -120,42 +135,66 @@ export async function handleSignup(request: Request, env: Env): Promise<Response
     createdAt: now,
   };
 
-  // Store user data in KV (atomically as possible)
-  await env.AUTH_KV.put(`user:${normalizedEmail}`, JSON.stringify(userRecord));
-  await env.AUTH_KV.put(`username:${normalizedUsername}`, JSON.stringify({ uid }));
-  // UID -> email index for session validation after password change
-  await env.AUTH_KV.put(`uid:${uid}`, JSON.stringify({ email: normalizedEmail }));
+  // Store user data in KV
+  try {
+    await env.AUTH_KV.put(`user:${normalizedEmail}`, JSON.stringify(userRecord));
+  } catch (e) {
+    return Response.json({ error: 'signup_step_4_store_user', details: String(e) }, { status: 500 });
+  }
 
-  // Track this user for scheduled jobs (trash cleanup, etc.)
-  // We use a simple list stored in KV, appending the new UID
-  const existingUsers = await env.AUTH_KV.get('all_users');
-  const userList = existingUsers ? JSON.parse(existingUsers) as string[] : [];
-  if (!userList.includes(uid)) {
-    userList.push(uid);
-    await env.AUTH_KV.put('all_users', JSON.stringify(userList));
+  try {
+    await env.AUTH_KV.put(`username:${normalizedUsername}`, JSON.stringify({ uid }));
+  } catch (e) {
+    return Response.json({ error: 'signup_step_5_store_username', details: String(e) }, { status: 500 });
+  }
+
+  try {
+    await env.AUTH_KV.put(`uid:${uid}`, JSON.stringify({ email: normalizedEmail }));
+  } catch (e) {
+    return Response.json({ error: 'signup_step_6_store_uid_index', details: String(e) }, { status: 500 });
+  }
+
+  // Track this user for scheduled jobs
+  try {
+    const existingUsers = await env.AUTH_KV.get('all_users');
+    const userList = existingUsers ? JSON.parse(existingUsers) as string[] : [];
+    if (!userList.includes(uid)) {
+      userList.push(uid);
+      await env.AUTH_KV.put('all_users', JSON.stringify(userList));
+    }
+  } catch (e) {
+    return Response.json({ error: 'signup_step_7_update_user_list', details: String(e) }, { status: 500 });
   }
 
   // Initialize user's Durable Object with profile
-  const doId = env.USER_DESKTOP.idFromName(uid);
-  const stub = env.USER_DESKTOP.get(doId);
-  await stub.fetch(new Request('http://internal/profile', {
-    method: 'POST',
-    body: JSON.stringify({
-      uid,
-      username: normalizedUsername,
-      displayName: username, // Preserve original case for display
-      wallpaper: 'default',
-      createdAt: now,
-    }),
-  }));
+  try {
+    const doId = env.USER_DESKTOP.idFromName(uid);
+    const stub = env.USER_DESKTOP.get(doId);
+    await stub.fetch(new Request('http://internal/profile', {
+      method: 'POST',
+      body: JSON.stringify({
+        uid,
+        username: normalizedUsername,
+        displayName: username,
+        wallpaper: 'default',
+        createdAt: now,
+      }),
+    }));
+  } catch (e) {
+    return Response.json({ error: 'signup_step_8_init_durable_object', details: String(e) }, { status: 500 });
+  }
 
-  // Generate JWT and refresh token
-  const token = await signJWT({ uid, username: normalizedUsername }, env.JWT_SECRET);
+  // Generate JWT
+  let token: string;
+  try {
+    token = await signJWT({ uid, username: normalizedUsername }, env.JWT_SECRET);
+  } catch (e) {
+    return Response.json({ error: 'signup_step_9_sign_jwt', details: String(e) }, { status: 500 });
+  }
+
   const refreshToken = crypto.randomUUID() + '-' + crypto.randomUUID();
-
-  // Access token: 15 minutes, Refresh token: 7 days
-  const accessExpiry = 15 * 60; // 15 minutes in seconds
-  const refreshExpiry = 7 * 24 * 60 * 60; // 7 days in seconds
+  const accessExpiry = 15 * 60;
+  const refreshExpiry = 7 * 24 * 60 * 60;
 
   // Store session in KV
   const sessionRecord: SessionRecord = {
@@ -165,9 +204,14 @@ export async function handleSignup(request: Request, env: Env): Promise<Response
     refreshToken,
     refreshExpiresAt: now + (refreshExpiry * 1000),
   };
-  await env.AUTH_KV.put(`session:${token}`, JSON.stringify(sessionRecord), {
-    expirationTtl: accessExpiry,
-  });
+
+  try {
+    await env.AUTH_KV.put(`session:${token}`, JSON.stringify(sessionRecord), {
+      expirationTtl: accessExpiry,
+    });
+  } catch (e) {
+    return Response.json({ error: 'signup_step_10_store_session', details: String(e) }, { status: 500 });
+  }
 
   // Store refresh token
   const refreshData = {
@@ -176,9 +220,14 @@ export async function handleSignup(request: Request, env: Env): Promise<Response
     accessToken: token,
     expiresAt: now + (refreshExpiry * 1000),
   };
-  await env.AUTH_KV.put(`refresh:${refreshToken}`, JSON.stringify(refreshData), {
-    expirationTtl: refreshExpiry,
-  });
+
+  try {
+    await env.AUTH_KV.put(`refresh:${refreshToken}`, JSON.stringify(refreshData), {
+      expirationTtl: refreshExpiry,
+    });
+  } catch (e) {
+    return Response.json({ error: 'signup_step_11_store_refresh', details: String(e) }, { status: 500 });
+  }
 
   return Response.json({
     token,
@@ -214,25 +263,57 @@ export async function handleLogin(request: Request, env: Env): Promise<Response>
   const normalizedEmail = sanitizeEmail(email);
 
   // Look up user
-  const userJson = await env.AUTH_KV.get(`user:${normalizedEmail}`);
+  let userJson: string | null;
+  try {
+    userJson = await env.AUTH_KV.get(`user:${normalizedEmail}`);
+  } catch (kvError) {
+    console.error('KV error during login:', kvError);
+    return Response.json({ error: 'Database error' }, { status: 500 });
+  }
+
   if (!userJson) {
     // Use generic message to prevent user enumeration
     return Response.json({ error: 'Invalid email or password' }, { status: 401 });
   }
 
-  const userRecord = JSON.parse(userJson) as UserRecord;
+  let userRecord: UserRecord;
+  try {
+    userRecord = JSON.parse(userJson) as UserRecord;
+  } catch (parseError) {
+    console.error('Failed to parse user record:', parseError);
+    return Response.json({ error: 'Data corruption error' }, { status: 500 });
+  }
 
   // Verify password
-  const valid = await verifyPassword(password, userRecord.passwordHash);
+  let valid: boolean;
+  try {
+    valid = await verifyPassword(password, userRecord.passwordHash);
+  } catch (pwError) {
+    console.error('Password verification error:', pwError);
+    return Response.json({ error: 'Authentication error' }, { status: 500 });
+  }
+
   if (!valid) {
     return Response.json({ error: 'Invalid email or password' }, { status: 401 });
   }
 
+  // Check if JWT_SECRET is available
+  if (!env.JWT_SECRET) {
+    console.error('JWT_SECRET is not configured');
+    return Response.json({ error: 'Server configuration error' }, { status: 500 });
+  }
+
   // Generate new JWT
-  const token = await signJWT(
-    { uid: userRecord.uid, username: userRecord.username },
-    env.JWT_SECRET
-  );
+  let token: string;
+  try {
+    token = await signJWT(
+      { uid: userRecord.uid, username: userRecord.username },
+      env.JWT_SECRET
+    );
+  } catch (jwtError) {
+    console.error('JWT signing error:', jwtError);
+    return Response.json({ error: 'Token generation error' }, { status: 500 });
+  }
 
   // Generate refresh token
   const now = Date.now();
@@ -250,9 +331,15 @@ export async function handleLogin(request: Request, env: Env): Promise<Response>
     refreshToken,
     refreshExpiresAt: now + (refreshExpiry * 1000),
   };
-  await env.AUTH_KV.put(`session:${token}`, JSON.stringify(sessionRecord), {
-    expirationTtl: accessExpiry,
-  });
+
+  try {
+    await env.AUTH_KV.put(`session:${token}`, JSON.stringify(sessionRecord), {
+      expirationTtl: accessExpiry,
+    });
+  } catch (sessionError) {
+    console.error('Session storage error:', sessionError);
+    return Response.json({ error: 'Session creation error' }, { status: 500 });
+  }
 
   // Store refresh token
   const refreshData = {
@@ -261,9 +348,15 @@ export async function handleLogin(request: Request, env: Env): Promise<Response>
     accessToken: token,
     expiresAt: now + (refreshExpiry * 1000),
   };
-  await env.AUTH_KV.put(`refresh:${refreshToken}`, JSON.stringify(refreshData), {
-    expirationTtl: refreshExpiry,
-  });
+
+  try {
+    await env.AUTH_KV.put(`refresh:${refreshToken}`, JSON.stringify(refreshData), {
+      expirationTtl: refreshExpiry,
+    });
+  } catch (refreshError) {
+    console.error('Refresh token storage error:', refreshError);
+    return Response.json({ error: 'Session creation error' }, { status: 500 });
+  }
 
   return Response.json({
     token,

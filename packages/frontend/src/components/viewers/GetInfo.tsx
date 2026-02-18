@@ -6,6 +6,8 @@ import {
   ImageFileIcon,
   LinkIcon,
 } from '../icons/PixelIcons';
+import { renderCustomIcon, CUSTOM_ICON_LIBRARY, type CustomIconId } from '../icons/CustomIconLibrary';
+import { getCustomIconUrl } from '../../services/api';
 import type { DesktopItem } from '../../types';
 import styles from './GetInfo.module.css';
 
@@ -30,6 +32,9 @@ export function GetInfo({ item, isOwner = true }: GetInfoProps) {
   const { updateItem } = useDesktopStore();
 
   // Get the appropriate icon for this item type
+  // Custom icon takes precedence if set
+  const hasUploadedIcon = item.customIcon?.startsWith('upload:');
+  const hasLibraryIcon = item.customIcon && CUSTOM_ICON_LIBRARY[item.customIcon as CustomIconId];
   const IconComponent = getIconForType(item.type);
 
   // Format the file size
@@ -92,7 +97,19 @@ export function GetInfo({ item, isOwner = true }: GetInfoProps) {
       {/* Header with icon and name */}
       <div className={styles.header}>
         <div className={styles.iconContainer}>
-          <IconComponent size={48} />
+          {hasUploadedIcon ? (
+            <img
+              src={getCustomIconUrl(item.customIcon!)}
+              alt={item.name}
+              width={48}
+              height={48}
+              style={{ imageRendering: 'pixelated' }}
+            />
+          ) : hasLibraryIcon ? (
+            renderCustomIcon(item.customIcon!, 48)
+          ) : (
+            <IconComponent size={48} />
+          )}
         </div>
         <div className={styles.nameContainer}>
           {isOwner && isEditingName ? (

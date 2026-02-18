@@ -14,6 +14,11 @@ interface VisitorResponse {
   username: string;
   displayName: string;
   wallpaper?: string;
+  // Custom appearance settings
+  accentColor?: string;
+  desktopColor?: string;
+  windowBgColor?: string;
+  fontSmoothing?: boolean;
   items: DesktopItem[];
 }
 
@@ -86,11 +91,15 @@ export async function handleVisit(
 
     const data = await doResponse.json() as { items: DesktopItem[]; profile?: UserProfile };
 
-    // Build visitor response
+    // Build visitor response with appearance settings
     const visitorResponse: VisitorResponse = {
       username: normalizedUsername,
       displayName: data.profile?.displayName || normalizedUsername,
       wallpaper: data.profile?.wallpaper,
+      accentColor: data.profile?.accentColor,
+      desktopColor: data.profile?.desktopColor,
+      windowBgColor: data.profile?.windowBgColor,
+      fontSmoothing: data.profile?.fontSmoothing,
       items: data.items,
     };
 

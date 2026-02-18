@@ -1,7 +1,9 @@
 import { useCallback, useRef, useEffect, memo } from 'react';
 import type { DesktopItem } from '../../types';
-import { FolderIcon, TextFileIcon, ImageFileIcon, LinkIcon, AudioFileIcon, VideoFileIcon, PDFFileIcon } from './PixelIcons';
+import { FolderIcon, TextFileIcon, ImageFileIcon, LinkIcon, AudioFileIcon, VideoFileIcon, PDFFileIcon, WidgetIcon } from './PixelIcons';
 import { ThumbnailIcon } from './ThumbnailIcon';
+import { renderCustomIcon, CUSTOM_ICON_LIBRARY, type CustomIconId } from './CustomIconLibrary';
+import { getCustomIconUrl } from '../../services/api';
 import styles from './DesktopIcon.module.css';
 
 interface DesktopIconProps {
@@ -183,24 +185,43 @@ function DesktopIconInner({
       onContextMenu={onContextMenu}
     >
       <div className={styles.iconImage}>
-        {item.type === 'folder' && <FolderIcon size={32} />}
-        {item.type === 'text' && <TextFileIcon size={32} />}
-        {/* Images with r2Key show pixelated thumbnail preview */}
-        {item.type === 'image' && item.r2Key ? (
-          <ThumbnailIcon
-            r2Key={item.r2Key}
-            thumbnailKey={item.thumbnailKey}
-            alt={item.name}
-            size={32}
-            isSelected={isSelected}
-          />
-        ) : item.type === 'image' ? (
-          <ImageFileIcon size={32} />
-        ) : null}
-        {item.type === 'link' && <LinkIcon size={32} />}
-        {item.type === 'audio' && <AudioFileIcon size={32} />}
-        {item.type === 'video' && <VideoFileIcon size={32} />}
-        {item.type === 'pdf' && <PDFFileIcon size={32} />}
+        {/* Custom icon takes precedence if set */}
+        {item.customIcon ? (
+          // Check if it's an uploaded icon (starts with "upload:") or a library icon
+          item.customIcon.startsWith('upload:') ? (
+            <img
+              src={getCustomIconUrl(item.customIcon)}
+              alt={item.name}
+              width={32}
+              height={32}
+              className={styles.uploadedIcon}
+            />
+          ) : CUSTOM_ICON_LIBRARY[item.customIcon as CustomIconId] ? (
+            renderCustomIcon(item.customIcon, 32)
+          ) : null
+        ) : (
+          <>
+            {item.type === 'folder' && <FolderIcon size={32} />}
+            {item.type === 'text' && <TextFileIcon size={32} />}
+            {/* Images with r2Key show pixelated thumbnail preview */}
+            {item.type === 'image' && item.r2Key ? (
+              <ThumbnailIcon
+                r2Key={item.r2Key}
+                thumbnailKey={item.thumbnailKey}
+                alt={item.name}
+                size={32}
+                isSelected={isSelected}
+              />
+            ) : item.type === 'image' ? (
+              <ImageFileIcon size={32} />
+            ) : null}
+            {item.type === 'link' && <LinkIcon size={32} />}
+            {item.type === 'audio' && <AudioFileIcon size={32} />}
+            {item.type === 'video' && <VideoFileIcon size={32} />}
+            {item.type === 'pdf' && <PDFFileIcon size={32} />}
+            {item.type === 'widget' && <WidgetIcon size={32} />}
+          </>
+        )}
       </div>
       <div className={`${styles.iconLabel} ${isSelected ? styles.labelSelected : ''}`}>
         <span>{item.name}</span>
@@ -223,6 +244,7 @@ export const DesktopIcon = memo(DesktopIconInner, (prevProps, nextProps) => {
     prevProps.item.position.y === nextProps.item.position.y &&
     prevProps.item.r2Key === nextProps.item.r2Key &&
     prevProps.item.thumbnailKey === nextProps.item.thumbnailKey &&
+    prevProps.item.customIcon === nextProps.item.customIcon &&
     prevProps.isSelected === nextProps.isSelected &&
     prevProps.isDragging === nextProps.isDragging &&
     prevProps.isDropTarget === nextProps.isDropTarget &&

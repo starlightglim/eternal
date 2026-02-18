@@ -1,0 +1,179 @@
+/**
+ * WidgetPicker Dialog Styles
+ * Classic Mac OS aesthetic
+ */
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10001;
+}
+
+.dialog {
+  width: 420px;
+  max-width: 90vw;
+  max-height: 80vh;
+  background: var(--platinum);
+  border: 2px solid var(--black);
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  padding: 8px 12px;
+  background: var(--white);
+  border-bottom: 1px solid var(--shadow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.title {
+  font-family: var(--font-chicago);
+  font-size: 12px;
+  color: var(--black);
+}
+
+.widgetGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  padding: 12px;
+  overflow-y: auto;
+  max-height: 320px;
+}
+
+.widgetCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 10px;
+  background: var(--white);
+  border: 2px solid var(--shadow);
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.widgetCard:hover {
+  border-color: var(--black);
+  background: var(--highlight);
+}
+
+.widgetCard.selected {
+  border-color: var(--selection, #0066cc);
+  background: var(--selection, #0066cc);
+  color: var(--selection-text, var(--white));
+}
+
+.widgetIcon {
+  font-size: 28px;
+  margin-bottom: 6px;
+}
+
+.widgetName {
+  font-family: var(--font-chicago);
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+
+.widgetDesc {
+  font-family: var(--font-geneva);
+  font-size: 10px;
+  line-height: 1.3;
+  opacity: 0.8;
+}
+
+.widgetCard.selected .widgetDesc {
+  opacity: 0.9;
+}
+
+.configPanel {
+  padding: 12px;
+  border-top: 1px solid var(--shadow);
+  background: var(--white);
+}
+
+.configLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: var(--font-geneva);
+  font-size: 11px;
+  color: var(--black);
+}
+
+.configInput {
+  padding: 6px 8px;
+  font-family: var(--font-geneva);
+  font-size: 11px;
+  border: 2px solid var(--black);
+  border-right-color: var(--white);
+  border-bottom-color: var(--white);
+  background: var(--white);
+}
+
+.configInput:focus {
+  outline: none;
+  border-color: var(--selection, #0066cc);
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--shadow);
+  background: var(--platinum);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.button {
+  padding: 6px 16px;
+  font-family: var(--font-chicago);
+  font-size: 11px;
+  background: var(--white);
+  border: 2px solid var(--black);
+  border-radius: 4px;
+  cursor: pointer;
+  box-shadow: inset -1px -1px 0 var(--shadow), inset 1px 1px 0 var(--highlight);
+}
+
+.button:hover:not(:disabled) {
+  background: var(--platinum);
+}
+
+.button:active:not(:disabled) {
+  background: var(--shadow);
+  box-shadow: inset 1px 1px 0 var(--shadow), inset -1px -1px 0 var(--highlight);
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.primaryButton {
+  background: var(--selection, #0066cc);
+  color: var(--selection-text, var(--white));
+  border-color: var(--black);
+}
+
+.primaryButton:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.primaryButton:active:not(:disabled) {
+  filter: brightness(0.9);
+}

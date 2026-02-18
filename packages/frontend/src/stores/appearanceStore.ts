@@ -119,8 +119,9 @@ function deriveAccentColors(accentColor: string): {
 
 /**
  * Apply custom appearance settings to the document
+ * Exported for use in visitor mode (to apply owner's appearance)
  */
-function applyAppearance(appearance: CustomAppearance) {
+export function applyAppearance(appearance: CustomAppearance) {
   const root = document.documentElement;
 
   // Apply accent color and derived colors
@@ -164,6 +165,32 @@ function applyAppearance(appearance: CustomAppearance) {
       document.body.style.setProperty('-moz-osx-font-smoothing', 'unset');
     }
   }
+}
+
+/**
+ * Clear all custom appearance settings from the document
+ * Used when leaving visitor mode to restore the user's own appearance
+ */
+export function clearAppearance() {
+  const root = document.documentElement;
+
+  // Clear accent color properties
+  root.style.removeProperty('--selection');
+  root.style.removeProperty('--selection-text');
+  root.style.removeProperty('--accent');
+
+  // Clear desktop color properties
+  root.style.removeProperty('--custom-desktop-color');
+  root.style.removeProperty('--desktop-text-color');
+
+  // Clear window background properties
+  root.style.removeProperty('--window-bg');
+  root.style.removeProperty('--window-text-color');
+  root.style.removeProperty('--window-text-secondary');
+
+  // Clear font smoothing
+  document.body.style.removeProperty('-webkit-font-smoothing');
+  document.body.style.removeProperty('-moz-osx-font-smoothing');
 }
 
 /**
@@ -295,9 +322,10 @@ export const useAppearanceStore = create<AppearanceStore>((set, get) => {
         // Save to backend if API is configured
         if (isApiConfigured) {
           await updateProfile({
-            // The backend will need to be extended to support appearance settings
-            // For now, we'll just save to localStorage
-            // appearance: JSON.stringify(appearance),
+            accentColor: appearance.accentColor,
+            desktopColor: appearance.desktopColor,
+            windowBgColor: appearance.windowBgColor,
+            fontSmoothing: appearance.fontSmoothing,
           });
         }
 

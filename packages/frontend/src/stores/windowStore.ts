@@ -5,7 +5,7 @@ import { useSoundStore } from './soundStore';
 const WINDOW_STATE_KEY = 'eternalos-window-state';
 
 // Types that require a valid desktop item to exist
-const CONTENT_DEPENDENT_TYPES = ['folder', 'image', 'text', 'markdown', 'code', 'audio', 'video', 'pdf', 'get-info'];
+const CONTENT_DEPENDENT_TYPES = ['folder', 'image', 'text', 'markdown', 'code', 'audio', 'video', 'pdf', 'get-info', 'widget'];
 
 // Debounce helper
 let saveTimeout: ReturnType<typeof setTimeout> | null = null;

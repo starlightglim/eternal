@@ -7,7 +7,7 @@
 
 import { UserDesktop } from './durable-objects/UserDesktop';
 import { handleSignup, handleLogin, handleLogout, handleForgotPassword, handleResetPassword, handleRefreshToken } from './routes/auth';
-import { handleUpload, handleServeFile, handleWallpaperUpload, handleServeWallpaper } from './routes/upload';
+import { handleUpload, handleServeFile, handleWallpaperUpload, handleServeWallpaper, handleIconUpload, handleServeIcon } from './routes/upload';
 import { handleVisit } from './routes/visit';
 import { handleAssistant } from './routes/assistant';
 import { requireAuth, authenticate } from './middleware/auth';
@@ -327,9 +327,34 @@ export default {
         }
 
         const [uid, wallpaperId, ...filenameParts] = parts;
-        const filename = filenameParts.join('/');
+        // Decode URL-encoded filename for consistency
+        const filename = decodeURIComponent(filenameParts.join('/'));
 
         response = await handleServeWallpaper(request, env, uid, wallpaperId, filename);
+        return withCors(response, corsHeaders);
+      }
+
+      // Custom icon upload
+      if (path === '/api/icon' && request.method === 'POST') {
+        const authResult = await requireAuth(request, env);
+        if (authResult instanceof Response) {
+          return withCors(authResult, corsHeaders);
+        }
+        response = await handleIconUpload(request, env, authResult);
+        return withCors(response, corsHeaders);
+      }
+
+      // Custom icon serving: /api/icon/:uid/:itemId/:filename
+      if (path.startsWith('/api/icon/') && request.method === 'GET') {
+        const parts = path.slice('/api/icon/'.length).split('/');
+        if (parts.length < 3) {
+          return Response.json({ error: 'Invalid icon path' }, { status: 400, headers: corsHeaders });
+        }
+
+        const [uid, itemId, ...filenameParts] = parts;
+        const filename = decodeURIComponent(filenameParts.join('/'));
+
+        response = await handleServeIcon(request, env, uid, itemId, filename);
         return withCors(response, corsHeaders);
       }
 
@@ -341,7 +366,8 @@ export default {
         }
 
         const [fileOwnerUid, itemId, ...filenameParts] = parts;
-        const filename = filenameParts.join('/'); // Handle filenames with slashes
+        // Decode URL-encoded filename (browser encodes spaces as %20, etc.)
+        const filename = decodeURIComponent(filenameParts.join('/'));
 
         // Authenticate but don't require it (visitors can access public files)
         const auth = await authenticate(request, env);
@@ -465,6 +491,89 @@ export default {
         }
 
         return withCors(Response.json(result), corsHeaders);
+      }
+
+      // Guestbook route (no auth required, rate limited)
+      // POST /api/guestbook/:uid/:itemId - Add guestbook entry
+      const guestbookMatch = path.match(/^\/api\/guestbook\/([^/]+)\/([^/]+)$/);
+      if (guestbookMatch && request.method === 'POST') {
+        const [, ownerUid, itemId] = guestbookMatch;
+
+        // Rate limit by IP: 1 entry per hour per widget
+        const ip = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
+        const rateLimitKey = `guestbook:${ownerUid}:${itemId}:${ip}`;
+        const lastEntry = await env.AUTH_KV.get(rateLimitKey);
+
+        if (lastEntry) {
+          const lastTime = parseInt(lastEntry, 10);
+          const elapsed = Date.now() - lastTime;
+          const oneHour = 60 * 60 * 1000;
+          if (elapsed < oneHour) {
+            const retryAfter = Math.ceil((oneHour - elapsed) / 1000);
+            return withCors(
+              Response.json(
+                { error: 'You can only sign once per hour. Please try again later.' },
+                {
+                  status: 429,
+                  headers: { 'Retry-After': retryAfter.toString() },
+                }
+              ),
+              corsHeaders
+            );
+          }
+        }
+
+        // Get the entry data
+        let entryData: { name: string; message: string };
+        try {
+          entryData = await request.json();
+        } catch {
+          return withCors(
+            Response.json({ error: 'Invalid request body' }, { status: 400 }),
+            corsHeaders
+          );
+        }
+
+        if (!entryData.name || !entryData.message) {
+          return withCors(
+            Response.json({ error: 'Name and message are required' }, { status: 400 }),
+            corsHeaders
+          );
+        }
+
+        // Validate input lengths
+        if (entryData.name.length > 50) {
+          return withCors(
+            Response.json({ error: 'Name must be 50 characters or less' }, { status: 400 }),
+            corsHeaders
+          );
+        }
+
+        if (entryData.message.length > 500) {
+          return withCors(
+            Response.json({ error: 'Message must be 500 characters or less' }, { status: 400 }),
+            corsHeaders
+          );
+        }
+
+        // Forward to the owner's Durable Object
+        const doId = env.USER_DESKTOP.idFromName(ownerUid);
+        const stub = env.USER_DESKTOP.get(doId);
+        const doResponse = await stub.fetch(
+          new Request(`http://internal/guestbook/${itemId}`, {
+            method: 'POST',
+            body: JSON.stringify(entryData),
+          })
+        );
+
+        if (doResponse.ok) {
+          // Store rate limit timestamp
+          await env.AUTH_KV.put(rateLimitKey, Date.now().toString(), {
+            expirationTtl: 3600, // 1 hour TTL
+          });
+        }
+
+        return withCors(doResponse, corsHeaders);
       }
 
       // 404 for unmatched routes

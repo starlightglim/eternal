@@ -3,13 +3,13 @@ import { WindowManager } from '../window';
 import { DesktopIcon, Trash, AssistantDesktopIcon } from '../icons';
 import { MenuBar } from '../menubar';
 import { UploadProgress } from './UploadProgress';
-import { LoadingOverlay, ContextMenu, LinkDialog, type ContextMenuItem } from '../ui';
+import { LoadingOverlay, ContextMenu, LinkDialog, IconPicker, WidgetPicker, getWidgetDefaultSize, type ContextMenuItem } from '../ui';
 import { useWindowStore } from '../../stores/windowStore';
 import { useDesktopStore } from '../../stores/desktopStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useDesktopSync } from '../../hooks/useDesktopSync';
 import { isApiConfigured, getWallpaperUrl } from '../../services/api';
-import { getTextFileContentType, type DesktopItem } from '../../types';
+import { getTextFileContentType, type DesktopItem, type WidgetType, type WidgetConfig } from '../../types';
 import {
   FOLDER_DRAG_START,
   FOLDER_DRAG_MOVE,
@@ -59,7 +59,6 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
     selectItem,
     deselectAll,
     moveItem,
-    getItemsByParent,
     removeItem,
     moveToTrash,
     getTrashCount,
@@ -143,6 +142,13 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
   const [showLinkDialog, setShowLinkDialog] = useState(false);
   const [linkDialogPosition, setLinkDialogPosition] = useState<{ x: number; y: number } | null>(null);
 
+  // Icon picker state
+  const [iconPickerItem, setIconPickerItem] = useState<DesktopItem | null>(null);
+
+  // Widget picker state
+  const [showWidgetPicker, setShowWidgetPicker] = useState(false);
+  const [widgetPickerPosition, setWidgetPickerPosition] = useState<{ x: number; y: number } | null>(null);
+
   // Folder drop target state (for drag-to-folder icons and folder windows)
   const [folderDropTargetId, setFolderDropTargetId] = useState<string | null>(null);
   const [folderWindowDropTargetId, setFolderWindowDropTargetId] = useState<string | null>(null);
@@ -168,8 +174,8 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
   // Get root-level items (parentId === null), excluding trashed items
   // Performance: useMemo prevents recalculating on every render
   const rootItems = useMemo(
-    () => getItemsByParent(null).filter((item) => !item.isTrashed),
-    [getItemsByParent]
+    () => items.filter((item) => item.parentId === null && !item.isTrashed),
+    [items]
   );
 
   // Performance: Build a Set of occupied positions for O(1) lookup
@@ -504,6 +510,18 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
           minimized: false,
           maximized: false,
           contentType: 'link',
+          contentId: item.id,
+        });
+      } else if (item.type === 'widget') {
+        const defaultSize = item.widgetType ? getWidgetDefaultSize(item.widgetType) : { width: 250, height: 250 };
+        openWindow({
+          id: `widget-${item.id}`,
+          title: item.name,
+          position: { x: 100 + Math.random() * 100, y: 80 + Math.random() * 80 },
+          size: defaultSize,
+          minimized: false,
+          maximized: false,
+          contentType: 'widget',
           contentId: item.id,
         });
       }
@@ -1309,6 +1327,13 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
           shortcut: '⌘D',
           disabled: true, // TODO: Implement duplicate
         },
+        {
+          id: 'change-icon',
+          label: 'Change Icon...',
+          action: () => {
+            setIconPickerItem(item);
+          },
+        },
         { id: 'divider-2', label: '', divider: true },
         {
           id: 'toggle-public',
@@ -1392,6 +1417,18 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
             };
             setLinkDialogPosition(position);
             setShowLinkDialog(true);
+          },
+        },
+        {
+          id: 'new-widget',
+          label: 'New Widget...',
+          action: () => {
+            const position = {
+              x: Math.floor((contextMenu?.position.x || 100) / GRID_CELL_SIZE),
+              y: Math.floor((contextMenu?.position.y || 100) / GRID_CELL_SIZE),
+            };
+            setWidgetPickerPosition(position);
+            setShowWidgetPicker(true);
           },
         },
         { id: 'divider-1', label: '', divider: true },
@@ -1559,6 +1596,61 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
           <LinkDialog
             onSubmit={handleLinkCreate}
             onCancel={handleLinkCancel}
+          />
+        )}
+
+        {/* Icon Picker */}
+        {iconPickerItem && (
+          <IconPicker
+            currentIcon={iconPickerItem.customIcon}
+            itemId={iconPickerItem.id}
+            onSelect={(iconId) => {
+              const { updateItem } = useDesktopStore.getState();
+              updateItem(iconPickerItem.id, { customIcon: iconId ?? undefined });
+            }}
+            onClose={() => setIconPickerItem(null)}
+          />
+        )}
+
+        {/* Widget Picker */}
+        {showWidgetPicker && (
+          <WidgetPicker
+            onSelect={(widgetType: WidgetType, config: WidgetConfig, name: string) => {
+              const { addItem } = useDesktopStore.getState();
+              const position = widgetPickerPosition || { x: 1, y: 1 };
+              const finalPos = findNearestAvailablePosition(position.x, position.y);
+              const now = Date.now();
+              const newWidgetItem: DesktopItem = {
+                id: `widget-${now}`,
+                type: 'widget',
+                name,
+                parentId: null,
+                position: finalPos,
+                isPublic: false,
+                createdAt: now,
+                updatedAt: now,
+                widgetType,
+                widgetConfig: config,
+              };
+              addItem(newWidgetItem);
+
+              // Open the widget window
+              const defaultSize = getWidgetDefaultSize(widgetType);
+              openWindow({
+                id: `widget-window-${now}`,
+                title: name,
+                position: { x: 100 + finalPos.x * 20, y: 60 + finalPos.y * 20 },
+                size: defaultSize,
+                minimized: false,
+                maximized: false,
+                contentType: 'widget',
+                contentId: newWidgetItem.id,
+              });
+            }}
+            onClose={() => {
+              setShowWidgetPicker(false);
+              setWidgetPickerPosition(null);
+            }}
           />
         )}
       </div>

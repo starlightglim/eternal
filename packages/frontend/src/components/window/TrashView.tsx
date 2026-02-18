@@ -2,6 +2,9 @@ import { useCallback, useState } from 'react';
 import { useDesktopStore } from '../../stores/desktopStore';
 import { useAlertStore } from '../../stores/alertStore';
 import { FolderIcon, ImageFileIcon, TextFileIcon, LinkIcon } from '../icons/PixelIcons';
+import { renderCustomIcon, CUSTOM_ICON_LIBRARY, type CustomIconId } from '../icons/CustomIconLibrary';
+import { getCustomIconUrl } from '../../services/api';
+import type { DesktopItem } from '../../types';
 import styles from './TrashView.module.css';
 
 /**
@@ -53,9 +56,27 @@ export function TrashView() {
     );
   }, [trashedItems, emptyTrash, showConfirm]);
 
-  // Get icon for item type
-  const getIcon = (type: string) => {
-    switch (type) {
+  // Get icon for item type (or custom icon if set)
+  const getIcon = (item: DesktopItem) => {
+    // Custom icon takes precedence if set
+    if (item.customIcon) {
+      // Check if it's an uploaded icon (starts with "upload:") or a library icon
+      if (item.customIcon.startsWith('upload:')) {
+        return (
+          <img
+            src={getCustomIconUrl(item.customIcon)}
+            alt={item.name}
+            width={32}
+            height={32}
+            style={{ imageRendering: 'pixelated' }}
+          />
+        );
+      } else if (CUSTOM_ICON_LIBRARY[item.customIcon as CustomIconId]) {
+        return renderCustomIcon(item.customIcon, 32);
+      }
+    }
+
+    switch (item.type) {
       case 'folder':
         return <FolderIcon size={32} />;
       case 'image':
@@ -138,7 +159,7 @@ export function TrashView() {
             }}
             onDoubleClick={handleRestore}
           >
-            <div className={styles.itemIcon}>{getIcon(item.type)}</div>
+            <div className={styles.itemIcon}>{getIcon(item)}</div>
             <div className={styles.itemInfo}>
               <span className={styles.itemName}>{item.name}</span>
               <span className={styles.itemMeta}>

@@ -45,6 +45,14 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024;
 // Max wallpaper size: 2MB
 const MAX_WALLPAPER_SIZE = 2 * 1024 * 1024;
 
+// Max custom icon size: 50KB
+const MAX_ICON_SIZE = 50 * 1024;
+
+// Allowed MIME types for custom icons (PNG only for pixel art)
+const ICON_ALLOWED_TYPES: Record<string, string> = {
+  'image/png': 'png',
+};
+
 /**
  * Handle file upload
  * POST /api/upload
@@ -562,6 +570,191 @@ export async function handleServeWallpaper(
     console.error('Serve wallpaper error:', error);
     return Response.json(
       { error: 'Failed to serve wallpaper' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * Handle custom icon upload
+ * POST /api/icon
+ *
+ * Expects multipart/form-data with:
+ * - file: The icon image file (PNG only, max 50KB)
+ * - itemId: The desktop item ID to associate the icon with
+ *
+ * Icons are stored at {uid}/icons/{itemId}.png
+ * The item's customIcon field is updated to point to the R2 key
+ */
+export async function handleIconUpload(
+  request: Request,
+  env: Env,
+  auth: AuthContext
+): Promise<Response> {
+  try {
+    // Parse multipart form data
+    const formData = await request.formData();
+    const file = formData.get('file');
+    const itemId = formData.get('itemId') as string | null;
+
+    if (!file || typeof file === 'string') {
+      return Response.json(
+        { error: 'No file provided' },
+        { status: 400 }
+      );
+    }
+
+    if (!itemId) {
+      return Response.json(
+        { error: 'No itemId provided' },
+        { status: 400 }
+      );
+    }
+
+    const fileBlob = file as File;
+
+    // Validate file type (only PNG for icons)
+    const mimeType = fileBlob.type;
+    if (!ICON_ALLOWED_TYPES[mimeType]) {
+      return Response.json(
+        { error: `Invalid file type: ${mimeType}. Only PNG files are allowed for custom icons.` },
+        { status: 400 }
+      );
+    }
+
+    // Validate file size (max 50KB for icons)
+    if (fileBlob.size > MAX_ICON_SIZE) {
+      return Response.json(
+        { error: `File too large. Maximum icon size: ${MAX_ICON_SIZE / 1024}KB` },
+        { status: 400 }
+      );
+    }
+
+    // Verify the item exists and belongs to this user
+    const doId = env.USER_DESKTOP.idFromName(auth.uid);
+    const stub = env.USER_DESKTOP.get(doId);
+
+    const itemCheckResponse = await stub.fetch(new Request('http://internal/items'));
+    if (!itemCheckResponse.ok) {
+      return Response.json(
+        { error: 'Failed to verify item ownership' },
+        { status: 500 }
+      );
+    }
+
+    const { items } = await itemCheckResponse.json() as { items: DesktopItem[] };
+    const item = items.find(i => i.id === itemId);
+    if (!item) {
+      return Response.json(
+        { error: 'Item not found' },
+        { status: 404 }
+      );
+    }
+
+    // Generate R2 key for the icon
+    const r2Key = `${auth.uid}/icons/${itemId}.png`;
+
+    // Upload to R2
+    const fileBuffer = await fileBlob.arrayBuffer();
+    await env.ETERNALOS_FILES.put(r2Key, fileBuffer, {
+      httpMetadata: {
+        contentType: mimeType,
+      },
+      customMetadata: {
+        uploadedBy: auth.uid,
+        itemId,
+        type: 'custom-icon',
+      },
+    });
+
+    // Update the item's customIcon field to point to the R2 key
+    // Use a special prefix to distinguish uploaded icons from library icons
+    const customIconValue = `upload:${r2Key}`;
+
+    const updateResponse = await stub.fetch(
+      new Request('http://internal/items', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify([{
+          id: itemId,
+          updates: { customIcon: customIconValue },
+        }]),
+      })
+    );
+
+    if (!updateResponse.ok) {
+      // Cleanup R2 if update fails
+      await env.ETERNALOS_FILES.delete(r2Key);
+      return Response.json(
+        { error: 'Failed to update item with custom icon' },
+        { status: 500 }
+      );
+    }
+
+    const updatedItems = await updateResponse.json() as DesktopItem[];
+
+    return Response.json({
+      success: true,
+      customIcon: customIconValue,
+      r2Key,
+      item: updatedItems[0],
+    });
+
+  } catch (error) {
+    console.error('Icon upload error:', error);
+    return Response.json(
+      { error: error instanceof Error ? error.message : 'Icon upload failed' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * Serve custom icon from R2
+ * GET /api/icon/:uid/:itemId/:filename
+ *
+ * Custom icons are always public (visible in visitor mode)
+ */
+export async function handleServeIcon(
+  request: Request,
+  env: Env,
+  uid: string,
+  itemId: string,
+  filename: string
+): Promise<Response> {
+  try {
+    // Construct R2 key
+    const r2Key = `${uid}/icons/${itemId}.png`;
+
+    // Fetch from R2
+    const object = await env.ETERNALOS_FILES.get(r2Key);
+
+    if (!object) {
+      return Response.json(
+        { error: 'Icon not found' },
+        { status: 404 }
+      );
+    }
+
+    // Build response with proper headers
+    const headers = new Headers();
+    headers.set('Content-Type', object.httpMetadata?.contentType || 'image/png');
+    headers.set('Content-Length', object.size.toString());
+    headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+    headers.set('ETag', object.httpEtag);
+
+    // Handle conditional requests
+    const ifNoneMatch = request.headers.get('If-None-Match');
+    if (ifNoneMatch === object.httpEtag) {
+      return new Response(null, { status: 304, headers });
+    }
+
+    return new Response(object.body, { headers });
+
+  } catch (error) {
+    console.error('Serve icon error:', error);
+    return Response.json(
+      { error: 'Failed to serve icon' },
       { status: 500 }
     );
   }

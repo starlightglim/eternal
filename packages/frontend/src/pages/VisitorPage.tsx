@@ -1,5 +1,5 @@
 // Visitor Page - Read-only view of a user's desktop
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { WindowManager } from '../components/window';
 import { DesktopIcon } from '../components/icons';
@@ -9,6 +9,7 @@ import { useWindowStore } from '../stores/windowStore';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { isApiConfigured, fetchVisitorDesktop, getWallpaperUrl } from '../services/api';
+import { applyAppearance, clearAppearance, useAppearanceStore } from '../stores/appearanceStore';
 import { getTextFileContentType, type DesktopItem, type UserProfile } from '../types';
 import styles from './VisitorPage.module.css';
 
@@ -81,6 +82,36 @@ export function VisitorPage() {
 
   // Apply meta tags
   useDocumentMeta(metaConfig);
+
+  // Store reference to user's own appearance to restore when leaving
+  const userAppearance = useRef(useAppearanceStore.getState().appearance);
+
+  // Apply owner's custom appearance when profile is loaded
+  useEffect(() => {
+    if (!profile) return;
+
+    // Build appearance object from owner's profile
+    const ownerAppearance = {
+      accentColor: profile.accentColor,
+      desktopColor: profile.desktopColor,
+      windowBgColor: profile.windowBgColor,
+      fontSmoothing: profile.fontSmoothing,
+    };
+
+    // Apply owner's appearance settings
+    applyAppearance(ownerAppearance);
+
+    // Cleanup: restore user's own appearance when leaving visitor mode
+    return () => {
+      // First clear the owner's appearance
+      clearAppearance();
+      // Then restore the user's own appearance if they had any
+      const savedAppearance = userAppearance.current;
+      if (savedAppearance && Object.keys(savedAppearance).length > 0) {
+        applyAppearance(savedAppearance);
+      }
+    };
+  }, [profile]);
 
   // Fetch user data on mount
   useEffect(() => {
@@ -224,6 +255,26 @@ export function VisitorPage() {
       });
     } else if (item.type === 'link' && item.url) {
       window.open(item.url, '_blank', 'noopener,noreferrer');
+    } else if (item.type === 'widget' && item.widgetType) {
+      // Get default size based on widget type
+      const widgetSizes: Record<string, { width: number; height: number }> = {
+        'sticky-note': { width: 200, height: 200 },
+        'guestbook': { width: 280, height: 350 },
+        'music-player': { width: 250, height: 300 },
+        'pixel-canvas': { width: 280, height: 320 },
+        'link-board': { width: 280, height: 250 },
+      };
+      const size = widgetSizes[item.widgetType] || { width: 250, height: 250 };
+      openWindow({
+        id: `visitor-widget-${item.id}`,
+        title: item.name,
+        position: { x: 100 + offsetX, y: 100 + offsetY },
+        size,
+        minimized: false,
+        maximized: false,
+        contentType: 'widget',
+        contentId: item.id,
+      });
     }
   }, [openWindow]);
 
@@ -313,6 +364,7 @@ export function VisitorPage() {
         isVisitorMode={true}
         visitorItems={items}
         username={username}
+        ownerUid={profile?.uid}
       />
     );
   }
@@ -344,7 +396,7 @@ export function VisitorPage() {
         ))}
 
         {/* Window Manager - windows can still be moved/resized for browsing */}
-        <WindowManager isVisitorMode={true} visitorItems={items} />
+        <WindowManager isVisitorMode={true} visitorItems={items} ownerUid={profile?.uid} />
       </div>
     </div>
   );
