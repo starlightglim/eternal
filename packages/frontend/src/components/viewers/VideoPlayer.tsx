@@ -9,14 +9,23 @@ interface VideoPlayerProps {
   name?: string;
 }
 
+// Available playback speeds
+const PLAYBACK_SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+
 /**
  * VideoPlayer - Classic Mac OS-style video player
- * Features bordered video display with playback controls
+ * Features:
+ * - Bordered video display with playback controls
+ * - Volume control with mute toggle
+ * - Playback speed control
+ * - Keyboard shortcuts (space, arrows, m, f)
+ * - Error retry functionality
  */
 export function VideoPlayer({ itemId, r2Key: propR2Key, name: propName }: VideoPlayerProps) {
   // Get item from store as fallback (for backwards compatibility)
   const item = useDesktopStore((state) => state.getItem(itemId));
   const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -24,6 +33,10 @@ export function VideoPlayer({ itemId, r2Key: propR2Key, name: propName }: VideoP
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [volume, setVolume] = useState(1);
+  const [isMuted, setIsMuted] = useState(false);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [showSpeedMenu, setShowSpeedMenu] = useState(false);
 
   // Prefer prop r2Key, fall back to store item
   const r2Key = propR2Key || item?.r2Key;
@@ -84,6 +97,112 @@ export function VideoPlayer({ itemId, r2Key: propR2Key, name: propName }: VideoP
     }
   }, []);
 
+  // Toggle mute
+  const toggleMute = useCallback(() => {
+    if (!videoRef.current) return;
+    const newMuted = !isMuted;
+    videoRef.current.muted = newMuted;
+    setIsMuted(newMuted);
+  }, [isMuted]);
+
+  // Handle volume change
+  const handleVolumeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!videoRef.current) return;
+    const newVolume = parseFloat(e.target.value);
+    videoRef.current.volume = newVolume;
+    setVolume(newVolume);
+    if (newVolume > 0 && isMuted) {
+      videoRef.current.muted = false;
+      setIsMuted(false);
+    }
+  }, [isMuted]);
+
+  // Handle playback speed change
+  const handleSpeedChange = useCallback((speed: number) => {
+    if (!videoRef.current) return;
+    videoRef.current.playbackRate = speed;
+    setPlaybackSpeed(speed);
+    setShowSpeedMenu(false);
+  }, []);
+
+  // Seek forward/backward
+  const seek = useCallback((seconds: number) => {
+    if (!videoRef.current) return;
+    const newTime = Math.max(0, Math.min(duration, videoRef.current.currentTime + seconds));
+    videoRef.current.currentTime = newTime;
+    setCurrentTime(newTime);
+  }, [duration]);
+
+  // Retry loading video
+  const handleRetry = useCallback(() => {
+    setError(null);
+    setIsLoading(true);
+    if (videoRef.current) {
+      videoRef.current.load();
+    }
+  }, []);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle if this container or video is focused
+      if (!container.contains(document.activeElement) && document.activeElement !== document.body) {
+        return;
+      }
+
+      switch (e.key) {
+        case ' ':
+        case 'k':
+          e.preventDefault();
+          togglePlay();
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          seek(-5);
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          seek(5);
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          if (videoRef.current) {
+            const newVol = Math.min(1, volume + 0.1);
+            videoRef.current.volume = newVol;
+            setVolume(newVol);
+          }
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          if (videoRef.current) {
+            const newVol = Math.max(0, volume - 0.1);
+            videoRef.current.volume = newVol;
+            setVolume(newVol);
+          }
+          break;
+        case 'm':
+          e.preventDefault();
+          toggleMute();
+          break;
+        case 'f':
+          e.preventDefault();
+          toggleFullscreen();
+          break;
+      }
+    };
+
+    // Make container focusable
+    container.tabIndex = 0;
+    container.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      container.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [togglePlay, seek, volume, toggleMute, toggleFullscreen]);
+
   // Video event handlers
   useEffect(() => {
     const video = videoRef.current;
@@ -132,7 +251,10 @@ export function VideoPlayer({ itemId, r2Key: propR2Key, name: propName }: VideoP
   if (!r2Key && !item) {
     return (
       <div className={styles.container}>
-        <div className={styles.error}>Video file not found</div>
+        <div className={styles.errorState}>
+          <div className={styles.errorIcon}>!</div>
+          <p>Video file not found</p>
+        </div>
       </div>
     );
   }
@@ -160,7 +282,13 @@ export function VideoPlayer({ itemId, r2Key: propR2Key, name: propName }: VideoP
   if (error) {
     return (
       <div className={styles.container}>
-        <div className={styles.error}>{error}</div>
+        <div className={styles.errorState}>
+          <div className={styles.errorIcon}>!</div>
+          <p>{error}</p>
+          <button className={styles.retryButton} onClick={handleRetry}>
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
@@ -168,9 +296,9 @@ export function VideoPlayer({ itemId, r2Key: propR2Key, name: propName }: VideoP
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div className={styles.container}>
+    <div className={styles.container} ref={containerRef}>
       {/* Video display */}
-      <div className={styles.videoWrapper}>
+      <div className={styles.videoWrapper} onDoubleClick={toggleFullscreen}>
         <video
           ref={videoRef}
           src={videoUrl}
@@ -180,6 +308,7 @@ export function VideoPlayer({ itemId, r2Key: propR2Key, name: propName }: VideoP
         />
         {isLoading && (
           <div className={styles.loadingOverlay}>
+            <div className={styles.loadingSpinner} />
             <span>Loading...</span>
           </div>
         )}
@@ -189,22 +318,56 @@ export function VideoPlayer({ itemId, r2Key: propR2Key, name: propName }: VideoP
       <div className={styles.controls}>
         {/* Play/Pause button */}
         <button
-          className={styles.playButton}
+          className={styles.controlButton}
           onClick={togglePlay}
           disabled={isLoading}
-          title={isPlaying ? 'Pause' : 'Play'}
+          title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
         >
           {isPlaying ? (
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
               <rect x="3" y="2" width="4" height="12" />
               <rect x="9" y="2" width="4" height="12" />
             </svg>
           ) : (
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
               <path d="M4 2L14 8L4 14V2Z" />
             </svg>
           )}
         </button>
+
+        {/* Volume control */}
+        <button
+          className={styles.controlButton}
+          onClick={toggleMute}
+          title={isMuted ? 'Unmute (M)' : 'Mute (M)'}
+        >
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+            {isMuted || volume === 0 ? (
+              <>
+                <path d="M2 5H5L9 1V15L5 11H2V5Z" />
+                <path d="M12 6L15 9M15 6L12 9" stroke="currentColor" strokeWidth="1.5" fill="none" />
+              </>
+            ) : (
+              <>
+                <path d="M2 5H5L9 1V15L5 11H2V5Z" />
+                <path d="M11 4C12.5 5.5 12.5 10.5 11 12" stroke="currentColor" strokeWidth="1.5" fill="none" />
+                {volume > 0.5 && (
+                  <path d="M13 2C15.5 4.5 15.5 11.5 13 14" stroke="currentColor" strokeWidth="1.5" fill="none" />
+                )}
+              </>
+            )}
+          </svg>
+        </button>
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.05"
+          value={isMuted ? 0 : volume}
+          onChange={handleVolumeChange}
+          className={styles.volumeSlider}
+          title={`Volume: ${Math.round(volume * 100)}%`}
+        />
 
         {/* Progress bar */}
         <div className={styles.progressContainer} onClick={handleProgressClick}>
@@ -223,13 +386,37 @@ export function VideoPlayer({ itemId, r2Key: propR2Key, name: propName }: VideoP
           <span>{formatTime(duration)}</span>
         </div>
 
+        {/* Speed control */}
+        <div className={styles.speedControl}>
+          <button
+            className={styles.controlButton}
+            onClick={() => setShowSpeedMenu(!showSpeedMenu)}
+            title="Playback speed"
+          >
+            <span className={styles.speedLabel}>{playbackSpeed}x</span>
+          </button>
+          {showSpeedMenu && (
+            <div className={styles.speedMenu}>
+              {PLAYBACK_SPEEDS.map((speed) => (
+                <button
+                  key={speed}
+                  className={`${styles.speedOption} ${speed === playbackSpeed ? styles.speedOptionActive : ''}`}
+                  onClick={() => handleSpeedChange(speed)}
+                >
+                  {speed}x
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Fullscreen button */}
         <button
-          className={styles.fullscreenButton}
+          className={styles.controlButton}
           onClick={toggleFullscreen}
-          title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+          title={isFullscreen ? 'Exit Fullscreen (F)' : 'Fullscreen (F)'}
         >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
             {isFullscreen ? (
               <>
                 <path d="M2 6H4V2H8V0H2V6Z" />

@@ -8,11 +8,62 @@
  * - NeXT: Dark, sophisticated NeXTSTEP aesthetic
  *
  * Themes are applied by setting CSS custom properties on :root
+ * Text colors are auto-calculated for optimal contrast when not specified.
  */
 
 import { create } from 'zustand';
 
 export type ThemeId = 'macos8' | 'system7' | 'macos9' | 'next';
+
+/**
+ * Calculate relative luminance of a hex color (WCAG formula)
+ */
+function getLuminance(hex: string): number {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return 0;
+
+  const [r, g, b] = [rgb.r, rgb.g, rgb.b].map((c) => {
+    const s = c / 255;
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  });
+
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/**
+ * Convert hex color to RGB
+ */
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result
+    ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16),
+      }
+    : null;
+}
+
+/**
+ * Determine if background is dark (luminance < 0.5)
+ */
+function isDarkColor(hex: string): boolean {
+  return getLuminance(hex) < 0.4;
+}
+
+/**
+ * Get optimal text color for a given background
+ */
+function getContrastingTextColor(bgColor: string): string {
+  return isDarkColor(bgColor) ? '#FFFFFF' : '#000000';
+}
+
+/**
+ * Get secondary text color (slightly muted)
+ */
+function getSecondaryTextColor(bgColor: string): string {
+  return isDarkColor(bgColor) ? '#CCCCCC' : '#666666';
+}
 
 export interface ThemeColors {
   platinum: string;
@@ -26,6 +77,9 @@ export interface ThemeColors {
   titleBarActive: string;
   titleBarInactive: string;
   border: string;
+  // Text colors - auto-calculated if not specified
+  textColor?: string;
+  textColorSecondary?: string;
   // Additional theme-specific colors
   accent?: string;
   menuBarBg?: string;
@@ -121,7 +175,10 @@ export const THEMES: Record<ThemeId, Theme> = {
       windowBg: '#2A2A2A',
       titleBarActive: '#CCCCCC',
       titleBarInactive: '#666666',
-      border: '#000000',
+      border: '#555555',
+      // Explicit text colors for dark theme
+      textColor: '#EEEEEE',
+      textColorSecondary: '#AAAAAA',
       accent: '#4080C0',
       menuBarBg: '#1A1A1A',
       menuBarText: '#CCCCCC',
@@ -163,6 +220,18 @@ function applyTheme(theme: Theme) {
   root.style.setProperty('--title-bar-active', colors.titleBarActive);
   root.style.setProperty('--title-bar-inactive', colors.titleBarInactive);
   root.style.setProperty('--border', colors.border);
+
+  // Text colors - use specified or auto-calculate based on background
+  const textColor = colors.textColor || getContrastingTextColor(colors.platinum);
+  const textColorSecondary = colors.textColorSecondary || getSecondaryTextColor(colors.platinum);
+  root.style.setProperty('--text-color', textColor);
+  root.style.setProperty('--text-color-secondary', textColorSecondary);
+
+  // Window content text colors - based on window background
+  const windowTextColor = colors.textColor || getContrastingTextColor(colors.windowBg);
+  const windowTextSecondary = colors.textColorSecondary || getSecondaryTextColor(colors.windowBg);
+  root.style.setProperty('--window-text-color', windowTextColor);
+  root.style.setProperty('--window-text-secondary', windowTextSecondary);
 
   // Optional colors
   if (colors.accent) {

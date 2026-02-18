@@ -3,7 +3,7 @@ import { WindowManager } from '../window';
 import { DesktopIcon, Trash, AssistantDesktopIcon } from '../icons';
 import { MenuBar } from '../menubar';
 import { UploadProgress } from './UploadProgress';
-import { LoadingOverlay, ContextMenu, type ContextMenuItem } from '../ui';
+import { LoadingOverlay, ContextMenu, LinkDialog, type ContextMenuItem } from '../ui';
 import { useWindowStore } from '../../stores/windowStore';
 import { useDesktopStore } from '../../stores/desktopStore';
 import { useAuthStore } from '../../stores/authStore';
@@ -138,6 +138,10 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
     position: { x: number; y: number };
     targetItem: DesktopItem | null;
   } | null>(null);
+
+  // Link dialog state
+  const [showLinkDialog, setShowLinkDialog] = useState(false);
+  const [linkDialogPosition, setLinkDialogPosition] = useState<{ x: number; y: number } | null>(null);
 
   // Folder drop target state (for drag-to-folder icons and folder windows)
   const [folderDropTargetId, setFolderDropTargetId] = useState<string | null>(null);
@@ -474,9 +478,17 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
           contentType: 'pdf',
           contentId: item.id,
         });
-      } else if (item.type === 'link' && item.url) {
-        // Open link in new tab
-        window.open(item.url, '_blank', 'noopener,noreferrer');
+      } else if (item.type === 'link') {
+        openWindow({
+          id: `link-${item.id}`,
+          title: item.name,
+          position: { x: 80 + Math.random() * 100, y: 60 + Math.random() * 80 },
+          size: { width: 640, height: 480 },
+          minimized: false,
+          maximized: false,
+          contentType: 'link',
+          contentId: item.id,
+        });
       }
     },
     [openWindow]
@@ -937,15 +949,20 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
   const dragMoveHandler = isVisitorMode ? undefined : handleDragMove;
   const dragEndHandler = isVisitorMode ? undefined : handleDragEnd;
 
-  // File drag-drop handlers (for uploading files from OS)
+  // File drag-drop handlers (for uploading files from OS or URLs from browser)
   const handleFileDragOver = useCallback(
     (e: React.DragEvent) => {
-      if (isVisitorMode || !isApiConfigured) return;
+      if (isVisitorMode) return;
       e.preventDefault();
       e.stopPropagation();
 
-      // Check if we're dragging files
-      if (e.dataTransfer.types.includes('Files')) {
+      // Check if we're dragging files or URLs
+      const hasFiles = e.dataTransfer.types.includes('Files');
+      const hasUrl = e.dataTransfer.types.includes('text/uri-list') ||
+                     e.dataTransfer.types.includes('text/plain') ||
+                     e.dataTransfer.types.includes('text/html');
+
+      if (hasFiles || hasUrl) {
         setIsFileDragOver(true);
         e.dataTransfer.dropEffect = 'copy';
       }
@@ -974,13 +991,12 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
 
   const handleFileDrop = useCallback(
     async (e: React.DragEvent) => {
-      if (isVisitorMode || !isApiConfigured) return;
+      if (isVisitorMode) return;
       e.preventDefault();
       e.stopPropagation();
       setIsFileDragOver(false);
 
-      const files = Array.from(e.dataTransfer.files);
-      if (files.length === 0) return;
+      const { addItem } = useDesktopStore.getState();
 
       // Calculate grid position from drop location
       const rect = e.currentTarget.getBoundingClientRect();
@@ -989,11 +1005,69 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
       const gridX = Math.floor(dropX / GRID_CELL_SIZE);
       const gridY = Math.floor(dropY / GRID_CELL_SIZE);
 
-      // Upload each file
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const position = findNearestAvailablePosition(gridX, gridY + i);
-        await uploadFile(file, null, position);
+      // Check for files first (OS file drop)
+      const files = Array.from(e.dataTransfer.files);
+      if (files.length > 0 && isApiConfigured) {
+        // Upload each file
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          const position = findNearestAvailablePosition(gridX, gridY + i);
+          await uploadFile(file, null, position);
+        }
+        return;
+      }
+
+      // Check for URLs dragged from browser
+      // Try text/uri-list first (standard for dragging links)
+      let url = e.dataTransfer.getData('text/uri-list');
+
+      // Fall back to text/plain if no uri-list
+      if (!url) {
+        url = e.dataTransfer.getData('text/plain');
+      }
+
+      // Try to extract URL from HTML (for images dragged from web pages)
+      if (!url) {
+        const html = e.dataTransfer.getData('text/html');
+        if (html) {
+          // Try to extract image src or link href from HTML
+          const imgMatch = html.match(/<img[^>]+src=["']([^"']+)["']/i);
+          const linkMatch = html.match(/<a[^>]+href=["']([^"']+)["']/i);
+          url = imgMatch?.[1] || linkMatch?.[1] || '';
+        }
+      }
+
+      // Clean up the URL (uri-list can have multiple URLs, take first)
+      if (url) {
+        url = url.split('\n')[0].trim();
+        // Filter out comments in uri-list format
+        if (url.startsWith('#')) url = '';
+      }
+
+      // Validate and create link item
+      if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+        // Generate name from URL
+        let name = 'Link';
+        try {
+          const urlObj = new URL(url);
+          name = urlObj.hostname.replace(/^www\./, '');
+        } catch {
+          // Keep default name
+        }
+
+        const position = findNearestAvailablePosition(gridX, gridY);
+        const now = Date.now();
+        addItem({
+          id: `link-${now}`,
+          type: 'link',
+          name,
+          parentId: null,
+          position,
+          isPublic: false,
+          url,
+          createdAt: now,
+          updatedAt: now,
+        });
       }
     },
     [isVisitorMode, uploadFile, findNearestAvailablePosition]
@@ -1012,8 +1086,9 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
         return;
       }
 
-      // Handle Cmd+Tab to cycle through open windows
-      if ((e.metaKey || e.ctrlKey) && e.key === 'Tab') {
+      // Handle Cmd+` (backtick) to cycle through open windows
+      // Note: Cmd+Tab conflicts with OS/browser tab switching, so we use ` instead
+      if ((e.metaKey || e.ctrlKey) && (e.key === '`' || e.key === '~')) {
         e.preventDefault();
         const visibleWindows = windows.filter((w) => !w.minimized);
         if (visibleWindows.length > 1) {
@@ -1286,6 +1361,18 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
             });
           },
         },
+        {
+          id: 'new-link',
+          label: 'New Link...',
+          action: () => {
+            const position = {
+              x: Math.floor((contextMenu?.position.x || 100) / GRID_CELL_SIZE),
+              y: Math.floor((contextMenu?.position.y || 100) / GRID_CELL_SIZE),
+            };
+            setLinkDialogPosition(position);
+            setShowLinkDialog(true);
+          },
+        },
         { id: 'divider-1', label: '', divider: true },
         {
           id: 'change-wallpaper',
@@ -1321,6 +1408,32 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
       ];
     }
   }, [contextMenu, deselectAll, handleIconDoubleClick, openWindow, moveToTrash, removeItem, selectedIds, findNearestAvailablePosition, cleanUp, selectAll]);
+
+  // Handle link creation from dialog
+  const handleLinkCreate = useCallback((url: string, name: string) => {
+    const { addItem } = useDesktopStore.getState();
+    const position = linkDialogPosition || { x: 1, y: 1 };
+    const finalPos = findNearestAvailablePosition(position.x, position.y);
+    const now = Date.now();
+    addItem({
+      id: `link-${now}`,
+      type: 'link',
+      name,
+      parentId: null,
+      position: finalPos,
+      isPublic: false,
+      url,
+      createdAt: now,
+      updatedAt: now,
+    });
+    setShowLinkDialog(false);
+    setLinkDialogPosition(null);
+  }, [linkDialogPosition, findNearestAvailablePosition]);
+
+  const handleLinkCancel = useCallback(() => {
+    setShowLinkDialog(false);
+    setLinkDialogPosition(null);
+  }, []);
 
   return (
     <>
@@ -1417,6 +1530,14 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
               width: Math.abs(selectionRect.currentX - selectionRect.startX),
               height: Math.abs(selectionRect.currentY - selectionRect.startY),
             }}
+          />
+        )}
+
+        {/* Link Dialog */}
+        {showLinkDialog && (
+          <LinkDialog
+            onSubmit={handleLinkCreate}
+            onCancel={handleLinkCancel}
           />
         )}
       </div>

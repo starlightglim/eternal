@@ -382,6 +382,28 @@ export async function sendAssistantMessage(
   });
 }
 
+// ============ Profile API ============
+
+export interface ProfileUpdateRequest {
+  displayName?: string;
+  wallpaper?: string;
+}
+
+export interface ProfileUpdateResponse {
+  success: boolean;
+  profile: {
+    displayName?: string;
+    wallpaper?: string;
+  };
+}
+
+export async function updateProfile(updates: ProfileUpdateRequest): Promise<ProfileUpdateResponse> {
+  return apiRequest<ProfileUpdateResponse>('/api/profile', {
+    method: 'PATCH',
+    body: JSON.stringify(updates),
+  });
+}
+
 // ============ Quota API ============
 
 export interface QuotaInfo {

@@ -22,6 +22,7 @@ export interface DesktopItem {
   trashedAt?: number; // unix timestamp when moved to trash
   // Optional fields based on type
   r2Key?: string; // R2 object key for uploaded files
+  thumbnailKey?: string; // R2 key for thumbnail image (generated on upload)
   mimeType?: string;
   fileSize?: number;
   textContent?: string; // for text files
@@ -44,7 +45,7 @@ export interface WindowState {
   preMaximizedPosition?: { x: number; y: number };
   preMaximizedSize?: { width: number; height: number };
   // Content information
-  contentType: 'folder' | 'image' | 'text' | 'markdown' | 'code' | 'get-info' | 'about' | 'assistant' | 'wallpaper' | 'welcome' | 'search' | 'preferences' | 'trash' | 'audio' | 'video' | 'pdf' | 'calculator' | 'clock';
+  contentType: 'folder' | 'image' | 'text' | 'markdown' | 'code' | 'get-info' | 'about' | 'assistant' | 'wallpaper' | 'welcome' | 'search' | 'preferences' | 'trash' | 'audio' | 'video' | 'pdf' | 'calculator' | 'clock' | 'link';
   contentId?: string; // Reference to DesktopItem id if applicable
 }
 

@@ -10,6 +10,7 @@ import {
   signup as apiSignup,
   login as apiLogin,
   logout as apiLogout,
+  updateProfile as apiUpdateProfile,
 } from '../services/api';
 import { useWindowStore } from './windowStore';
 
@@ -211,9 +212,17 @@ export const useAuthStore = create<AuthStore>()(
       setWallpaper: (wallpaper: string) => {
         const { profile } = get();
         if (profile) {
+          // Update local state immediately for responsive UI
           set({
             profile: { ...profile, wallpaper },
           });
+
+          // Sync to backend if API is configured
+          if (isApiConfigured) {
+            apiUpdateProfile({ wallpaper }).catch((error) => {
+              console.error('Failed to sync wallpaper to backend:', error);
+            });
+          }
         }
       },
 

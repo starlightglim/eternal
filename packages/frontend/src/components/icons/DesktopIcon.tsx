@@ -1,6 +1,7 @@
 import { useCallback, useRef, useEffect } from 'react';
 import type { DesktopItem } from '../../types';
 import { FolderIcon, TextFileIcon, ImageFileIcon, LinkIcon, AudioFileIcon, VideoFileIcon, PDFFileIcon } from './PixelIcons';
+import { ThumbnailIcon } from './ThumbnailIcon';
 import styles from './DesktopIcon.module.css';
 
 interface DesktopIconProps {
@@ -181,7 +182,18 @@ export function DesktopIcon({
       <div className={styles.iconImage}>
         {item.type === 'folder' && <FolderIcon size={32} />}
         {item.type === 'text' && <TextFileIcon size={32} />}
-        {item.type === 'image' && <ImageFileIcon size={32} />}
+        {/* Images with r2Key show pixelated thumbnail preview */}
+        {item.type === 'image' && item.r2Key ? (
+          <ThumbnailIcon
+            r2Key={item.r2Key}
+            thumbnailKey={item.thumbnailKey}
+            alt={item.name}
+            size={32}
+            isSelected={isSelected}
+          />
+        ) : item.type === 'image' ? (
+          <ImageFileIcon size={32} />
+        ) : null}
         {item.type === 'link' && <LinkIcon size={32} />}
         {item.type === 'audio' && <AudioFileIcon size={32} />}
         {item.type === 'video' && <VideoFileIcon size={32} />}

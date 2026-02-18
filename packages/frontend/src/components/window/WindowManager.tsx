@@ -8,6 +8,7 @@ import { CodeViewer } from '../viewers/CodeViewer';
 import { AudioPlayer } from '../viewers/AudioPlayer';
 import { VideoPlayer } from '../viewers/VideoPlayer';
 import { PDFViewer } from '../viewers/PDFViewer';
+import { WebsiteViewer } from '../viewers/WebsiteViewer';
 import { Calculator } from '../viewers/Calculator';
 import { Clock } from '../viewers/Clock';
 import { GetInfo } from '../viewers/GetInfo';
@@ -339,6 +340,24 @@ function WindowContent({
 
     case 'clock':
       return <Clock />;
+
+    case 'link':
+      if (!item) {
+        return (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%',
+              backgroundColor: 'var(--platinum)',
+            }}
+          >
+            <p style={{ color: 'var(--shadow)', fontSize: '12px' }}>Link not found</p>
+          </div>
+        );
+      }
+      return <WebsiteViewer itemId={item.id} url={item.url} name={item.name} />;
 
     default:
       return null;

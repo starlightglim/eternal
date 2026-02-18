@@ -100,7 +100,8 @@ body {
   font-family: var(--font-chicago);
   font-size: var(--font-size-ui);
   background-color: var(--platinum);
-  color: var(--black);
+  /* Use theme-aware text color that auto-adapts to dark/light themes */
+  color: var(--text-color, var(--black));
   /* CRITICAL: Disable font smoothing for pixel-perfect retro fonts */
   -webkit-font-smoothing: none;
   -moz-osx-font-smoothing: unset;

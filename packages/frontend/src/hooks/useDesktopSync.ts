@@ -1,5 +1,5 @@
 // Hook for syncing desktop state with Cloudflare Workers API
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { useDesktopStore } from '../stores/desktopStore';
 import { isApiConfigured, fetchDesktop } from '../services/api';
@@ -7,12 +7,30 @@ import { isApiConfigured, fetchDesktop } from '../services/api';
 /**
  * Hook to synchronize desktop state with API
  * - Loads items on mount when user is authenticated
+ * - Updates profile (wallpaper, displayName) from backend
  * - Handles cleanup on unmount or user change
  */
 export function useDesktopSync() {
-  const { user } = useAuthStore();
-  const { setItems, setUid, setLoading } = useDesktopStore();
+  // Select primitives/stable references to avoid infinite loops
+  const user = useAuthStore((state) => state.user);
+  const setItems = useDesktopStore((state) => state.setItems);
+  const setUid = useDesktopStore((state) => state.setUid);
+  const setLoading = useDesktopStore((state) => state.setLoading);
   const fetchedRef = useRef<string | null>(null);
+
+  // Stable callback to update profile
+  const updateProfileFromBackend = useCallback((backendProfile: { displayName?: string; wallpaper?: string }) => {
+    const currentProfile = useAuthStore.getState().profile;
+    if (currentProfile) {
+      useAuthStore.setState({
+        profile: {
+          ...currentProfile,
+          displayName: backendProfile.displayName || currentProfile.displayName,
+          wallpaper: backendProfile.wallpaper || currentProfile.wallpaper,
+        },
+      });
+    }
+  }, []);
 
   useEffect(() => {
     // Skip if API is not configured (demo mode)
@@ -38,11 +56,17 @@ export function useDesktopSync() {
     setLoading(true);
     fetchedRef.current = user.uid;
 
-    // Fetch items from API
+    // Fetch items and profile from API
     fetchDesktop()
       .then((data) => {
         setItems(data.items);
         setLoading(false);
+
+        // Update profile from backend if available
+        // This syncs wallpaper and other preferences from the server
+        if (data.profile) {
+          updateProfileFromBackend(data.profile);
+        }
       })
       .catch((error) => {
         console.error('Failed to fetch desktop items:', error);
@@ -55,5 +79,5 @@ export function useDesktopSync() {
     return () => {
       // No cleanup needed for API-based sync
     };
-  }, [user, setItems, setUid, setLoading]);
+  }, [user, setItems, setUid, setLoading, updateProfileFromBackend]);
 }

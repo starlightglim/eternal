@@ -6,7 +6,7 @@ import { DesktopIcon } from '../components/icons';
 import { VisitorMenuBar } from '../components/menubar/VisitorMenuBar';
 import { useWindowStore } from '../stores/windowStore';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
-import { isApiConfigured, fetchVisitorDesktop } from '../services/api';
+import { isApiConfigured, fetchVisitorDesktop, getWallpaperUrl } from '../services/api';
 import { getTextFileContentType, type DesktopItem, type UserProfile } from '../types';
 import styles from './VisitorPage.module.css';
 
@@ -186,6 +186,39 @@ export function VisitorPage() {
         contentType: 'image',
         contentId: item.id,
       });
+    } else if (item.type === 'video') {
+      openWindow({
+        id: `visitor-video-${item.id}`,
+        title: item.name,
+        position: { x: 100 + offsetX, y: 60 + offsetY },
+        size: { width: 640, height: 480 },
+        minimized: false,
+        maximized: false,
+        contentType: 'video',
+        contentId: item.id,
+      });
+    } else if (item.type === 'audio') {
+      openWindow({
+        id: `visitor-audio-${item.id}`,
+        title: item.name,
+        position: { x: 150 + offsetX, y: 150 + offsetY },
+        size: { width: 300, height: 180 },
+        minimized: false,
+        maximized: false,
+        contentType: 'audio',
+        contentId: item.id,
+      });
+    } else if (item.type === 'pdf') {
+      openWindow({
+        id: `visitor-pdf-${item.id}`,
+        title: item.name,
+        position: { x: 80 + offsetX, y: 40 + offsetY },
+        size: { width: 550, height: 700 },
+        minimized: false,
+        maximized: false,
+        contentType: 'pdf',
+        contentId: item.id,
+      });
     } else if (item.type === 'link' && item.url) {
       window.open(item.url, '_blank', 'noopener,noreferrer');
     }
@@ -234,12 +267,27 @@ export function VisitorPage() {
     );
   }
 
+  // Calculate wallpaper class and style
+  const wallpaperValue = profile?.wallpaper;
+  const isCustomWallpaper = wallpaperValue?.startsWith('custom:');
+  const wallpaperClass = isCustomWallpaper ? '' : `wallpaper-${wallpaperValue || 'default'}`;
+  const wallpaperStyle = isCustomWallpaper
+    ? {
+        backgroundImage: `url(${getWallpaperUrl(wallpaperValue!)})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }
+    : undefined;
+
   // Empty desktop state
   if (loadingState === 'empty') {
     return (
       <div className={styles.container}>
         <VisitorMenuBar username={username || ''} />
-        <div className={styles.desktop}>
+        <div
+          className={`${styles.desktop} ${wallpaperClass}`}
+          style={wallpaperStyle}
+        >
           <div className={styles.emptyDesktopWindow}>
             <div className={styles.emptyWindowTitleBar}>
               <span className={styles.emptyWindowTitle}>@{username}'s Desktop</span>
@@ -258,7 +306,11 @@ export function VisitorPage() {
   return (
     <div className={styles.container}>
       <VisitorMenuBar username={username || ''} />
-      <div className={styles.desktop} onClick={handleDesktopClick}>
+      <div
+        className={`${styles.desktop} ${wallpaperClass}`}
+        style={wallpaperStyle}
+        onClick={handleDesktopClick}
+      >
         {/* Desktop Icons - Read-only, no dragging */}
         {rootItems.map((item) => (
           <DesktopIcon

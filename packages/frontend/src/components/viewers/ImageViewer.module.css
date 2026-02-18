@@ -9,7 +9,7 @@
 
 /* ============================================
    PIXEL-ART FRAME
-   Classic Mac picture frame border effect
+   Minimal chrome - maximize image display area
    ============================================ */
 
 .frame {
@@ -17,8 +17,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 12px;
+  padding: 4px;
   min-height: 0; /* Allow flexbox shrinking */
+  overflow: hidden;
 }
 
 .frameInner {
@@ -26,17 +27,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--white);
-  /* Classic Mac picture frame - double border effect */
-  border: 2px solid var(--black);
-  box-shadow:
-    inset 2px 2px 0 var(--shadow),
-    inset -2px -2px 0 var(--highlight);
-  /* Max size with padding */
-  max-width: calc(100% - 8px);
-  max-height: calc(100% - 8px);
-  min-width: 100px;
-  min-height: 80px;
+  background: var(--black);
+  /* Minimal 1px border for definition */
+  border: 1px solid var(--black);
+  /* Fill available space */
+  width: 100%;
+  height: 100%;
   overflow: hidden;
 }
 
@@ -47,12 +43,16 @@
 .image {
   max-width: 100%;
   max-height: 100%;
+  width: auto;
+  height: auto;
   object-fit: contain;
   /* Pixel-perfect scaling for small images */
   image-rendering: auto;
   /* Remove any default image borders */
   border: none;
   display: block;
+  /* Center the image */
+  margin: auto;
 }
 
 /* For pixel art or small images, use pixelated rendering */
@@ -71,13 +71,14 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: 16px;
+  background: var(--platinum);
 }
 
 .loadingIcon {
-  width: 48px;
-  height: 48px;
-  margin-bottom: 8px;
+  width: 32px;
+  height: 32px;
+  margin-bottom: 4px;
 }
 
 /* Classic Mac dithered pattern */
@@ -127,23 +128,24 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: 16px;
+  background: var(--platinum);
 }
 
 .errorIcon {
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--font-chicago);
-  font-size: 24px;
+  font-size: 18px;
   font-weight: bold;
   color: var(--black);
   background: var(--white);
-  border: 2px solid var(--black);
+  border: 1px solid var(--black);
   border-radius: 50%;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .errorText {
@@ -161,14 +163,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: 16px;
+  background: var(--platinum);
 }
 
 .demoPlaceholder {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .demoPlaceholder svg {
@@ -187,20 +190,21 @@
 
 /* ============================================
    INFO BAR
-   Shows filename and type at bottom
+   Compact bar - shows filename and type
    ============================================ */
 
 .infoBar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 4px 8px;
-  background: var(--white);
+  padding: 2px 6px;
+  background: var(--platinum);
   border-top: 1px solid var(--shadow);
   font-family: var(--font-geneva);
-  font-size: 10px;
-  color: var(--shadow);
+  font-size: 9px;
+  color: var(--black);
   flex-shrink: 0;
+  min-height: 16px;
 }
 
 .fileName {

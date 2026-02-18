@@ -1,0 +1,274 @@
+/* WebsiteViewer - Classic Mac OS-style website browser/embed */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background-color: var(--platinum);
+  overflow: hidden;
+}
+
+/* Navigation Toolbar */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  background-color: var(--platinum);
+  border-bottom: 1px solid var(--shadow);
+  min-height: 28px;
+  flex-shrink: 0;
+}
+
+.navButtons {
+  display: flex;
+  gap: 2px;
+}
+
+.navButton {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background-color: var(--platinum);
+  border: 1px solid var(--black);
+  cursor: pointer;
+  box-shadow:
+    inset 1px 1px 0 var(--highlight),
+    inset -1px -1px 0 var(--shadow);
+}
+
+.navButton:hover:not(:disabled) {
+  background-color: var(--highlight);
+}
+
+.navButton:active:not(:disabled) {
+  box-shadow:
+    inset -1px -1px 0 var(--highlight),
+    inset 1px 1px 0 var(--shadow);
+}
+
+.navButton:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.navButton svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* URL display bar */
+.urlBar {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  background-color: var(--white);
+  border: 1px solid var(--black);
+  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.1);
+  min-width: 0; /* Allow shrinking */
+}
+
+.urlIcon {
+  flex-shrink: 0;
+  color: var(--shadow);
+  display: flex;
+  align-items: center;
+}
+
+.urlText {
+  font-family: var(--font-geneva);
+  font-size: 10px;
+  color: var(--black);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+/* External link button */
+.externalButton {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background-color: var(--platinum);
+  border: 1px solid var(--black);
+  cursor: pointer;
+  box-shadow:
+    inset 1px 1px 0 var(--highlight),
+    inset -1px -1px 0 var(--shadow);
+}
+
+.externalButton:hover {
+  background-color: var(--highlight);
+}
+
+.externalButton:active {
+  box-shadow:
+    inset -1px -1px 0 var(--highlight),
+    inset 1px 1px 0 var(--shadow);
+}
+
+.externalButton svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* Content wrapper */
+.contentWrapper {
+  flex: 1;
+  position: relative;
+  background-color: var(--white);
+  overflow: hidden;
+}
+
+.iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* Loading overlay */
+.loadingOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background-color: var(--white);
+  font-family: var(--font-geneva);
+  font-size: 12px;
+  color: var(--black);
+  z-index: 1;
+}
+
+.loadingSpinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--shadow);
+  border-top-color: var(--black);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Error overlay */
+.errorOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+  background-color: var(--platinum);
+  z-index: 1;
+}
+
+.errorIcon {
+  opacity: 0.8;
+}
+
+.errorText {
+  font-family: var(--font-geneva);
+  font-size: 12px;
+  color: var(--black);
+  text-align: center;
+  max-width: 300px;
+  margin: 0;
+}
+
+.openButton {
+  padding: 6px 16px;
+  font-family: var(--font-geneva);
+  font-size: 11px;
+  color: var(--black);
+  background-color: var(--platinum);
+  border: 2px solid var(--black);
+  border-radius: 4px;
+  cursor: pointer;
+  box-shadow:
+    inset 1px 1px 0 var(--highlight),
+    inset -1px -1px 0 var(--shadow);
+}
+
+.openButton:hover {
+  background-color: var(--highlight);
+}
+
+.openButton:active {
+  box-shadow:
+    inset -1px -1px 0 var(--highlight),
+    inset 1px 1px 0 var(--shadow);
+}
+
+/* Demo mode */
+.demoMode {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  background-color: var(--platinum);
+}
+
+.demoIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.6;
+}
+
+.demoText {
+  font-family: var(--font-chicago);
+  font-size: 12px;
+  color: var(--black);
+  text-align: center;
+  margin: 0;
+}
+
+.demoSubtext {
+  font-family: var(--font-geneva);
+  font-size: 10px;
+  color: var(--shadow);
+  text-align: center;
+  margin: 0;
+}
+
+/* Error state (simple) */
+.error {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-chicago);
+  font-size: 12px;
+  color: var(--black);
+  background-color: var(--platinum);
+  padding: 24px;
+  text-align: center;
+}

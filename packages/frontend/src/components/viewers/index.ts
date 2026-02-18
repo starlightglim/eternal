@@ -8,3 +8,4 @@ export { VideoPlayer } from './VideoPlayer';
 export { PDFViewer } from './PDFViewer';
 export { Calculator } from './Calculator';
 export { Clock } from './Clock';
+export { WebsiteViewer } from './WebsiteViewer';

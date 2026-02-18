@@ -1,0 +1,150 @@
+/* LinkDialog - Classic Mac OS Dialog for creating links */
+
+/* Semi-transparent overlay */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100001;
+}
+
+/* Dialog box - classic Mac style */
+.dialog {
+  background: var(--white);
+  border: 2px solid var(--black);
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.4);
+  padding: 16px;
+  min-width: 340px;
+  max-width: 450px;
+}
+
+/* Header with icon and title */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.icon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+}
+
+.icon svg {
+  display: block;
+  image-rendering: pixelated;
+}
+
+.title {
+  font-family: var(--font-chicago);
+  font-size: 14px;
+  font-weight: bold;
+  color: var(--black);
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+/* Content area */
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+/* Field group - label + input */
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.label {
+  font-family: var(--font-geneva);
+  font-size: 11px;
+  color: var(--black);
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+.input {
+  font-family: var(--font-geneva);
+  font-size: 11px;
+  color: var(--black);
+  background: var(--white);
+  border: 1px solid var(--black);
+  padding: 6px 8px;
+  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.1);
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--black);
+  box-shadow:
+    inset 1px 1px 2px rgba(0, 0, 0, 0.1),
+    0 0 0 1px var(--black);
+}
+
+.input::placeholder {
+  color: var(--shadow);
+}
+
+/* Error message */
+.error {
+  font-family: var(--font-geneva);
+  font-size: 10px;
+  color: #c00;
+  padding: 4px 0;
+}
+
+/* Buttons row */
+.buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Button base style */
+.button {
+  font-family: var(--font-chicago);
+  font-size: 12px;
+  color: var(--black);
+  background: var(--white);
+  border: 2px solid var(--black);
+  border-radius: 4px;
+  padding: 4px 16px;
+  min-width: 70px;
+  cursor: pointer;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+.button:hover {
+  background: var(--highlight);
+}
+
+.button:active {
+  background: var(--black);
+  color: var(--white);
+}
+
+/* Primary button */
+.primaryButton {
+  border-width: 3px;
+  padding: 3px 15px;
+}
+
+.primaryButton:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--black);
+}
