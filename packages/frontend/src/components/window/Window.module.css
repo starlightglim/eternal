@@ -47,21 +47,20 @@
   cursor: grabbing;
 }
 
-/* Horizontal stripes for active window */
+/* Horizontal stripes for active window - Mac OS 8 style 1px alternating */
 .titleBarStripes {
   position: absolute;
   top: 0;
   left: 22px; /* Leave space for close box */
   right: 38px; /* Leave space for zoom + collapse boxes */
   bottom: 0;
+  /* 1px white, 1px black alternating stripes - classic Mac OS 8 */
   background: repeating-linear-gradient(
     to bottom,
-    var(--white) 0px,
-    var(--white) 1px,
+    transparent 0px,
+    transparent 1px,
     var(--black) 1px,
-    var(--black) 3px,
-    var(--white) 3px,
-    var(--white) 4px
+    var(--black) 2px
   );
   pointer-events: none;
 }
