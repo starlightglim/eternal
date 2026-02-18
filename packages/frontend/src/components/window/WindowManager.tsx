@@ -296,7 +296,7 @@ function WindowContent({
           </div>
         );
       }
-      return <AudioPlayer itemId={item.id} />;
+      return <AudioPlayer itemId={item.id} r2Key={item.r2Key} name={item.name} />;
 
     case 'video':
       if (!item) {
@@ -314,7 +314,7 @@ function WindowContent({
           </div>
         );
       }
-      return <VideoPlayer itemId={item.id} />;
+      return <VideoPlayer itemId={item.id} r2Key={item.r2Key} name={item.name} />;
 
     case 'pdf':
       if (!item) {
@@ -332,7 +332,7 @@ function WindowContent({
           </div>
         );
       }
-      return <PDFViewer itemId={item.id} />;
+      return <PDFViewer itemId={item.id} r2Key={item.r2Key} name={item.name} />;
 
     case 'calculator':
       return <Calculator />;

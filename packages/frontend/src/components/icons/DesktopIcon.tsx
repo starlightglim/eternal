@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useEffect } from 'react';
 import type { DesktopItem } from '../../types';
 import { FolderIcon, TextFileIcon, ImageFileIcon, LinkIcon, AudioFileIcon, VideoFileIcon, PDFFileIcon } from './PixelIcons';
 import styles from './DesktopIcon.module.css';
@@ -39,6 +39,9 @@ export function DesktopIcon({
 }: DesktopIconProps) {
   const clickTimeoutRef = useRef<number | null>(null);
   const clickCountRef = useRef(0);
+  const iconRef = useRef<HTMLDivElement>(null);
+  // Track the pointer ID we captured so we can release it reliably
+  const capturedPointerIdRef = useRef<number | null>(null);
 
   // Calculate pixel position from grid position
   const pixelX = item.position.x * gridCellSize;
@@ -60,10 +63,11 @@ export function DesktopIcon({
       onSelect(item.id, addToSelection);
 
       // Start drag (if handler provided)
-      if (onDragStart) {
+      if (onDragStart && iconRef.current) {
         onDragStart(item.id, e);
-        // Capture pointer for drag outside element
-        (e.target as HTMLElement).setPointerCapture(e.pointerId);
+        // Capture pointer on the icon element (not e.target which could be a child)
+        iconRef.current.setPointerCapture(e.pointerId);
+        capturedPointerIdRef.current = e.pointerId;
       }
     },
     [item.id, onSelect, onDragStart]
@@ -82,11 +86,45 @@ export function DesktopIcon({
     (e: React.PointerEvent) => {
       if (onDragEnd) {
         onDragEnd(e);
-        (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+      }
+      // Release pointer capture from the element that captured it
+      if (iconRef.current && capturedPointerIdRef.current !== null) {
+        try {
+          iconRef.current.releasePointerCapture(capturedPointerIdRef.current);
+        } catch {
+          // Ignore - pointer may already be released
+        }
+        capturedPointerIdRef.current = null;
       }
     },
     [onDragEnd]
   );
+
+  // Handle pointer cancel (when browser/OS interrupts the drag)
+  const handlePointerCancel = useCallback(
+    (e: React.PointerEvent) => {
+      // Treat cancel the same as end to clean up state
+      if (onDragEnd) {
+        onDragEnd(e);
+      }
+      capturedPointerIdRef.current = null;
+    },
+    [onDragEnd]
+  );
+
+  // Clean up pointer capture if component unmounts during drag
+  useEffect(() => {
+    return () => {
+      if (iconRef.current && capturedPointerIdRef.current !== null) {
+        try {
+          iconRef.current.releasePointerCapture(capturedPointerIdRef.current);
+        } catch {
+          // Ignore - pointer may already be released
+        }
+        capturedPointerIdRef.current = null;
+      }
+    };
+  }, []);
 
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
@@ -124,16 +162,19 @@ export function DesktopIcon({
 
   return (
     <div
+      ref={iconRef}
       className={iconClasses}
       style={{
         left: displayX,
         top: displayY,
         width: gridCellSize,
         height: gridCellSize,
+        touchAction: 'none', // Prevent browser handling of touch gestures during drag
       }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
       onClick={handleClick}
       onContextMenu={onContextMenu}
     >

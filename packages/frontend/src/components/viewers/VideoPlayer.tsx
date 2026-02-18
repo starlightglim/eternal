@@ -5,13 +5,16 @@ import styles from './VideoPlayer.module.css';
 
 interface VideoPlayerProps {
   itemId: string;
+  r2Key?: string;
+  name?: string;
 }
 
 /**
  * VideoPlayer - Classic Mac OS-style video player
  * Features bordered video display with playback controls
  */
-export function VideoPlayer({ itemId }: VideoPlayerProps) {
+export function VideoPlayer({ itemId, r2Key: propR2Key, name: propName }: VideoPlayerProps) {
+  // Get item from store as fallback (for backwards compatibility)
   const item = useDesktopStore((state) => state.getItem(itemId));
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -22,9 +25,13 @@ export function VideoPlayer({ itemId }: VideoPlayerProps) {
   const [error, setError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  // Prefer prop r2Key, fall back to store item
+  const r2Key = propR2Key || item?.r2Key;
+  const fileName = propName || item?.name || 'Video';
+
   // Get video URL
-  const videoUrl = item?.r2Key && isApiConfigured
-    ? getFileUrl(item.r2Key)
+  const videoUrl = r2Key && isApiConfigured
+    ? getFileUrl(r2Key)
     : null;
 
   // Format time as MM:SS
@@ -121,7 +128,8 @@ export function VideoPlayer({ itemId }: VideoPlayerProps) {
     };
   }, []);
 
-  if (!item) {
+  // Show error if no r2Key available (item not found in store AND no prop passed)
+  if (!r2Key && !item) {
     return (
       <div className={styles.container}>
         <div className={styles.error}>Video file not found</div>
@@ -142,7 +150,7 @@ export function VideoPlayer({ itemId }: VideoPlayerProps) {
               <rect x="46" y="48" width="12" height="8" fill="#808080" stroke="#000" strokeWidth="1"/>
             </svg>
           </div>
-          <p className={styles.demoText}>{item.name}</p>
+          <p className={styles.demoText}>{fileName}</p>
           <p className={styles.demoSubtext}>Demo mode: No video data</p>
         </div>
       </div>

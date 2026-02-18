@@ -278,7 +278,9 @@ export async function fetchVisitorDesktop(username: string): Promise<VisitorResp
  */
 export function getFileUrl(r2Key: string): string {
   const tokenParam = authToken ? `?token=${encodeURIComponent(authToken)}` : '';
-  return `${API_URL}/api/files/${r2Key}${tokenParam}`;
+  // Encode each path segment to handle special characters in filenames
+  const encodedKey = r2Key.split('/').map(encodeURIComponent).join('/');
+  return `${API_URL}/api/files/${encodedKey}${tokenParam}`;
 }
 
 /**
@@ -289,7 +291,9 @@ export function getWallpaperUrl(wallpaperValue: string): string {
   // Custom wallpapers are prefixed with "custom:"
   if (wallpaperValue.startsWith('custom:')) {
     const r2Key = wallpaperValue.slice('custom:'.length);
-    return `${API_URL}/api/wallpaper/${r2Key}`;
+    // Encode each path segment to handle special characters
+    const encodedKey = r2Key.split('/').map(encodeURIComponent).join('/');
+    return `${API_URL}/api/wallpaper/${encodedKey}`;
   }
   return '';
 }

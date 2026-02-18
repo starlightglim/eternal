@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef } from 'react';
+import { useCallback, useState, useRef, useEffect } from 'react';
 import { useDesktopStore } from '../../stores/desktopStore';
 import { useWindowStore } from '../../stores/windowStore';
 import { FolderIcon, ImageFileIcon, TextFileIcon, LinkIcon, AudioFileIcon, VideoFileIcon, PDFFileIcon } from '../icons/PixelIcons';
@@ -43,6 +43,9 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false, isDr
   const [folderDropTargetId, setFolderDropTargetId] = useState<string | null>(null);
   const dragStartPos = useRef<{ x: number; y: number } | null>(null);
   const hasDragged = useRef(false);
+  // Track the element and pointer ID that captured the pointer
+  const capturedElementRef = useRef<HTMLElement | null>(null);
+  const capturedPointerIdRef = useRef<number | null>(null);
 
   // If visitorItems is provided, filter from those; otherwise use the store
   // Always filter out trashed items
@@ -115,7 +118,11 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false, isDr
         })
       );
 
-      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      // Capture on currentTarget (the item div) rather than target (could be child)
+      const element = e.currentTarget as HTMLElement;
+      element.setPointerCapture(e.pointerId);
+      capturedElementRef.current = element;
+      capturedPointerIdRef.current = e.pointerId;
     },
     [isVisitorMode, folderId]
   );
@@ -166,6 +173,19 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false, isDr
     [draggingId, folderId]
   );
 
+  // Helper to release pointer capture safely
+  const releasePointerCapture = useCallback(() => {
+    if (capturedElementRef.current && capturedPointerIdRef.current !== null) {
+      try {
+        capturedElementRef.current.releasePointerCapture(capturedPointerIdRef.current);
+      } catch {
+        // Ignore - pointer may already be released
+      }
+      capturedElementRef.current = null;
+      capturedPointerIdRef.current = null;
+    }
+  }, []);
+
   // Handle pointer up (end drag)
   const handlePointerUp = useCallback(
     (e: React.PointerEvent) => {
@@ -190,14 +210,45 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false, isDr
         });
       }
 
-      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+      releasePointerCapture();
       setDraggingId(null);
       setFolderDropTargetId(null);
       dragStartPos.current = null;
       hasDragged.current = false;
     },
-    [draggingId, folderDropTargetId, updateItem, folderId]
+    [draggingId, folderDropTargetId, updateItem, folderId, releasePointerCapture]
   );
+
+  // Handle pointer cancel (when browser/OS interrupts the drag)
+  const handlePointerCancel = useCallback(
+    (e: React.PointerEvent) => {
+      // Dispatch drag end event to clean up Desktop state
+      window.dispatchEvent(
+        new CustomEvent<FolderDragEvent>(FOLDER_DRAG_END, {
+          detail: {
+            itemId: draggingId || '',
+            sourceFolderId: folderId,
+            clientX: e.clientX,
+            clientY: e.clientY,
+          },
+        })
+      );
+
+      releasePointerCapture();
+      setDraggingId(null);
+      setFolderDropTargetId(null);
+      dragStartPos.current = null;
+      hasDragged.current = false;
+    },
+    [draggingId, folderId, releasePointerCapture]
+  );
+
+  // Clean up pointer capture on unmount
+  useEffect(() => {
+    return () => {
+      releasePointerCapture();
+    };
+  }, [releasePointerCapture]);
 
   // Clear selection when clicking empty area
   const handleBackgroundClick = useCallback(() => {
@@ -244,6 +295,7 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false, isDr
       onClick={handleBackgroundClick}
       onPointerMove={draggingId ? handlePointerMove : undefined}
       onPointerUp={draggingId ? handlePointerUp : undefined}
+      onPointerCancel={draggingId ? handlePointerCancel : undefined}
     >
       <div className={styles.itemGrid}>
         {items.map((item) => (

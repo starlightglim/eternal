@@ -37,6 +37,8 @@
   padding: 4px;
   cursor: pointer;
   border-radius: 2px;
+  /* Prevent browser touch gestures during drag */
+  touch-action: none;
 }
 
 .item:hover {

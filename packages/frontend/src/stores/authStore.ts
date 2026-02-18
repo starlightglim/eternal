@@ -11,6 +11,7 @@ import {
   login as apiLogin,
   logout as apiLogout,
 } from '../services/api';
+import { useWindowStore } from './windowStore';
 
 interface AuthState {
   user: AuthUser | null;
@@ -181,6 +182,8 @@ export const useAuthStore = create<AuthStore>()(
             await apiLogout();
           }
           setAuthToken(null);
+          // Clear window state on logout
+          useWindowStore.getState().clearWindowState();
           set({
             user: null,
             profile: null,
@@ -190,6 +193,8 @@ export const useAuthStore = create<AuthStore>()(
         } catch (error: unknown) {
           // Clear state even if logout API fails
           setAuthToken(null);
+          // Clear window state on logout
+          useWindowStore.getState().clearWindowState();
           const message = error instanceof Error ? error.message : 'Logout failed';
           set({
             user: null,
@@ -257,6 +262,12 @@ export const useAuthStore = create<AuthStore>()(
         user: state.user,
         profile: state.profile,
       }),
+      // Set auth token in API module after hydration completes
+      onRehydrateStorage: () => (state) => {
+        if (state?.token) {
+          setAuthToken(state.token);
+        }
+      },
     }
   )
 );

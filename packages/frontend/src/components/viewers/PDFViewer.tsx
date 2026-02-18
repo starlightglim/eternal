@@ -5,20 +5,27 @@ import styles from './PDFViewer.module.css';
 
 interface PDFViewerProps {
   itemId: string;
+  r2Key?: string;
+  name?: string;
 }
 
 /**
  * PDFViewer - Classic Mac OS-style PDF document viewer
  * Uses native browser PDF rendering via iframe/object element
  */
-export function PDFViewer({ itemId }: PDFViewerProps) {
+export function PDFViewer({ itemId, r2Key: propR2Key, name: propName }: PDFViewerProps) {
+  // Get item from store as fallback (for backwards compatibility)
   const item = useDesktopStore((state) => state.getItem(itemId));
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Prefer prop r2Key, fall back to store item
+  const r2Key = propR2Key || item?.r2Key;
+  const fileName = propName || item?.name || 'Document';
+
   // Get PDF URL
-  const pdfUrl = item?.r2Key && isApiConfigured
-    ? getFileUrl(item.r2Key)
+  const pdfUrl = r2Key && isApiConfigured
+    ? getFileUrl(r2Key)
     : null;
 
   const handleLoad = useCallback(() => {
@@ -37,7 +44,8 @@ export function PDFViewer({ itemId }: PDFViewerProps) {
     }
   }, [pdfUrl]);
 
-  if (!item) {
+  // Show error if no r2Key available (item not found in store AND no prop passed)
+  if (!r2Key && !item) {
     return (
       <div className={styles.container}>
         <div className={styles.error}>PDF file not found</div>
@@ -63,7 +71,7 @@ export function PDFViewer({ itemId }: PDFViewerProps) {
               <rect x="12" y="58" width="24" height="2" fill="#808080"/>
             </svg>
           </div>
-          <p className={styles.demoText}>{item.name}</p>
+          <p className={styles.demoText}>{fileName}</p>
           <p className={styles.demoSubtext}>Demo mode: No PDF data</p>
         </div>
       </div>
@@ -83,7 +91,7 @@ export function PDFViewer({ itemId }: PDFViewerProps) {
       {/* Toolbar */}
       <div className={styles.toolbar}>
         <div className={styles.toolbarLeft}>
-          <span className={styles.fileName}>{item.name}</span>
+          <span className={styles.fileName}>{fileName}</span>
         </div>
         <div className={styles.toolbarRight}>
           <button
@@ -117,7 +125,7 @@ export function PDFViewer({ itemId }: PDFViewerProps) {
           <iframe
             src={pdfUrl}
             className={styles.pdfFrame}
-            title={item.name}
+            title={fileName}
             onLoad={handleLoad}
             onError={handleError}
           />

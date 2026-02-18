@@ -51,7 +51,7 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
   // Sync desktop state with Firestore (if Firebase is enabled)
   useDesktopSync();
 
-  const { openWindow, windows, focusWindow } = useWindowStore();
+  const { openWindow, windows, focusWindow, loadWindowState } = useWindowStore();
   const { profile } = useAuthStore();
   const {
     items,
@@ -76,6 +76,19 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
       loadDesktop();
     }
   }, [loadDesktop, isVisitorMode]);
+
+  // Restore window state from localStorage after items are loaded
+  // This runs once when loading finishes and we have items
+  const hasRestoredWindows = useRef(false);
+  useEffect(() => {
+    if (isVisitorMode || hasRestoredWindows.current) return;
+    if (loading) return; // Wait for loading to finish
+
+    // Build a set of valid item IDs for window restoration
+    const validItemIds = new Set(items.map(item => item.id));
+    loadWindowState(validItemIds);
+    hasRestoredWindows.current = true;
+  }, [loading, items, isVisitorMode, loadWindowState]);
 
   // Show Welcome window on first visit
   useEffect(() => {
@@ -106,6 +119,8 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
   const rafId = useRef<number | null>(null); // For requestAnimationFrame throttling
   // Multi-select drag: store starting positions of all selected items
   const draggedItemsStartPos = useRef<Map<string, { x: number; y: number }> | null>(null);
+  // Track if drag is still active (guards against stale RAF callbacks)
+  const isDraggingRef = useRef(false);
 
   // Trash state
   const [trashSelected, setTrashSelected] = useState(false);
@@ -474,6 +489,7 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
       if (!item) return;
 
       setDraggingId(id);
+      isDraggingRef.current = true;
       hasDragged.current = false;
       dragStartPos.current = { x: e.clientX, y: e.clientY };
       dragItemStartGridPos.current = { x: item.position.x, y: item.position.y };
@@ -519,6 +535,12 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
 
       // Schedule state update for next frame
       rafId.current = requestAnimationFrame(() => {
+        // Guard against stale callbacks - check if we're still dragging the same item
+        if (!isDraggingRef.current || !dragStartPos.current || !dragItemStartGridPos.current) {
+          rafId.current = null;
+          return;
+        }
+
         const deltaX = clientX - dragStartPos.current!.x;
         const deltaY = clientY - dragStartPos.current!.y;
 
@@ -605,6 +627,25 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
     [draggingId, rootItems]
   );
 
+  // Helper to reset all drag state
+  const resetDragState = useCallback(() => {
+    // Cancel any pending animation frame
+    if (rafId.current !== null) {
+      cancelAnimationFrame(rafId.current);
+      rafId.current = null;
+    }
+    isDraggingRef.current = false;
+    setDraggingId(null);
+    setDragOffset(null);
+    setIsDropTarget(false);
+    setFolderDropTargetId(null);
+    setFolderWindowDropTargetId(null);
+    dragStartPos.current = null;
+    dragItemStartGridPos.current = null;
+    draggedItemsStartPos.current = null;
+    hasDragged.current = false;
+  }, []);
+
   // Drag end
   const handleDragEnd = useCallback(
     (e: React.PointerEvent) => {
@@ -615,11 +656,7 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
       }
 
       if (!draggingId || !dragItemStartGridPos.current) {
-        setDraggingId(null);
-        setDragOffset(null);
-        setIsDropTarget(false);
-        setFolderDropTargetId(null);
-        setFolderWindowDropTargetId(null);
+        resetDragState();
         return;
       }
 
@@ -641,12 +678,7 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
         if (isOverTrash && hasDragged.current) {
           // Move all dragged items to trash
           moveToTrash(draggedItemIds);
-          setDraggingId(null);
-          setDragOffset(null);
-          setIsDropTarget(false);
-          setFolderDropTargetId(null);
-          setFolderWindowDropTargetId(null);
-          draggedItemsStartPos.current = null;
+          resetDragState();
           return;
         }
       }
@@ -658,12 +690,7 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
         draggedItemIds.forEach((id, index) => {
           updateItem(id, { parentId: folderDropTargetId, position: { x: index % 8, y: Math.floor(index / 8) } });
         });
-        setDraggingId(null);
-        setDragOffset(null);
-        setIsDropTarget(false);
-        setFolderDropTargetId(null);
-        setFolderWindowDropTargetId(null);
-        draggedItemsStartPos.current = null;
+        resetDragState();
         return;
       }
 
@@ -674,12 +701,7 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
         draggedItemIds.forEach((id, index) => {
           updateItem(id, { parentId: folderWindowDropTargetId, position: { x: index % 8, y: Math.floor(index / 8) } });
         });
-        setDraggingId(null);
-        setDragOffset(null);
-        setIsDropTarget(false);
-        setFolderDropTargetId(null);
-        setFolderWindowDropTargetId(null);
-        draggedItemsStartPos.current = null;
+        resetDragState();
         return;
       }
 
@@ -711,15 +733,38 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
         }
       }
 
-      setDraggingId(null);
-      setDragOffset(null);
-      setIsDropTarget(false);
-      setFolderDropTargetId(null);
-      setFolderWindowDropTargetId(null);
-      draggedItemsStartPos.current = null;
+      resetDragState();
     },
-    [draggingId, dragOffset, moveItem, moveToTrash, findNearestAvailablePosition, folderDropTargetId, folderWindowDropTargetId]
+    [draggingId, dragOffset, moveItem, moveToTrash, findNearestAvailablePosition, folderDropTargetId, folderWindowDropTargetId, resetDragState]
   );
+
+  // Safety: Clean up stale drag state if component becomes unfocused during drag
+  // This handles edge cases where pointerup is never received
+  useEffect(() => {
+    const handleWindowBlur = () => {
+      if (isDraggingRef.current) {
+        resetDragState();
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden && isDraggingRef.current) {
+        resetDragState();
+      }
+    };
+
+    window.addEventListener('blur', handleWindowBlur);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('blur', handleWindowBlur);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      // Clean up any pending RAF on unmount
+      if (rafId.current !== null) {
+        cancelAnimationFrame(rafId.current);
+      }
+    };
+  }, [resetDragState]);
 
   // Trash handlers
   const handleTrashSelect = useCallback(() => {
@@ -772,6 +817,10 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
     });
   }, [openWindow]);
 
+  // Track selection rectangle pointer capture
+  const selectionPointerIdRef = useRef<number | null>(null);
+  const selectionCaptureElementRef = useRef<HTMLElement | null>(null);
+
   // Selection rectangle handlers (marquee select)
   const handleSelectionStart = useCallback(
     (e: React.PointerEvent) => {
@@ -793,7 +842,10 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
       }
 
       // Capture pointer for smooth selection outside bounds
-      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      const element = e.currentTarget as HTMLElement;
+      element.setPointerCapture(e.pointerId);
+      selectionPointerIdRef.current = e.pointerId;
+      selectionCaptureElementRef.current = element;
     },
     [isVisitorMode, deselectAll]
   );
@@ -858,10 +910,27 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
 
       isSelectingRef.current = false;
       setSelectionRect(null);
-      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+      // Release pointer capture from the correct element
+      if (selectionCaptureElementRef.current && selectionPointerIdRef.current !== null) {
+        try {
+          selectionCaptureElementRef.current.releasePointerCapture(selectionPointerIdRef.current);
+        } catch {
+          // Ignore - pointer may already be released
+        }
+        selectionPointerIdRef.current = null;
+        selectionCaptureElementRef.current = null;
+      }
     },
     [selectionRect, rootItems, selectItem]
   );
+
+  // Handle selection cancel (when browser interrupts selection)
+  const handleSelectionCancel = useCallback(() => {
+    isSelectingRef.current = false;
+    setSelectionRect(null);
+    selectionPointerIdRef.current = null;
+    selectionCaptureElementRef.current = null;
+  }, []);
 
   // In visitor mode, disable drag and drop
   const dragStartHandler = isVisitorMode ? undefined : handleDragStart;
@@ -1275,6 +1344,7 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
         onPointerDown={handleSelectionStart}
         onPointerMove={handleSelectionMove}
         onPointerUp={handleSelectionEnd}
+        onPointerCancel={handleSelectionCancel}
         onDragOver={handleFileDragOver}
         onDragLeave={handleFileDragLeave}
         onDrop={handleFileDrop}

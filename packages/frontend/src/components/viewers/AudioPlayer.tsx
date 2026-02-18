@@ -5,13 +5,16 @@ import styles from './AudioPlayer.module.css';
 
 interface AudioPlayerProps {
   itemId: string;
+  r2Key?: string;
+  name?: string;
 }
 
 /**
  * AudioPlayer - Classic QuickTime-style audio player
  * Features a compact, retro design with play/pause, progress bar, and time display
  */
-export function AudioPlayer({ itemId }: AudioPlayerProps) {
+export function AudioPlayer({ itemId, r2Key: propR2Key, name: propName }: AudioPlayerProps) {
+  // Get item from store as fallback (for backwards compatibility)
   const item = useDesktopStore((state) => state.getItem(itemId));
   const audioRef = useRef<HTMLAudioElement>(null);
 
@@ -21,9 +24,13 @@ export function AudioPlayer({ itemId }: AudioPlayerProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Prefer prop r2Key, fall back to store item
+  const r2Key = propR2Key || item?.r2Key;
+  const fileName = propName || item?.name || 'Audio';
+
   // Get audio URL
-  const audioUrl = item?.r2Key && isApiConfigured
-    ? getFileUrl(item.r2Key)
+  const audioUrl = r2Key && isApiConfigured
+    ? getFileUrl(r2Key)
     : null;
 
   // Format time as MM:SS
@@ -100,7 +107,8 @@ export function AudioPlayer({ itemId }: AudioPlayerProps) {
     };
   }, []);
 
-  if (!item) {
+  // Show error if no r2Key available (item not found in store AND no prop passed)
+  if (!r2Key && !item) {
     return (
       <div className={styles.container}>
         <div className={styles.error}>Audio file not found</div>
@@ -121,7 +129,7 @@ export function AudioPlayer({ itemId }: AudioPlayerProps) {
               <path d="M28 16L28 32" stroke="#000" strokeWidth="2"/>
             </svg>
           </div>
-          <p className={styles.demoText}>{item.name}</p>
+          <p className={styles.demoText}>{fileName}</p>
           <p className={styles.demoSubtext}>Demo mode: No audio data</p>
         </div>
       </div>
@@ -198,7 +206,7 @@ export function AudioPlayer({ itemId }: AudioPlayerProps) {
         </div>
 
         {/* Track name */}
-        <div className={styles.trackName}>{item.name}</div>
+        <div className={styles.trackName}>{fileName}</div>
       </div>
     </div>
   );

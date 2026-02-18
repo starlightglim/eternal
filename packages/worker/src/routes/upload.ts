@@ -14,12 +14,23 @@ import { sanitizeFilename, sanitizeText } from '../utils/sanitize';
 
 // Allowed MIME types for regular file uploads
 const ALLOWED_TYPES: Record<string, string> = {
+  // Images
   'image/jpeg': 'jpg',
   'image/png': 'png',
   'image/gif': 'gif',
   'image/webp': 'webp',
+  // Text
   'text/plain': 'txt',
   'text/markdown': 'md',
+  // Video
+  'video/mp4': 'mp4',
+  'video/webm': 'webm',
+  'video/quicktime': 'mov',
+  // Audio
+  'audio/mpeg': 'mp3',
+  'audio/wav': 'wav',
+  'audio/ogg': 'ogg',
+  'audio/mp4': 'm4a',
 };
 
 // Allowed MIME types for wallpaper uploads (images only)
@@ -150,7 +161,14 @@ export async function handleUpload(
     }
 
     // Determine item type based on MIME type
-    const itemType = mimeType.startsWith('image/') ? 'image' : 'text';
+    let itemType: 'image' | 'text' | 'video' | 'audio' = 'text';
+    if (mimeType.startsWith('image/')) {
+      itemType = 'image';
+    } else if (mimeType.startsWith('video/')) {
+      itemType = 'video';
+    } else if (mimeType.startsWith('audio/')) {
+      itemType = 'audio';
+    }
 
     // Create desktop item in Durable Object (reuse doId and stub from quota check)
     const itemData = {
@@ -232,7 +250,64 @@ export async function handleServeFile(
       }
     }
 
-    // Fetch from R2
+    // Check for Range request header (needed for video/audio streaming)
+    const rangeHeader = request.headers.get('Range');
+
+    if (rangeHeader) {
+      // Parse Range header (e.g., "bytes=0-999" or "bytes=500-")
+      const match = rangeHeader.match(/bytes=(\d+)-(\d*)/);
+      if (match) {
+        // First, get total file size with head request
+        const headResult = await env.ETERNALOS_FILES.head(r2Key);
+        if (!headResult) {
+          return Response.json(
+            { error: 'File not found' },
+            { status: 404 }
+          );
+        }
+        const totalSize = headResult.size;
+        const contentType = headResult.httpMetadata?.contentType || 'application/octet-stream';
+        const etag = headResult.httpEtag;
+
+        const start = parseInt(match[1], 10);
+        // If no end specified, serve to end of file
+        const end = match[2] ? parseInt(match[2], 10) : totalSize - 1;
+        // Clamp end to file bounds
+        const clampedEnd = Math.min(end, totalSize - 1);
+        const length = clampedEnd - start + 1;
+
+        // Validate range
+        if (start >= totalSize || start < 0) {
+          const headers = new Headers();
+          headers.set('Content-Range', `bytes */${totalSize}`);
+          return new Response(null, { status: 416, headers }); // Range Not Satisfiable
+        }
+
+        // Fetch partial content from R2
+        const object = await env.ETERNALOS_FILES.get(r2Key, {
+          range: { offset: start, length },
+        });
+
+        if (!object) {
+          return Response.json(
+            { error: 'File not found' },
+            { status: 404 }
+          );
+        }
+
+        const headers = new Headers();
+        headers.set('Content-Type', contentType);
+        headers.set('Content-Length', length.toString());
+        headers.set('Content-Range', `bytes ${start}-${clampedEnd}/${totalSize}`);
+        headers.set('Accept-Ranges', 'bytes');
+        headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+        headers.set('ETag', etag);
+
+        return new Response(object.body, { status: 206, headers });
+      }
+    }
+
+    // No range request - fetch full file
     const object = await env.ETERNALOS_FILES.get(r2Key);
 
     if (!object) {
@@ -244,10 +319,13 @@ export async function handleServeFile(
 
     // Build response with proper headers
     const headers = new Headers();
-    headers.set('Content-Type', object.httpMetadata?.contentType || 'application/octet-stream');
+    const contentType = object.httpMetadata?.contentType || 'application/octet-stream';
+    headers.set('Content-Type', contentType);
     headers.set('Content-Length', object.size.toString());
     headers.set('Cache-Control', 'public, max-age=31536000, immutable');
     headers.set('ETag', object.httpEtag);
+    // Always indicate we accept ranges for video/audio
+    headers.set('Accept-Ranges', 'bytes');
 
     // Handle conditional requests
     const ifNoneMatch = request.headers.get('If-None-Match');
