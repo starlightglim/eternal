@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, useEffect } from 'react';
+import { useCallback, useRef, useState, useEffect, useMemo } from 'react';
 import { WindowManager } from '../window';
 import { DesktopIcon, Trash, AssistantDesktopIcon } from '../icons';
 import { MenuBar } from '../menubar';
@@ -166,19 +166,30 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
   const [isDesktopDropTarget, setIsDesktopDropTarget] = useState(false);
 
   // Get root-level items (parentId === null), excluding trashed items
-  const rootItems = getItemsByParent(null).filter((item) => !item.isTrashed);
+  // Performance: useMemo prevents recalculating on every render
+  const rootItems = useMemo(
+    () => getItemsByParent(null).filter((item) => !item.isTrashed),
+    [getItemsByParent]
+  );
 
-  // Check if position is occupied by another item
+  // Performance: Build a Set of occupied positions for O(1) lookup
+  // Format: "x,y" string keys for fast membership testing
+  const occupiedPositions = useMemo(() => {
+    const positions = new Map<string, string>(); // "x,y" -> itemId
+    for (const item of rootItems) {
+      positions.set(`${item.position.x},${item.position.y}`, item.id);
+    }
+    return positions;
+  }, [rootItems]);
+
+  // Check if position is occupied by another item - O(1) with Set lookup
   const isPositionOccupied = useCallback(
     (x: number, y: number, excludeId?: string) => {
-      return rootItems.some(
-        (item) =>
-          item.id !== excludeId &&
-          item.position.x === x &&
-          item.position.y === y
-      );
+      const key = `${x},${y}`;
+      const occupantId = occupiedPositions.get(key);
+      return occupantId !== undefined && occupantId !== excludeId;
     },
-    [rootItems]
+    [occupiedPositions]
   );
 
   // Find nearest available grid position

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useEffect } from 'react';
+import { useCallback, useRef, useEffect, memo } from 'react';
 import type { DesktopItem } from '../../types';
 import { FolderIcon, TextFileIcon, ImageFileIcon, LinkIcon, AudioFileIcon, VideoFileIcon, PDFFileIcon } from './PixelIcons';
 import { ThumbnailIcon } from './ThumbnailIcon';
@@ -23,8 +23,11 @@ interface DesktopIconProps {
  * Desktop Icon Component
  * Displays a 32x32 pixel art icon with label
  * Supports click to select, double-click to open, and drag to reposition
+ *
+ * Performance: Wrapped with React.memo to prevent unnecessary re-renders
+ * when parent Desktop component updates but this icon's props haven't changed.
  */
-export function DesktopIcon({
+function DesktopIconInner({
   item,
   isSelected,
   gridCellSize,
@@ -205,3 +208,28 @@ export function DesktopIcon({
     </div>
   );
 }
+
+/**
+ * Memoized DesktopIcon - only re-renders when its specific props change.
+ * This is crucial for performance with 30+ items on the desktop.
+ */
+export const DesktopIcon = memo(DesktopIconInner, (prevProps, nextProps) => {
+  // Custom comparison for performance - only re-render when relevant props change
+  return (
+    prevProps.item.id === nextProps.item.id &&
+    prevProps.item.name === nextProps.item.name &&
+    prevProps.item.type === nextProps.item.type &&
+    prevProps.item.position.x === nextProps.item.position.x &&
+    prevProps.item.position.y === nextProps.item.position.y &&
+    prevProps.item.r2Key === nextProps.item.r2Key &&
+    prevProps.item.thumbnailKey === nextProps.item.thumbnailKey &&
+    prevProps.isSelected === nextProps.isSelected &&
+    prevProps.isDragging === nextProps.isDragging &&
+    prevProps.isDropTarget === nextProps.isDropTarget &&
+    prevProps.dragOffset?.x === nextProps.dragOffset?.x &&
+    prevProps.dragOffset?.y === nextProps.dragOffset?.y &&
+    prevProps.gridCellSize === nextProps.gridCellSize
+    // Note: callback props (onSelect, onDoubleClick, etc.) are not compared
+    // because they should be stable useCallback refs from the parent
+  );
+});

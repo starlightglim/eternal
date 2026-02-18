@@ -61,11 +61,15 @@
   color: var(--selection-text);
 }
 
-/* Dragging state */
+/* Dragging state - GPU accelerated for smooth movement */
 .dragging {
   opacity: 0.7;
   z-index: 9999;
   pointer-events: none;
+  /* GPU acceleration hints for smooth dragging with 30+ items */
+  will-change: transform, left, top;
+  /* Force GPU layer for smoother animations */
+  transform: translateZ(0);
 }
 
 /* Hover state - subtle feedback */
