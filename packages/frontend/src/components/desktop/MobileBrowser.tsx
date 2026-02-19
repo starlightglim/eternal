@@ -204,7 +204,7 @@ export function MobileBrowser({ isVisitorMode = false, visitorItems, username, o
   };
 
   return (
-    <div className={styles.container}>
+    <div className={`${styles.container} user-desktop`}>
       {/* Header */}
       <header className={styles.header}>
         <div className={styles.headerTitle}>

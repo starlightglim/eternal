@@ -90,15 +90,16 @@ export function VisitorPage() {
   useEffect(() => {
     if (!profile) return;
 
-    // Build appearance object from owner's profile
+    // Build appearance object from owner's profile (including customCSS)
     const ownerAppearance = {
       accentColor: profile.accentColor,
       desktopColor: profile.desktopColor,
       windowBgColor: profile.windowBgColor,
       fontSmoothing: profile.fontSmoothing,
+      customCSS: profile.customCSS,
     };
 
-    // Apply owner's appearance settings
+    // Apply owner's appearance settings (including custom CSS)
     applyAppearance(ownerAppearance);
 
     // Cleanup: restore user's own appearance when leaving visitor mode
@@ -339,7 +340,7 @@ export function VisitorPage() {
       <div className={styles.container}>
         <VisitorMenuBar username={username || ''} />
         <div
-          className={`${styles.desktop} ${wallpaperClass}`}
+          className={`${styles.desktop} user-desktop ${wallpaperClass}`}
           style={wallpaperStyle}
         >
           <div className={styles.emptyDesktopWindow}>
@@ -374,7 +375,7 @@ export function VisitorPage() {
     <div className={styles.container}>
       <VisitorMenuBar username={username || ''} />
       <div
-        className={`${styles.desktop} ${wallpaperClass}`}
+        className={`${styles.desktop} user-desktop ${wallpaperClass}`}
         style={wallpaperStyle}
         onClick={handleDesktopClick}
       >

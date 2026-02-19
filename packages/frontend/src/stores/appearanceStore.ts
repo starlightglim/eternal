@@ -19,6 +19,7 @@ export interface CustomAppearance {
   desktopColor?: string; // Hex color for desktop background
   windowBgColor?: string; // Hex color for window content area
   fontSmoothing?: boolean; // Override theme's font smoothing
+  customCSS?: string; // User-defined CSS, max 10KB
 }
 
 const APPEARANCE_STORAGE_KEY = 'eternalos-appearance';
@@ -165,6 +166,86 @@ export function applyAppearance(appearance: CustomAppearance) {
       document.body.style.setProperty('-moz-osx-font-smoothing', 'unset');
     }
   }
+
+  // Apply custom CSS
+  applyCustomCSS(appearance.customCSS);
+}
+
+/**
+ * Apply custom CSS by injecting a style element
+ * CSS is scoped to .user-desktop for security
+ */
+export function applyCustomCSS(css: string | undefined) {
+  // Remove existing custom CSS
+  const existingStyle = document.getElementById('eternalos-custom-css');
+  if (existingStyle) {
+    existingStyle.remove();
+  }
+
+  if (!css || !css.trim()) return;
+
+  // Scope the CSS to .user-desktop
+  const scopedCSS = scopeCSSToUserDesktop(css);
+
+  // Create and inject style element
+  const style = document.createElement('style');
+  style.id = 'eternalos-custom-css';
+  style.textContent = scopedCSS;
+  document.head.appendChild(style);
+}
+
+/**
+ * Scope CSS to .user-desktop to prevent affecting system UI
+ */
+function scopeCSSToUserDesktop(css: string): string {
+  if (!css.trim()) return '';
+
+  const rules = css.split('}');
+  const scopedRules: string[] = [];
+
+  for (let rule of rules) {
+    rule = rule.trim();
+    if (!rule) continue;
+
+    const braceIndex = rule.indexOf('{');
+    if (braceIndex === -1) continue;
+
+    const selectors = rule.slice(0, braceIndex).trim();
+    const declarations = rule.slice(braceIndex + 1).trim();
+
+    // Handle @keyframes specially - keep as-is
+    if (selectors.startsWith('@keyframes') || selectors.startsWith('@-webkit-keyframes')) {
+      scopedRules.push(`${rule}}`);
+      continue;
+    }
+
+    // Handle @media/@supports - keep as-is (inner rules should already be scoped)
+    if (selectors.startsWith('@media') || selectors.startsWith('@supports')) {
+      scopedRules.push(`${rule}}`);
+      continue;
+    }
+
+    // Skip @font-face for security
+    if (selectors.startsWith('@font-face')) {
+      continue;
+    }
+
+    // Scope each selector
+    const scopedSelectors = selectors
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((s) => {
+        if (s.startsWith('.user-desktop')) return s;
+        if (s === ':root' || s === 'body' || s === 'html') return '.user-desktop';
+        return `.user-desktop ${s}`;
+      })
+      .join(', ');
+
+    scopedRules.push(`${scopedSelectors} { ${declarations} }`);
+  }
+
+  return scopedRules.join('\n');
 }
 
 /**
@@ -191,6 +272,12 @@ export function clearAppearance() {
   // Clear font smoothing
   document.body.style.removeProperty('-webkit-font-smoothing');
   document.body.style.removeProperty('-moz-osx-font-smoothing');
+
+  // Clear custom CSS
+  const customStyle = document.getElementById('eternalos-custom-css');
+  if (customStyle) {
+    customStyle.remove();
+  }
 }
 
 /**
@@ -230,6 +317,7 @@ interface AppearanceStore {
   setDesktopColor: (color: string) => void;
   setWindowBgColor: (color: string) => void;
   setFontSmoothing: (enabled: boolean) => void;
+  setCustomCSS: (css: string) => void;
   resetAppearance: () => void;
   saveAppearance: () => Promise<void>;
   loadAppearance: (appearance: CustomAppearance) => void;
@@ -286,6 +374,15 @@ export const useAppearanceStore = create<AppearanceStore>((set, get) => {
       });
     },
 
+    setCustomCSS: (css: string) => {
+      const newAppearance = { ...get().appearance, customCSS: css };
+      applyCustomCSS(css);
+      set({
+        appearance: newAppearance,
+        hasUnsavedChanges: true,
+      });
+    },
+
     resetAppearance: () => {
       const defaultAppearance: CustomAppearance = {};
 
@@ -303,6 +400,12 @@ export const useAppearanceStore = create<AppearanceStore>((set, get) => {
       // Reset font smoothing to theme default
       document.body.style.removeProperty('-webkit-font-smoothing');
       document.body.style.removeProperty('-moz-osx-font-smoothing');
+
+      // Remove custom CSS
+      const customStyle = document.getElementById('eternalos-custom-css');
+      if (customStyle) {
+        customStyle.remove();
+      }
 
       set({
         appearance: defaultAppearance,
@@ -326,6 +429,7 @@ export const useAppearanceStore = create<AppearanceStore>((set, get) => {
             desktopColor: appearance.desktopColor,
             windowBgColor: appearance.windowBgColor,
             fontSmoothing: appearance.fontSmoothing,
+            customCSS: appearance.customCSS,
           });
         }
 

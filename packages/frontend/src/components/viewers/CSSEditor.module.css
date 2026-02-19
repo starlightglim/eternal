@@ -1,0 +1,353 @@
+/* CSSEditor - Mac OS 8 styled CSS editor */
+
+.editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--platinum);
+  font-family: var(--font-geneva);
+  font-size: 11px;
+}
+
+/* ============================================
+   TOOLBAR
+   ============================================ */
+
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  background: var(--platinum);
+  border-bottom: 1px solid var(--shadow);
+}
+
+.toolButton {
+  padding: 4px 10px;
+  font-family: var(--font-geneva);
+  font-size: 10px;
+  background: var(--white);
+  border: 1px solid var(--black);
+  cursor: pointer;
+  color: var(--window-text-color, var(--black));
+}
+
+.toolButton:hover {
+  background: var(--highlight);
+}
+
+.toolButton:active {
+  background: var(--selection);
+  color: var(--selection-text, var(--white));
+}
+
+.charCount {
+  font-family: var(--font-monaco);
+  font-size: 10px;
+  color: var(--text-color-secondary);
+  padding: 2px 6px;
+  background: var(--white);
+  border: 1px solid var(--shadow);
+}
+
+.charCount[data-warning="true"] {
+  color: #CC0000;
+  background: #FFEEEE;
+}
+
+/* ============================================
+   REFERENCE PANEL
+   ============================================ */
+
+.referencePanel {
+  padding: 10px;
+  background: var(--white);
+  border-bottom: 1px solid var(--shadow);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.referenceSection {
+  margin-bottom: 12px;
+}
+
+.referenceSection:last-of-type {
+  margin-bottom: 8px;
+}
+
+.referenceSection h4 {
+  margin: 0 0 6px 0;
+  font-family: var(--font-chicago);
+  font-size: 11px;
+  color: var(--text-color);
+}
+
+.selectorList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.selectorItem {
+  display: flex;
+  gap: 8px;
+  font-size: 10px;
+  padding: 3px 6px;
+  background: var(--platinum);
+  border: 1px solid var(--shadow);
+}
+
+.selectorItem code {
+  font-family: var(--font-monaco);
+  font-size: 10px;
+  color: #0000CC;
+  min-width: 120px;
+}
+
+.selectorItem span {
+  color: var(--text-color-secondary);
+}
+
+.exampleList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.exampleButton {
+  padding: 4px 10px;
+  font-family: var(--font-geneva);
+  font-size: 10px;
+  background: var(--platinum);
+  border: 1px solid var(--shadow);
+  cursor: pointer;
+  color: var(--text-color);
+  box-shadow:
+    inset 1px 1px 0 var(--highlight),
+    inset -1px -1px 0 var(--shadow);
+}
+
+.exampleButton:hover {
+  background: var(--highlight);
+}
+
+.exampleButton:active {
+  background: var(--selection);
+  color: var(--selection-text, var(--white));
+  box-shadow:
+    inset -1px -1px 0 var(--highlight),
+    inset 1px 1px 0 var(--shadow);
+}
+
+.referenceNote {
+  font-size: 10px;
+  color: var(--text-color-secondary);
+  padding: 8px;
+  background: #FFFFF0;
+  border: 1px solid #CCCC99;
+  line-height: 1.4;
+}
+
+.referenceNote code {
+  font-family: var(--font-monaco);
+  background: var(--platinum);
+  padding: 1px 4px;
+}
+
+/* ============================================
+   EDITOR AREA
+   ============================================ */
+
+.editorArea {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.textarea {
+  flex: 1;
+  width: 100%;
+  padding: 12px;
+  font-family: var(--font-monaco);
+  font-size: 12px;
+  line-height: 1.5;
+  background: var(--white);
+  border: none;
+  resize: none;
+  color: var(--window-text-color, var(--black));
+  tab-size: 2;
+  -moz-tab-size: 2;
+}
+
+.textarea:focus {
+  outline: none;
+}
+
+.textarea::placeholder {
+  color: var(--text-color-secondary);
+  opacity: 0.7;
+}
+
+/* Scrollbar */
+.textarea::-webkit-scrollbar {
+  width: 16px;
+}
+
+.textarea::-webkit-scrollbar-track {
+  background: var(--platinum);
+  border-left: 1px solid var(--shadow);
+}
+
+.textarea::-webkit-scrollbar-thumb {
+  background: var(--white);
+  border: 1px solid var(--black);
+  border-radius: 0;
+}
+
+.textarea::-webkit-scrollbar-thumb:hover {
+  background: var(--highlight);
+}
+
+/* ============================================
+   ERROR BAR
+   ============================================ */
+
+.errorBar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #FFEEEE;
+  border-top: 1px solid #CC0000;
+  color: #CC0000;
+  font-size: 11px;
+}
+
+.errorIcon {
+  font-size: 14px;
+}
+
+/* ============================================
+   PREVIEW BAR
+   ============================================ */
+
+.previewBar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #EEFFEE;
+  border-top: 1px solid #00AA00;
+  color: #006600;
+  font-size: 11px;
+}
+
+.previewIcon {
+  font-size: 14px;
+}
+
+/* ============================================
+   ACTION BAR
+   ============================================ */
+
+.actionBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  background: var(--platinum);
+  border-top: 1px solid var(--shadow);
+}
+
+.actionButtons {
+  display: flex;
+  gap: 8px;
+}
+
+.resetButton {
+  padding: 6px 14px;
+  font-family: var(--font-geneva);
+  font-size: 11px;
+  background: var(--platinum);
+  border: 1px solid var(--shadow);
+  border-radius: 3px;
+  cursor: pointer;
+  color: var(--text-color);
+  box-shadow:
+    inset 1px 1px 0 var(--highlight),
+    inset -1px -1px 0 var(--shadow);
+}
+
+.resetButton:hover:not(:disabled) {
+  background: var(--highlight);
+}
+
+.resetButton:active:not(:disabled) {
+  background: var(--shadow);
+  color: var(--white);
+  box-shadow:
+    inset -1px -1px 0 var(--highlight),
+    inset 1px 1px 0 var(--shadow);
+}
+
+.resetButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.previewButton {
+  padding: 6px 14px;
+  font-family: var(--font-geneva);
+  font-size: 11px;
+  background: var(--white);
+  border: 1px solid var(--black);
+  border-radius: 3px;
+  cursor: pointer;
+  color: var(--window-text-color, var(--black));
+}
+
+.previewButton:hover:not(:disabled) {
+  background: var(--highlight);
+}
+
+.previewButton:active:not(:disabled) {
+  background: var(--selection);
+  color: var(--selection-text, var(--white));
+}
+
+.previewButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.applyButton {
+  padding: 6px 18px;
+  font-family: var(--font-chicago);
+  font-size: 11px;
+  background: var(--white);
+  border: 2px solid var(--black);
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--window-text-color, var(--black));
+  box-shadow:
+    inset 1px 1px 0 var(--highlight),
+    inset -1px -1px 0 var(--shadow);
+}
+
+.applyButton:hover:not(:disabled) {
+  background: var(--highlight);
+}
+
+.applyButton:active:not(:disabled) {
+  background: var(--selection);
+  color: var(--selection-text, var(--white));
+  box-shadow:
+    inset -1px -1px 0 var(--highlight),
+    inset 1px 1px 0 var(--shadow);
+}
+
+.applyButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

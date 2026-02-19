@@ -79,6 +79,30 @@
   animation: blink 1s step-end infinite;
 }
 
+.exampleHeader {
+  color: #00cc00;
+  margin-top: 12px;
+  margin-bottom: 4px;
+}
+
+.examples {
+  margin: 4px 0 8px 20px;
+  padding: 0;
+  list-style: none;
+}
+
+.examples li {
+  margin: 4px 0;
+  color: #00cccc;
+  font-style: italic;
+}
+
+.examples li::before {
+  content: "→ ";
+  color: #00ff00;
+  font-style: normal;
+}
+
 @keyframes blink {
   50% {
     opacity: 0.5;

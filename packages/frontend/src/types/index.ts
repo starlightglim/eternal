@@ -99,7 +99,7 @@ export interface WindowState {
   preMaximizedPosition?: { x: number; y: number };
   preMaximizedSize?: { width: number; height: number };
   // Content information
-  contentType: 'folder' | 'image' | 'text' | 'markdown' | 'code' | 'get-info' | 'about' | 'assistant' | 'wallpaper' | 'welcome' | 'search' | 'preferences' | 'trash' | 'audio' | 'video' | 'pdf' | 'calculator' | 'clock' | 'link' | 'appearance' | 'widget';
+  contentType: 'folder' | 'image' | 'text' | 'markdown' | 'code' | 'get-info' | 'about' | 'assistant' | 'wallpaper' | 'welcome' | 'search' | 'preferences' | 'trash' | 'audio' | 'video' | 'pdf' | 'calculator' | 'clock' | 'link' | 'appearance' | 'widget' | 'css-editor';
   contentId?: string; // Reference to DesktopItem id if applicable
 }
 
@@ -112,11 +112,15 @@ export interface UserProfile {
   displayName?: string;
   wallpaper?: string;
   createdAt: number; // unix timestamp (ms)
+  // Onboarding flag (set to true on signup, cleared after first visit)
+  isNewUser?: boolean;
   // Custom appearance settings (Layer 1 customization)
   accentColor?: string;     // Hex color for selection, highlights
   desktopColor?: string;    // Hex color for desktop background
   windowBgColor?: string;   // Hex color for window content area
   fontSmoothing?: boolean;  // Override theme's font smoothing
+  // Custom CSS (Layer 4 customization)
+  customCSS?: string;       // User-defined CSS, max 10KB, scoped to .user-desktop
 }
 
 /**

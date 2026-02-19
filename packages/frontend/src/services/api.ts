@@ -377,8 +377,20 @@ export interface AssistantMessage {
   content: string;
 }
 
+export interface ToolCall {
+  tool: string;
+  args: Record<string, unknown>;
+}
+
+export interface ToolResult {
+  success: boolean;
+  message: string;
+}
+
 export interface AssistantResponse {
   response: string;
+  toolCalls?: ToolCall[];
+  toolResults?: ToolResult[];
 }
 
 export async function sendAssistantMessage(
@@ -396,11 +408,15 @@ export async function sendAssistantMessage(
 export interface ProfileUpdateRequest {
   displayName?: string;
   wallpaper?: string;
+  // Onboarding flag
+  isNewUser?: boolean;
   // Custom appearance settings
   accentColor?: string;
   desktopColor?: string;
   windowBgColor?: string;
   fontSmoothing?: boolean;
+  // Custom CSS (Layer 4 customization)
+  customCSS?: string;
 }
 
 export interface ProfileUpdateResponse {
@@ -412,6 +428,7 @@ export interface ProfileUpdateResponse {
     desktopColor?: string;
     windowBgColor?: string;
     fontSmoothing?: boolean;
+    customCSS?: string;
   };
 }
 

@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { sendAssistantMessage, isApiConfigured } from '../../services/api';
-import type { AssistantMessage } from '../../services/api';
+import { sendAssistantMessage, isApiConfigured, fetchDesktop } from '../../services/api';
+import type { AssistantMessage, ToolResult } from '../../services/api';
+import { useDesktopStore } from '../../stores/desktopStore';
+import { useAppearanceStore, applyAppearance } from '../../stores/appearanceStore';
 import styles from './DeskAssistant.module.css';
 
 interface DeskAssistantProps {
@@ -62,9 +64,61 @@ export function DeskAssistant({ isOwner = true }: DeskAssistantProps) {
     setIsLoading(true);
     try {
       const response = await sendAssistantMessage(userMessage, messages);
+
+      // Build the assistant message content
+      let content = response.response;
+
+      // If there were tool results, append a summary
+      if (response.toolResults && response.toolResults.length > 0) {
+        const successfulTools = response.toolResults.filter((r: ToolResult) => r.success);
+        const failedTools = response.toolResults.filter((r: ToolResult) => !r.success);
+
+        if (successfulTools.length > 0 || failedTools.length > 0) {
+          content += '\n\n---';
+          if (successfulTools.length > 0) {
+            content += '\n✓ ' + successfulTools.map((r: ToolResult) => r.message).join('\n✓ ');
+          }
+          if (failedTools.length > 0) {
+            content += '\n✗ ' + failedTools.map((r: ToolResult) => r.message).join('\n✗ ');
+          }
+        }
+
+        // Refresh state after tool execution
+        if (successfulTools.length > 0) {
+          try {
+            // Refresh desktop data (includes both items and profile)
+            const desktopData = await fetchDesktop();
+
+            // Refresh items if item-related tools were used
+            const itemTools = ['setItemIcon', 'addWidget'];
+            const needsItemRefresh = response.toolCalls?.some(tc => itemTools.includes(tc.tool));
+            if (needsItemRefresh) {
+              useDesktopStore.getState().setItems(desktopData.items);
+            }
+
+            // Refresh appearance if appearance-related tools were used
+            const appearanceTools = ['setAccentColor', 'setDesktopColor', 'setWindowBgColor', 'setWallpaper', 'applyCustomCSS'];
+            const needsAppearanceRefresh = response.toolCalls?.some(tc => appearanceTools.includes(tc.tool));
+            if (needsAppearanceRefresh && desktopData.profile) {
+              const appearance = {
+                accentColor: desktopData.profile.accentColor,
+                desktopColor: desktopData.profile.desktopColor,
+                windowBgColor: desktopData.profile.windowBgColor,
+                fontSmoothing: desktopData.profile.fontSmoothing,
+                customCSS: desktopData.profile.customCSS,
+              };
+              applyAppearance(appearance);
+              useAppearanceStore.getState().loadAppearance(appearance);
+            }
+          } catch {
+            // Silent fail - state will refresh on next page load
+          }
+        }
+      }
+
       const assistantMessage: AssistantMessage = {
         role: 'assistant',
-        content: response.response,
+        content,
       };
       setMessages(prev => [...prev, assistantMessage]);
     } catch (err) {
@@ -93,16 +147,24 @@ export function DeskAssistant({ isOwner = true }: DeskAssistantProps) {
           <div className={styles.welcome}>
             <div className={styles.asciiArt}>
 {`╔═══════════════════════════════════════╗
-║     EternalOS Desk Assistant v1.0     ║
+║     EternalOS Desk Assistant v2.0     ║
 ╚═══════════════════════════════════════╝`}
             </div>
             <p>Welcome! I'm your personal desk assistant.</p>
             <p>I can help you:</p>
             <ul>
               <li>Find files on your desktop</li>
-              <li>Suggest folder organization</li>
-              <li>Describe your desktop contents</li>
-              <li>Answer questions about your files</li>
+              <li>Customize your colors and appearance</li>
+              <li>Add widgets like sticky notes and guestbooks</li>
+              <li>Change folder icons to personalize your space</li>
+            </ul>
+            <p className={styles.exampleHeader}>Try asking:</p>
+            <ul className={styles.examples}>
+              <li>"Make my accent color purple"</li>
+              <li>"Give my desktop a cozy vibe"</li>
+              <li>"Add a sticky note widget"</li>
+              <li>"Change my folders to blue icons"</li>
+              <li>"What's on my desktop?"</li>
             </ul>
             <p className={styles.prompt}>Type a message below to get started...</p>
           </div>

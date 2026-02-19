@@ -19,7 +19,16 @@ export function useDesktopSync() {
   const fetchedRef = useRef<string | null>(null);
 
   // Stable callback to update profile
-  const updateProfileFromBackend = useCallback((backendProfile: { displayName?: string; wallpaper?: string }) => {
+  const updateProfileFromBackend = useCallback((backendProfile: {
+    displayName?: string;
+    wallpaper?: string;
+    isNewUser?: boolean;
+    accentColor?: string;
+    desktopColor?: string;
+    windowBgColor?: string;
+    fontSmoothing?: boolean;
+    customCSS?: string;
+  }) => {
     const currentProfile = useAuthStore.getState().profile;
     if (currentProfile) {
       useAuthStore.setState({
@@ -27,6 +36,12 @@ export function useDesktopSync() {
           ...currentProfile,
           displayName: backendProfile.displayName || currentProfile.displayName,
           wallpaper: backendProfile.wallpaper || currentProfile.wallpaper,
+          isNewUser: backendProfile.isNewUser,
+          accentColor: backendProfile.accentColor,
+          desktopColor: backendProfile.desktopColor,
+          windowBgColor: backendProfile.windowBgColor,
+          fontSmoothing: backendProfile.fontSmoothing,
+          customCSS: backendProfile.customCSS,
         },
       });
     }

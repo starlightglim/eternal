@@ -89,25 +89,44 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
     hasRestoredWindows.current = true;
   }, [loading, items, isVisitorMode, loadWindowState]);
 
-  // Show Welcome window on first visit
+  // Auto-open Read Me.txt for new users (after items are loaded)
+  const hasOpenedReadMe = useRef(false);
   useEffect(() => {
-    if (isVisitorMode) return;
+    if (isVisitorMode || loading || hasOpenedReadMe.current) return;
+    if (!profile?.isNewUser) return;
 
-    const hasSeenWelcome = localStorage.getItem('eternalos-welcome-seen');
-    if (!hasSeenWelcome) {
-      // Open the Welcome ReadMe window
+    // Find the Read Me.txt file at root level
+    const readMeItem = items.find(
+      (item) => item.type === 'text' && item.name === 'Read Me.txt' && item.parentId === null
+    );
+
+    if (readMeItem) {
+      hasOpenedReadMe.current = true;
+      // Open the Read Me.txt file
       openWindow({
-        id: 'welcome-readme',
-        title: 'Read Me',
+        id: `text-${readMeItem.id}`,
+        title: readMeItem.name,
         position: { x: 80, y: 60 },
-        size: { width: 380, height: 400 },
+        size: { width: 420, height: 480 },
         minimized: false,
         maximized: false,
-        contentType: 'welcome',
+        contentType: 'text',
+        contentId: readMeItem.id,
       });
-      localStorage.setItem('eternalos-welcome-seen', 'true');
+
+      // Clear the isNewUser flag so it doesn't open again
+      import('../../services/api').then(({ updateProfile }) => {
+        updateProfile({ isNewUser: false }).catch((error) => {
+          console.error('Failed to clear isNewUser flag:', error);
+        });
+      });
+
+      // Also update local profile state
+      useAuthStore.setState({
+        profile: { ...profile, isNewUser: false },
+      });
     }
-  }, [isVisitorMode, openWindow]);
+  }, [isVisitorMode, loading, items, profile, openWindow]);
 
   // Drag state
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -1503,7 +1522,7 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
 
       <div
         data-desktop
-        className={`${styles.desktop} ${isFileDragOver ? styles.dragOver : ''} ${isDesktopDropTarget ? styles.desktopDropTarget : ''} ${profile?.wallpaper?.startsWith('custom:') ? '' : `wallpaper-${profile?.wallpaper || 'default'}`}`}
+        className={`${styles.desktop} user-desktop ${isFileDragOver ? styles.dragOver : ''} ${isDesktopDropTarget ? styles.desktopDropTarget : ''} ${profile?.wallpaper?.startsWith('custom:') ? '' : `wallpaper-${profile?.wallpaper || 'default'}`}`}
         style={profile?.wallpaper?.startsWith('custom:') ? {
           backgroundImage: `url(${getWallpaperUrl(profile.wallpaper)})`,
           backgroundSize: 'cover',

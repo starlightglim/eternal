@@ -17,6 +17,7 @@ import { WelcomeReadMe } from '../viewers/WelcomeReadMe';
 import { SearchWindow } from '../viewers/SearchWindow';
 import { PreferencesWindow } from '../viewers/PreferencesWindow';
 import { AppearancePanel } from '../viewers/AppearancePanel';
+import { CSSEditor } from '../viewers/CSSEditor';
 import { DeskAssistant } from '../assistant';
 import { FolderView } from './FolderView';
 import { TrashView } from './TrashView';
@@ -286,6 +287,9 @@ function WindowContent({
 
     case 'appearance':
       return <AppearancePanel />;
+
+    case 'css-editor':
+      return <CSSEditor />;
 
     case 'trash':
       return <TrashView />;

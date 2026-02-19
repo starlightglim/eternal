@@ -194,6 +194,19 @@ export function MenuBar() {
     setActiveMenu(null);
   }, [openWindow]);
 
+  const handleOpenCSSEditor = useCallback(() => {
+    openWindow({
+      id: 'css-editor',
+      title: 'Custom CSS',
+      position: { x: 80, y: 50 },
+      size: { width: 520, height: 500 },
+      minimized: false,
+      maximized: false,
+      contentType: 'css-editor',
+    });
+    setActiveMenu(null);
+  }, [openWindow]);
+
   const handleOpen = useCallback(() => {
     // Open each selected item
     if (selectedIds.size === 0) return;
@@ -543,6 +556,7 @@ export function MenuBar() {
       { label: 'Desk Assistant', action: handleOpenAssistant },
       { divider: true, label: '' },
       { label: 'Appearance...', action: handleOpenAppearance },
+      { label: 'Custom CSS...', action: handleOpenCSSEditor },
       { label: 'Desktop Patterns...', action: handleOpenWallpaperPicker },
       { label: 'Preferences...', action: handleOpenPreferences },
       { divider: true, label: '' },

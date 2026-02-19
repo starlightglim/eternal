@@ -82,11 +82,15 @@ export interface UserProfile {
   displayName: string;
   wallpaper: string; // pattern name or R2 key
   createdAt: number;
+  // Onboarding flag (set to true on signup, cleared after first visit)
+  isNewUser?: boolean;
   // Custom appearance settings (Layer 1 customization)
   accentColor?: string;     // Hex color for selection, highlights
   desktopColor?: string;    // Hex color for desktop background
   windowBgColor?: string;   // Hex color for window content area
   fontSmoothing?: boolean;  // Override theme's font smoothing
+  // Custom CSS (Layer 4 customization)
+  customCSS?: string;       // User-defined CSS, max 10KB, scoped to .user-desktop
 }
 
 export interface UserRecord {

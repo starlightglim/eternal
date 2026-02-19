@@ -166,10 +166,12 @@ export async function handleSignup(request: Request, env: Env): Promise<Response
     return Response.json({ error: 'signup_step_7_update_user_list', details: String(e) }, { status: 500 });
   }
 
-  // Initialize user's Durable Object with profile
+  // Initialize user's Durable Object with profile and default items
   try {
     const doId = env.USER_DESKTOP.idFromName(uid);
     const stub = env.USER_DESKTOP.get(doId);
+
+    // Initialize profile with isNewUser flag
     await stub.fetch(new Request('http://internal/profile', {
       method: 'POST',
       body: JSON.stringify({
@@ -178,8 +180,145 @@ export async function handleSignup(request: Request, env: Env): Promise<Response
         displayName: username,
         wallpaper: 'default',
         createdAt: now,
+        isNewUser: true,
       }),
     }));
+
+    // Create default desktop items for new users
+    const gettingStartedId = crypto.randomUUID();
+    const readMeId = crypto.randomUUID();
+
+    const defaultItems = [
+      // Read Me file (auto-opened on first visit)
+      {
+        id: readMeId,
+        type: 'text',
+        name: 'Read Me.txt',
+        parentId: null,
+        position: { x: 0, y: 0 },
+        isPublic: true,
+        textContent: `Welcome to EternalOS!
+
+Your personal corner of the internet, styled like a classic Mac.
+
+=== Getting Started ===
+
+• Double-click any item to open it
+• Right-click for context menus
+• Drag items to move them around
+• Drop files from your computer to upload
+
+=== Make It Yours ===
+
+• Right-click the desktop → "Change Wallpaper..."
+• Special menu → "Appearance..." for colors
+• Right-click items → "Change Icon..." for custom icons
+• Special menu → "Custom CSS..." for power users
+
+=== Share Your Desktop ===
+
+Your public items are visible at:
+  eternalos.app/@${normalizedUsername}
+
+Toggle "Public" in Get Info (⌘I) to share items.
+
+=== Need Help? ===
+
+Double-click the Desk Assistant for AI-powered help
+with customizing your desktop.
+
+Happy computing!
+— EternalOS`,
+      },
+      // Getting Started folder
+      {
+        id: gettingStartedId,
+        type: 'folder',
+        name: 'Getting Started',
+        parentId: null,
+        position: { x: 0, y: 1 },
+        isPublic: true,
+      },
+      // Items inside Getting Started folder
+      {
+        id: crypto.randomUUID(),
+        type: 'text',
+        name: 'Keyboard Shortcuts.txt',
+        parentId: gettingStartedId,
+        position: { x: 0, y: 0 },
+        isPublic: true,
+        textContent: `EternalOS Keyboard Shortcuts
+
+=== Window Management ===
+⌘W  Close window
+⌘\`  Cycle through windows
+
+=== Selection & Editing ===
+⌘A  Select all items
+⌘I  Get Info
+⌘D  Duplicate
+⌘F  Find/Search
+
+=== File Operations ===
+⌘N  New folder
+Delete  Move to Trash
+Enter  Rename selected item
+Arrows  Navigate items
+
+=== View ===
+Escape  Deselect all / Close dialogs`,
+      },
+      {
+        id: crypto.randomUUID(),
+        type: 'text',
+        name: 'Tips & Tricks.txt',
+        parentId: gettingStartedId,
+        position: { x: 0, y: 1 },
+        isPublic: true,
+        textContent: `Tips & Tricks
+
+=== Customization ===
+
+1. ACCENT COLORS
+   Special → Appearance → Colors tab
+   Pick a color to theme your desktop
+
+2. CUSTOM ICONS
+   Right-click any item → "Change Icon..."
+   Choose from 30+ pixel-art icons
+
+3. WIDGETS
+   Right-click desktop → "New Widget..."
+   Add sticky notes, guestbooks, and more
+
+4. CUSTOM CSS (Power Users)
+   Special → Custom CSS...
+   Write CSS to transform your desktop
+
+=== Pro Tips ===
+
+• Window shade: Double-click title bar
+• Multi-select: Shift+click or drag to select
+• Quick rename: Click item, press Enter
+• View as icons/list: View menu
+
+=== Ask the Assistant ===
+
+Try saying:
+• "Make my desktop feel like a rainy day"
+• "Add a guestbook widget"
+• "Change all folder icons to blue"`,
+      },
+      // Desk Assistant widget is already handled separately
+    ];
+
+    // Create each default item
+    for (const item of defaultItems) {
+      await stub.fetch(new Request('http://internal/items', {
+        method: 'POST',
+        body: JSON.stringify(item),
+      }));
+    }
   } catch (e) {
     return Response.json({ error: 'signup_step_8_init_durable_object', details: String(e) }, { status: 500 });
   }

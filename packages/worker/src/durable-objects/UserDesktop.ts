@@ -302,6 +302,8 @@ export class UserDesktop {
       'desktopColor',
       'windowBgColor',
       'fontSmoothing',
+      'customCSS',
+      'isNewUser',
     ];
     const filteredUpdates: Partial<UserProfile> = {};
 
