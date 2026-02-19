@@ -3,7 +3,7 @@ import { WindowManager } from '../window';
 import { DesktopIcon, Trash, AssistantDesktopIcon } from '../icons';
 import { MenuBar } from '../menubar';
 import { UploadProgress } from './UploadProgress';
-import { LoadingOverlay, ContextMenu, LinkDialog, IconPicker, WidgetPicker, getWidgetDefaultSize, type ContextMenuItem } from '../ui';
+import { LoadingOverlay, ContextMenu, LinkDialog, IconPicker, WidgetPicker, QuickStartWizard, getWidgetDefaultSize, type ContextMenuItem } from '../ui';
 import { useWindowStore } from '../../stores/windowStore';
 import { useDesktopStore } from '../../stores/desktopStore';
 import { useAuthStore } from '../../stores/authStore';
@@ -89,20 +89,35 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
     hasRestoredWindows.current = true;
   }, [loading, items, isVisitorMode, loadWindowState]);
 
-  // Auto-open Read Me.txt for new users (after items are loaded)
-  const hasOpenedReadMe = useRef(false);
+  // New user onboarding: show QuickStart wizard
+  const [showQuickStart, setShowQuickStart] = useState(false);
+  const hasCheckedNewUser = useRef(false);
+
   useEffect(() => {
-    if (isVisitorMode || loading || hasOpenedReadMe.current) return;
+    if (isVisitorMode || loading || hasCheckedNewUser.current) return;
     if (!profile?.isNewUser) return;
 
-    // Find the Read Me.txt file at root level
+    hasCheckedNewUser.current = true;
+    setShowQuickStart(true);
+  }, [isVisitorMode, loading, profile]);
+
+  // Handle QuickStart wizard completion
+  const handleQuickStartComplete = useCallback(() => {
+    setShowQuickStart(false);
+
+    // Update local profile state to mark as not new
+    if (profile) {
+      useAuthStore.setState({
+        profile: { ...profile, isNewUser: false },
+      });
+    }
+
+    // Open the Read Me.txt file after wizard closes
     const readMeItem = items.find(
       (item) => item.type === 'text' && item.name === 'Read Me.txt' && item.parentId === null
     );
 
     if (readMeItem) {
-      hasOpenedReadMe.current = true;
-      // Open the Read Me.txt file
       openWindow({
         id: `text-${readMeItem.id}`,
         title: readMeItem.name,
@@ -113,20 +128,8 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
         contentType: 'text',
         contentId: readMeItem.id,
       });
-
-      // Clear the isNewUser flag so it doesn't open again
-      import('../../services/api').then(({ updateProfile }) => {
-        updateProfile({ isNewUser: false }).catch((error) => {
-          console.error('Failed to clear isNewUser flag:', error);
-        });
-      });
-
-      // Also update local profile state
-      useAuthStore.setState({
-        profile: { ...profile, isNewUser: false },
-      });
     }
-  }, [isVisitorMode, loading, items, profile, openWindow]);
+  }, [items, profile, openWindow]);
 
   // Drag state
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -1670,6 +1673,14 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
               setShowWidgetPicker(false);
               setWidgetPickerPosition(null);
             }}
+          />
+        )}
+
+        {/* Quick Start Wizard for new users */}
+        {showQuickStart && profile?.username && (
+          <QuickStartWizard
+            username={profile.username}
+            onComplete={handleQuickStartComplete}
           />
         )}
       </div>
