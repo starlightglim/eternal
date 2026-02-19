@@ -1,0 +1,216 @@
+/* ShareDialog - Share Desktop Window */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 12px;
+  height: 100%;
+  box-sizing: border-box;
+  overflow-y: auto;
+  background: var(--window-bg, var(--white));
+}
+
+/* Section labels */
+.sectionLabel {
+  font-family: var(--font-chicago);
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--window-text-color, var(--black));
+  margin-bottom: 6px;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+/* Preview Section */
+.previewSection {
+  display: flex;
+  flex-direction: column;
+}
+
+.previewContainer {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1200 / 630;
+  background: var(--platinum);
+  border: 2px solid var(--border);
+  overflow: hidden;
+}
+
+.previewImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.previewImage.visible {
+  opacity: 1;
+}
+
+.loadingPreview,
+.errorPreview {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-geneva);
+  font-size: 11px;
+  color: var(--shadow);
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+.previewHint {
+  font-family: var(--font-geneva);
+  font-size: 10px;
+  color: var(--window-text-secondary, var(--shadow));
+  margin-top: 4px;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+/* URL Section */
+.urlSection {
+  display: flex;
+  flex-direction: column;
+}
+
+.urlContainer {
+  display: flex;
+  gap: 6px;
+}
+
+.urlInput {
+  flex: 1;
+  font-family: var(--font-monaco);
+  font-size: 11px;
+  padding: 6px 8px;
+  border: 2px solid var(--border);
+  border-top-color: var(--shadow);
+  border-left-color: var(--shadow);
+  background: var(--white);
+  color: var(--window-text-color, var(--black));
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+.urlInput:focus {
+  outline: none;
+}
+
+.copyButton {
+  font-family: var(--font-chicago);
+  font-size: 12px;
+  padding: 6px 12px;
+  min-width: 60px;
+  background: var(--white);
+  border: 2px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--window-text-color, var(--black));
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+  transition: background 0.1s ease;
+}
+
+.copyButton:hover {
+  background: var(--highlight);
+}
+
+.copyButton:active {
+  background: var(--black);
+  color: var(--white);
+}
+
+.copyButton.copied {
+  background: var(--selection, #000080);
+  color: var(--selection-text, var(--white));
+}
+
+/* Share Buttons Section */
+.shareSection {
+  display: flex;
+  flex-direction: column;
+}
+
+.shareButtons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.shareButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-chicago);
+  font-size: 12px;
+  padding: 8px 12px;
+  background: var(--white);
+  border: 2px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--window-text-color, var(--black));
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+  transition: background 0.1s ease;
+}
+
+.shareButton:hover {
+  background: var(--highlight);
+}
+
+.shareButton:active {
+  background: var(--black);
+  color: var(--white);
+}
+
+.icon {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+
+/* Info Section */
+.infoSection {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px;
+  background: var(--highlight);
+  border: 1px solid var(--border);
+}
+
+.infoIcon {
+  flex-shrink: 0;
+  color: var(--shadow);
+}
+
+.infoText {
+  font-family: var(--font-geneva);
+  font-size: 11px;
+  color: var(--window-text-secondary, var(--shadow));
+  line-height: 1.4;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+/* Error State */
+.error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-family: var(--font-geneva);
+  font-size: 12px;
+  color: var(--window-text-color, var(--black));
+  text-align: center;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}

@@ -14,6 +14,7 @@ interface MetaConfig {
   ogDescription?: string;
   ogType?: string;
   ogUrl?: string;
+  ogImage?: string;
   twitterCard?: 'summary' | 'summary_large_image';
 }
 
@@ -63,6 +64,10 @@ export function useDocumentMeta(config: MetaConfig): void {
     if (config.ogUrl) {
       setMetaTag('og:url', config.ogUrl, true);
     }
+    if (config.ogImage) {
+      setMetaTag('og:image', config.ogImage, true);
+      setMetaTag('twitter:image', config.ogImage);
+    }
 
     // Twitter card meta tags
     if (config.twitterCard) {
@@ -81,7 +86,7 @@ export function useDocumentMeta(config: MetaConfig): void {
       // Note: We don't remove meta tags on cleanup to avoid flicker
       // They will be updated by the next page
     };
-  }, [config.title, config.description, config.ogTitle, config.ogDescription, config.ogType, config.ogUrl, config.twitterCard]);
+  }, [config.title, config.description, config.ogTitle, config.ogDescription, config.ogType, config.ogUrl, config.ogImage, config.twitterCard]);
 }
 
 /**

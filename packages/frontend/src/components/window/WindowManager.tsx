@@ -18,6 +18,7 @@ import { SearchWindow } from '../viewers/SearchWindow';
 import { PreferencesWindow } from '../viewers/PreferencesWindow';
 import { AppearancePanel } from '../viewers/AppearancePanel';
 import { CSSEditor } from '../viewers/CSSEditor';
+import { ShareDialog } from '../viewers/ShareDialog';
 import { DeskAssistant } from '../assistant';
 import { FolderView } from './FolderView';
 import { TrashView } from './TrashView';
@@ -389,6 +390,9 @@ function WindowContent({
         );
       }
       return <WidgetRenderer item={item} isOwner={!isVisitorMode} ownerUid={ownerUid} />;
+
+    case 'share-dialog':
+      return <ShareDialog isOwner={!isVisitorMode} />;
 
     default:
       return null;

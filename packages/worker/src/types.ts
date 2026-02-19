@@ -91,6 +91,8 @@ export interface UserProfile {
   fontSmoothing?: boolean;  // Override theme's font smoothing
   // Custom CSS (Layer 4 customization)
   customCSS?: string;       // User-defined CSS, max 10KB, scoped to .user-desktop
+  // Watermark setting
+  hideWatermark?: boolean;  // Hide "Made with EternalOS" watermark in visitor mode
 }
 
 export interface UserRecord {

@@ -417,6 +417,8 @@ export interface ProfileUpdateRequest {
   fontSmoothing?: boolean;
   // Custom CSS (Layer 4 customization)
   customCSS?: string;
+  // Watermark setting
+  hideWatermark?: boolean;
 }
 
 export interface ProfileUpdateResponse {
@@ -429,6 +431,7 @@ export interface ProfileUpdateResponse {
     windowBgColor?: string;
     fontSmoothing?: boolean;
     customCSS?: string;
+    hideWatermark?: boolean;
   };
 }
 

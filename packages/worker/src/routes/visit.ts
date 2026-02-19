@@ -19,6 +19,8 @@ interface VisitorResponse {
   desktopColor?: string;
   windowBgColor?: string;
   fontSmoothing?: boolean;
+  customCSS?: string;
+  hideWatermark?: boolean;
   items: DesktopItem[];
 }
 
@@ -100,6 +102,8 @@ export async function handleVisit(
       desktopColor: data.profile?.desktopColor,
       windowBgColor: data.profile?.windowBgColor,
       fontSmoothing: data.profile?.fontSmoothing,
+      customCSS: data.profile?.customCSS,
+      hideWatermark: data.profile?.hideWatermark,
       items: data.items,
     };
 

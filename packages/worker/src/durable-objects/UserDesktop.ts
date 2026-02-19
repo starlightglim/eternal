@@ -304,6 +304,7 @@ export class UserDesktop {
       'fontSmoothing',
       'customCSS',
       'isNewUser',
+      'hideWatermark',
     ];
     const filteredUpdates: Partial<UserProfile> = {};
 

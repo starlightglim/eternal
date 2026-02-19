@@ -69,6 +69,10 @@ export function VisitorPage() {
     const displayName = profile?.displayName || username || 'Unknown';
     const itemCount = items.filter((i) => i.parentId === null).length;
 
+    // Generate og:image URL pointing to our dynamic image endpoint
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+    const ogImageUrl = `${baseUrl}/api/og/${username}.png`;
+
     return {
       title: `@${username}'s Desktop | EternalOS`,
       description: `Visit ${displayName}'s personal desktop on EternalOS. ${itemCount} item${itemCount !== 1 ? 's' : ''} on display.`,
@@ -76,7 +80,8 @@ export function VisitorPage() {
       ogDescription: `A personal corner of the internet. ${itemCount} item${itemCount !== 1 ? 's' : ''} curated by ${displayName}.`,
       ogType: 'website',
       ogUrl: typeof window !== 'undefined' ? window.location.href : undefined,
-      twitterCard: 'summary' as const,
+      ogImage: ogImageUrl,
+      twitterCard: 'summary_large_image' as const,
     };
   }, [username, profile, items]);
 
@@ -334,6 +339,9 @@ export function VisitorPage() {
       }
     : undefined;
 
+  // Watermark visibility - only show if not hidden by profile setting
+  const showWatermark = !profile?.hideWatermark;
+
   // Empty desktop state
   if (loadingState === 'empty') {
     return (
@@ -353,6 +361,7 @@ export function VisitorPage() {
             </div>
           </div>
         </div>
+        {showWatermark && <Watermark />}
       </div>
     );
   }
@@ -399,6 +408,32 @@ export function VisitorPage() {
         {/* Window Manager - windows can still be moved/resized for browsing */}
         <WindowManager isVisitorMode={true} visitorItems={items} ownerUid={profile?.uid} />
       </div>
+      {showWatermark && <Watermark />}
     </div>
+  );
+}
+
+/**
+ * Made with EternalOS watermark - unobtrusive link to landing page
+ */
+function Watermark() {
+  return (
+    <a
+      href="/"
+      className={styles.watermark}
+      target="_blank"
+      rel="noopener noreferrer"
+      title="Create your own EternalOS desktop"
+    >
+      <span className={styles.watermarkIcon}>
+        <svg viewBox="0 0 16 16" fill="currentColor">
+          <rect x="1" y="1" width="14" height="14" rx="2" stroke="currentColor" strokeWidth="1" fill="none" />
+          <rect x="3" y="3" width="4" height="3" fill="currentColor" />
+          <rect x="9" y="3" width="4" height="3" fill="currentColor" />
+          <rect x="3" y="8" width="10" height="5" fill="currentColor" />
+        </svg>
+      </span>
+      <span>Made with EternalOS</span>
+    </a>
   );
 }

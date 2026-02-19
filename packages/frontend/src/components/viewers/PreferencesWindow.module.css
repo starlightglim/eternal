@@ -209,6 +209,22 @@
     inset 1px 1px 0 var(--shadow);
 }
 
+.watermarkToggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-family: var(--font-geneva);
+  font-size: 11px;
+  color: var(--text-color-secondary, var(--shadow));
+  cursor: pointer;
+  user-select: none;
+}
+
+.watermarkToggle input {
+  cursor: pointer;
+}
+
 /* ============================================
    DESKTOP TAB (Wallpaper)
    ============================================ */

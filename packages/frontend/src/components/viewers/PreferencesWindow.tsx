@@ -14,7 +14,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useSoundStore } from '../../stores/soundStore';
 import { useThemeStore, THEMES } from '../../stores/themeStore';
 import { WALLPAPER_OPTIONS, type WallpaperId } from '../desktop/Desktop';
-import { uploadWallpaper, isApiConfigured, getWallpaperUrl, fetchQuota, type QuotaInfo } from '../../services/api';
+import { uploadWallpaper, isApiConfigured, getWallpaperUrl, fetchQuota, updateProfile, type QuotaInfo } from '../../services/api';
 import styles from './PreferencesWindow.module.css';
 
 type TabId = 'account' | 'desktop' | 'sound' | 'theme';
@@ -30,6 +30,8 @@ export function PreferencesWindow() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [quota, setQuota] = useState<QuotaInfo | null>(null);
   const [quotaLoading, setQuotaLoading] = useState(false);
+  const [hideWatermark, setHideWatermark] = useState(profile?.hideWatermark || false);
+  const [watermarkSaving, setWatermarkSaving] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -40,6 +42,11 @@ export function PreferencesWindow() {
   useEffect(() => {
     setDisplayName(profile?.displayName || '');
   }, [profile?.displayName]);
+
+  // Update watermark setting when profile changes
+  useEffect(() => {
+    setHideWatermark(profile?.hideWatermark || false);
+  }, [profile?.hideWatermark]);
 
   // Load quota when account tab is active
   useEffect(() => {
@@ -77,6 +84,22 @@ export function PreferencesWindow() {
     },
     [handleSaveDisplayName, profile?.displayName]
   );
+
+  const handleWatermarkToggle = useCallback(async (newValue: boolean) => {
+    setHideWatermark(newValue);
+    if (!isApiConfigured) return;
+
+    setWatermarkSaving(true);
+    try {
+      await updateProfile({ hideWatermark: newValue });
+    } catch (error) {
+      console.error('Failed to save watermark setting:', error);
+      // Revert on error
+      setHideWatermark(!newValue);
+    } finally {
+      setWatermarkSaving(false);
+    }
+  }, []);
 
   const handleSelectWallpaper = useCallback(
     (id: WallpaperId) => {
@@ -269,6 +292,19 @@ export function PreferencesWindow() {
                   Copy
                 </button>
               </div>
+              {/* Watermark toggle */}
+              {isApiConfigured && (
+                <label className={styles.watermarkToggle}>
+                  <input
+                    type="checkbox"
+                    checked={hideWatermark}
+                    onChange={(e) => handleWatermarkToggle(e.target.checked)}
+                    disabled={watermarkSaving}
+                    className={styles.checkbox}
+                  />
+                  <span>Hide "Made with EternalOS" watermark</span>
+                </label>
+              )}
             </div>
 
             {/* Storage Quota */}

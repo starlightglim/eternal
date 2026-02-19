@@ -99,7 +99,7 @@ export interface WindowState {
   preMaximizedPosition?: { x: number; y: number };
   preMaximizedSize?: { width: number; height: number };
   // Content information
-  contentType: 'folder' | 'image' | 'text' | 'markdown' | 'code' | 'get-info' | 'about' | 'assistant' | 'wallpaper' | 'welcome' | 'search' | 'preferences' | 'trash' | 'audio' | 'video' | 'pdf' | 'calculator' | 'clock' | 'link' | 'appearance' | 'widget' | 'css-editor';
+  contentType: 'folder' | 'image' | 'text' | 'markdown' | 'code' | 'get-info' | 'about' | 'assistant' | 'wallpaper' | 'welcome' | 'search' | 'preferences' | 'trash' | 'audio' | 'video' | 'pdf' | 'calculator' | 'clock' | 'link' | 'appearance' | 'widget' | 'css-editor' | 'share-dialog';
   contentId?: string; // Reference to DesktopItem id if applicable
 }
 
@@ -121,6 +121,8 @@ export interface UserProfile {
   fontSmoothing?: boolean;  // Override theme's font smoothing
   // Custom CSS (Layer 4 customization)
   customCSS?: string;       // User-defined CSS, max 10KB, scoped to .user-desktop
+  // Watermark setting
+  hideWatermark?: boolean;  // Hide "Made with EternalOS" watermark in visitor mode
 }
 
 /**

@@ -9,6 +9,7 @@ import { UserDesktop } from './durable-objects/UserDesktop';
 import { handleSignup, handleLogin, handleLogout, handleForgotPassword, handleResetPassword, handleRefreshToken } from './routes/auth';
 import { handleUpload, handleServeFile, handleWallpaperUpload, handleServeWallpaper, handleIconUpload, handleServeIcon } from './routes/upload';
 import { handleVisit } from './routes/visit';
+import { handleOgImage } from './routes/ogImage';
 import { handleAssistant } from './routes/assistant';
 import { requireAuth, authenticate } from './middleware/auth';
 import {
@@ -383,6 +384,16 @@ export default {
           return Response.json({ error: 'Username required' }, { status: 400, headers: corsHeaders });
         }
         response = await handleVisit(request, env, username);
+        return withCors(response, corsHeaders);
+      }
+
+      // OG Image generation: /api/og/:username.png
+      if (path.startsWith('/api/og/') && request.method === 'GET') {
+        const username = path.slice('/api/og/'.length);
+        if (!username) {
+          return Response.json({ error: 'Username required' }, { status: 400, headers: corsHeaders });
+        }
+        response = await handleOgImage(request, env, username);
         return withCors(response, corsHeaders);
       }
 

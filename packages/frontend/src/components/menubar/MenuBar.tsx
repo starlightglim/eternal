@@ -207,6 +207,19 @@ export function MenuBar() {
     setActiveMenu(null);
   }, [openWindow]);
 
+  const handleShareDesktop = useCallback(() => {
+    openWindow({
+      id: 'share-dialog',
+      title: 'Share Desktop',
+      position: { x: 150, y: 100 },
+      size: { width: 340, height: 420 },
+      minimized: false,
+      maximized: false,
+      contentType: 'share-dialog',
+    });
+    setActiveMenu(null);
+  }, [openWindow]);
+
   const handleOpen = useCallback(() => {
     // Open each selected item
     if (selectedIds.size === 0) return;
@@ -562,6 +575,7 @@ export function MenuBar() {
       { divider: true, label: '' },
       { label: 'Empty Trash...', action: handleEmptyTrash },
       { divider: true, label: '' },
+      { label: 'Share Desktop...', action: handleShareDesktop, disabled: !profile?.username },
       { label: 'Preview as Visitor', action: handlePreviewAsVisitor, disabled: !profile?.username },
       { divider: true, label: '' },
       { label: 'Eject', disabled: true },
