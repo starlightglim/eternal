@@ -13,21 +13,20 @@ export function SearchWindow() {
   const { items } = useDesktopStore();
   const { openWindow } = useWindowStore();
 
-  // Search results filtered by query
+  // Search results filtered by query (excludes trashed items)
   const results = useMemo(() => {
     if (!query.trim()) return [];
 
     const lowerQuery = query.toLowerCase();
     return items.filter((item) =>
-      item.name.toLowerCase().includes(lowerQuery)
+      !item.isTrashed && item.name.toLowerCase().includes(lowerQuery)
     );
   }, [query, items]);
 
-  // Open an item (navigate to its folder and select it)
+  // Open an item in its appropriate viewer
   const handleOpenItem = useCallback(
     (item: DesktopItem) => {
       if (item.type === 'folder') {
-        // Open folder window
         openWindow({
           id: `folder-${item.id}`,
           title: item.name,
@@ -39,7 +38,6 @@ export function SearchWindow() {
           contentId: item.id,
         });
       } else if (item.type === 'text') {
-        // Open appropriate viewer based on file extension
         const contentType = getTextFileContentType(item.name);
         openWindow({
           id: `text-${item.id}`,
@@ -52,7 +50,6 @@ export function SearchWindow() {
           contentId: item.id,
         });
       } else if (item.type === 'image') {
-        // Open image viewer
         openWindow({
           id: `image-${item.id}`,
           title: item.name,
@@ -61,6 +58,61 @@ export function SearchWindow() {
           minimized: false,
           maximized: false,
           contentType: 'image',
+          contentId: item.id,
+        });
+      } else if (item.type === 'video') {
+        openWindow({
+          id: `video-${item.id}`,
+          title: item.name,
+          position: { x: 100, y: 100 },
+          size: { width: 640, height: 480 },
+          minimized: false,
+          maximized: false,
+          contentType: 'video',
+          contentId: item.id,
+        });
+      } else if (item.type === 'audio') {
+        openWindow({
+          id: `audio-${item.id}`,
+          title: item.name,
+          position: { x: 100, y: 100 },
+          size: { width: 320, height: 200 },
+          minimized: false,
+          maximized: false,
+          contentType: 'audio',
+          contentId: item.id,
+        });
+      } else if (item.type === 'pdf') {
+        openWindow({
+          id: `pdf-${item.id}`,
+          title: item.name,
+          position: { x: 100, y: 100 },
+          size: { width: 600, height: 500 },
+          minimized: false,
+          maximized: false,
+          contentType: 'pdf',
+          contentId: item.id,
+        });
+      } else if (item.type === 'link') {
+        openWindow({
+          id: `link-${item.id}`,
+          title: item.name,
+          position: { x: 100, y: 100 },
+          size: { width: 800, height: 600 },
+          minimized: false,
+          maximized: false,
+          contentType: 'link',
+          contentId: item.id,
+        });
+      } else if (item.type === 'widget') {
+        openWindow({
+          id: `widget-${item.id}`,
+          title: item.name,
+          position: { x: 100, y: 100 },
+          size: { width: 300, height: 250 },
+          minimized: false,
+          maximized: false,
+          contentType: 'widget',
           contentId: item.id,
         });
       }
@@ -86,6 +138,14 @@ export function SearchWindow() {
         return '\uD83D\uDCC4'; // page facing up
       case 'link':
         return '\uD83D\uDD17'; // link
+      case 'video':
+        return '\uD83C\uDFAC'; // clapper board
+      case 'audio':
+        return '\uD83C\uDFB5'; // musical note
+      case 'pdf':
+        return '\uD83D\uDCCB'; // clipboard
+      case 'widget':
+        return '\uD83D\uDDF2'; // ballot box with check
       default:
         return '\uD83D\uDCC4';
     }

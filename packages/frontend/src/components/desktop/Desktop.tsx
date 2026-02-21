@@ -7,6 +7,7 @@ import { LoadingOverlay, ContextMenu, LinkDialog, IconPicker, WidgetPicker, Quic
 import { useWindowStore } from '../../stores/windowStore';
 import { useDesktopStore } from '../../stores/desktopStore';
 import { useAuthStore } from '../../stores/authStore';
+import { useClipboardStore } from '../../stores/clipboardStore';
 import { useDesktopSync } from '../../hooks/useDesktopSync';
 import { isApiConfigured, getWallpaperUrl } from '../../services/api';
 import { getTextFileContentType, type DesktopItem, type WidgetType, type WidgetConfig } from '../../types';
@@ -68,6 +69,15 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
     cleanUp,
     selectAll,
   } = useDesktopStore();
+
+  // Get clipboard state to show cut items as faded
+  const clipboard = useClipboardStore((state) => state.clipboard);
+  const cutItemIds = useMemo(() => {
+    if (clipboard?.isCut) {
+      return new Set(clipboard.itemIds);
+    }
+    return new Set<string>();
+  }, [clipboard]);
 
   // Load desktop from API on mount (if API is configured)
   useEffect(() => {
@@ -1558,6 +1568,7 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
           isDragging={draggingId === item.id}
           dragOffset={draggingId === item.id ? dragOffset ?? undefined : undefined}
           isDropTarget={item.type === 'folder' && folderDropTargetId === item.id}
+          isCut={cutItemIds.has(item.id)}
         />
       ))}
 

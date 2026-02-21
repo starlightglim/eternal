@@ -92,3 +92,8 @@
   image-rendering: -moz-crisp-edges;
   image-rendering: crisp-edges;
 }
+
+/* Cut state - faded appearance to indicate pending move */
+.cut {
+  opacity: 0.5;
+}

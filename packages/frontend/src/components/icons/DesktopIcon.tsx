@@ -19,6 +19,7 @@ interface DesktopIconProps {
   isDragging: boolean;
   dragOffset?: { x: number; y: number };
   isDropTarget?: boolean;
+  isCut?: boolean; // Item is cut and pending paste (shows faded)
 }
 
 /**
@@ -42,6 +43,7 @@ function DesktopIconInner({
   isDragging,
   dragOffset,
   isDropTarget,
+  isCut,
 }: DesktopIconProps) {
   const clickTimeoutRef = useRef<number | null>(null);
   const clickCountRef = useRef(0);
@@ -162,6 +164,7 @@ function DesktopIconInner({
     isSelected && styles.selected,
     isDragging && styles.dragging,
     isDropTarget && styles.dropTarget,
+    isCut && styles.cut,
   ]
     .filter(Boolean)
     .join(' ');
@@ -248,6 +251,7 @@ export const DesktopIcon = memo(DesktopIconInner, (prevProps, nextProps) => {
     prevProps.isSelected === nextProps.isSelected &&
     prevProps.isDragging === nextProps.isDragging &&
     prevProps.isDropTarget === nextProps.isDropTarget &&
+    prevProps.isCut === nextProps.isCut &&
     prevProps.dragOffset?.x === nextProps.dragOffset?.x &&
     prevProps.dragOffset?.y === nextProps.dragOffset?.y &&
     prevProps.gridCellSize === nextProps.gridCellSize

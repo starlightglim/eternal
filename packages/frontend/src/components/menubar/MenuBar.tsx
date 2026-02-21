@@ -21,7 +21,7 @@ import styles from './MenuBar.module.css';
  */
 export function MenuBar() {
   const { windows, closeWindow, getTopWindow, openWindow } = useWindowStore();
-  const { selectedIds, addItem, items, deselectAll, selectAll, removeItem, cleanUp, sortByName, sortByDate, sortByKind, pasteItems, duplicateItems, emptyTrash, getTrashCount } = useDesktopStore();
+  const { selectedIds, addItem, items, deselectAll, selectAll, cleanUp, sortByName, sortByDate, sortByKind, pasteItems, duplicateItems, emptyTrash, getTrashCount } = useDesktopStore();
   const { profile, logout } = useAuthStore();
   const { clipboard, cut, copy, clear: clearClipboard, hasItems: hasClipboardItems } = useClipboardStore();
   const { showConfirm } = useAlertStore();
@@ -69,13 +69,13 @@ export function MenuBar() {
   }, [getTopWindow, closeWindow]);
 
   const handleTrashSelected = useCallback(() => {
-    // Delete selected items
-    selectedIds.forEach((id) => {
-      removeItem(id);
-    });
+    // Move selected items to trash (soft delete)
+    if (selectedIds.size === 0) return;
+    const { moveToTrash } = useDesktopStore.getState();
+    moveToTrash(Array.from(selectedIds));
     deselectAll();
     setActiveMenu(null);
-  }, [selectedIds, deselectAll, removeItem]);
+  }, [selectedIds, deselectAll]);
 
   const handleEmptyTrash = useCallback(() => {
     const trashCount = getTrashCount();

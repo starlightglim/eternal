@@ -128,3 +128,8 @@
   outline: 2px dashed var(--selection);
   outline-offset: -2px;
 }
+
+/* Cut state - faded appearance to indicate pending move */
+.item.cut {
+  opacity: 0.5;
+}

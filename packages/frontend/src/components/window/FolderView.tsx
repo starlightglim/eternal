@@ -1,6 +1,7 @@
-import { useCallback, useState, useRef, useEffect } from 'react';
+import { useCallback, useState, useRef, useEffect, useMemo } from 'react';
 import { useDesktopStore } from '../../stores/desktopStore';
 import { useWindowStore } from '../../stores/windowStore';
+import { useClipboardStore } from '../../stores/clipboardStore';
 import { FolderIcon, ImageFileIcon, TextFileIcon, LinkIcon, AudioFileIcon, VideoFileIcon, PDFFileIcon } from '../icons/PixelIcons';
 import { ThumbnailIcon } from '../icons/ThumbnailIcon';
 import { renderCustomIcon, CUSTOM_ICON_LIBRARY, type CustomIconId } from '../icons/CustomIconLibrary';
@@ -51,6 +52,15 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false, isDr
   // Track the element and pointer ID that captured the pointer
   const capturedElementRef = useRef<HTMLElement | null>(null);
   const capturedPointerIdRef = useRef<number | null>(null);
+
+  // Get clipboard state to show cut items as faded
+  const clipboard = useClipboardStore((state) => state.clipboard);
+  const cutItemIds = useMemo(() => {
+    if (clipboard?.isCut) {
+      return new Set(clipboard.itemIds);
+    }
+    return new Set<string>();
+  }, [clipboard]);
 
   // If visitorItems is provided, filter from those; otherwise use the store
   // Always filter out trashed items
@@ -340,7 +350,9 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false, isDr
             key={item.id}
             className={`${styles.item} ${selectedId === item.id ? styles.selected : ''} ${
               draggingId === item.id ? styles.dragging : ''
-            } ${item.type === 'folder' && folderDropTargetId === item.id ? styles.dropTarget : ''}`}
+            } ${item.type === 'folder' && folderDropTargetId === item.id ? styles.dropTarget : ''} ${
+              cutItemIds.has(item.id) ? styles.cut : ''
+            }`}
             data-folder-id={item.type === 'folder' ? item.id : undefined}
             onClick={(e) => {
               e.stopPropagation();
