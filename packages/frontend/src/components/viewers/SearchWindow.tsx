@@ -13,14 +13,21 @@ export function SearchWindow() {
   const { items } = useDesktopStore();
   const { openWindow } = useWindowStore();
 
-  // Search results filtered by query (excludes trashed items)
+  // Search results filtered by query — matches name, text content, and URL (excludes trashed items)
   const results = useMemo(() => {
     if (!query.trim()) return [];
 
     const lowerQuery = query.toLowerCase();
-    return items.filter((item) =>
-      !item.isTrashed && item.name.toLowerCase().includes(lowerQuery)
-    );
+    return items.filter((item) => {
+      if (item.isTrashed) return false;
+      // Match by name
+      if (item.name.toLowerCase().includes(lowerQuery)) return true;
+      // Match by text content (for text files, sticky notes, etc.)
+      if (item.textContent && item.textContent.toLowerCase().includes(lowerQuery)) return true;
+      // Match by URL (for link items)
+      if (item.url && item.url.toLowerCase().includes(lowerQuery)) return true;
+      return false;
+    });
   }, [query, items]);
 
   // Open an item in its appropriate viewer
@@ -154,13 +161,13 @@ export function SearchWindow() {
   return (
     <div className={styles.searchWindow}>
       <div className={styles.searchHeader}>
-        <label className={styles.searchLabel}>Find items named:</label>
+        <label className={styles.searchLabel}>Find:</label>
         <input
           type="text"
           className={styles.searchInput}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Enter name..."
+          placeholder="Search names, content, URLs..."
           autoFocus
         />
       </div>
@@ -168,7 +175,7 @@ export function SearchWindow() {
       <div className={styles.resultsContainer}>
         {query.trim() === '' ? (
           <div className={styles.placeholder}>
-            Type a name to search for files and folders.
+            Search by name, content, or URL.
           </div>
         ) : results.length === 0 ? (
           <div className={styles.placeholder}>

@@ -105,13 +105,16 @@ export function TextViewer({
     }
   }, [content, isDirty, isOwner, itemId, updateItem]);
 
-  // Handle keyboard shortcuts
+  // Handle keyboard shortcuts — only save if this editor's textarea is focused
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Cmd+S or Ctrl+S to save
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
-        e.preventDefault();
-        saveContent();
+        // Only handle if our textarea is focused (prevents saving ALL open editors)
+        if (document.activeElement === textareaRef.current) {
+          e.preventDefault();
+          saveContent();
+        }
       }
     };
 

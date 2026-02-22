@@ -7,6 +7,7 @@ import { ThumbnailIcon } from '../icons/ThumbnailIcon';
 import { renderCustomIcon, CUSTOM_ICON_LIBRARY, type CustomIconId } from '../icons/CustomIconLibrary';
 import { getCustomIconUrl } from '../../services/api';
 import { getTextFileContentType, type DesktopItem } from '../../types';
+import { ContextMenu, type ContextMenuItem } from '../ui';
 import styles from './FolderView.module.css';
 
 // Counter for staggering window positions
@@ -43,10 +44,11 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false, isDr
   const getNextAvailablePositionsInFolder = useDesktopStore((state) => state.getNextAvailablePositionsInFolder);
   const openWindow = useWindowStore((state) => state.openWindow);
 
-  // Selection and drag state
+  // Selection, drag, and context menu state
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [folderDropTargetId, setFolderDropTargetId] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ position: { x: number; y: number }; targetItem: DesktopItem | null } | null>(null);
   const dragStartPos = useRef<{ x: number; y: number } | null>(null);
   const hasDragged = useRef(false);
   // Track the element and pointer ID that captured the pointer
@@ -69,46 +71,66 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false, isDr
     : storeItems.filter((item) => item.parentId === folderId)
   ).filter((item) => !item.isTrashed);
 
-  // Handle double-click to open item
-  const handleDoubleClick = useCallback(
-    (itemId: string, itemType: string, itemName: string) => {
-      // Determine content type based on item type and file extension
-      let contentType: string = itemType === 'folder' ? 'folder' : itemType;
-      if (itemType === 'text') {
-        contentType = getTextFileContentType(itemName);
-      }
-      // Set appropriate window size based on media type
-      let windowSize = { width: 400, height: 300 };
-      if (itemType === 'audio') {
-        windowSize = { width: 320, height: 240 };
-      } else if (itemType === 'video') {
-        windowSize = { width: 480, height: 360 };
-      } else if (itemType === 'pdf') {
-        windowSize = { width: 550, height: 700 };
-      }
-      // Stagger window positions using a counter instead of Math.random
+  // Handle double-click to open any item — uses same window ID patterns as Desktop
+  const handleItemOpen = useCallback(
+    (item: DesktopItem) => {
       windowOffsetCounter = (windowOffsetCounter + 1) % 10;
       const offset = windowOffsetCounter * 20;
+
+      // Determine content type and window ID prefix (match Desktop's patterns)
+      let contentType: string = item.type;
+      let idPrefix = item.type;
+      let windowSize = { width: 400, height: 300 };
+
+      switch (item.type) {
+        case 'folder':
+          idPrefix = 'folder';
+          break;
+        case 'text':
+          contentType = getTextFileContentType(item.name);
+          idPrefix = 'text';
+          break;
+        case 'image':
+          idPrefix = 'image';
+          windowSize = { width: 450, height: 350 };
+          break;
+        case 'audio':
+          idPrefix = 'audio';
+          windowSize = { width: 320, height: 240 };
+          break;
+        case 'video':
+          idPrefix = 'video';
+          windowSize = { width: 480, height: 360 };
+          break;
+        case 'pdf':
+          idPrefix = 'pdf';
+          windowSize = { width: 550, height: 700 };
+          break;
+        case 'link':
+          idPrefix = 'link';
+          windowSize = { width: 640, height: 480 };
+          break;
+        case 'widget':
+          idPrefix = 'widget';
+          windowSize = item.widgetType
+            ? (() => { switch (item.widgetType) { case 'sticky-note': return { width: 250, height: 250 }; case 'guestbook': return { width: 350, height: 400 }; case 'pixel-canvas': return { width: 300, height: 340 }; case 'music-player': return { width: 300, height: 300 }; case 'link-board': return { width: 350, height: 300 }; default: return { width: 250, height: 250 }; } })()
+            : { width: 250, height: 250 };
+          break;
+      }
+
       openWindow({
-        id: `window-${itemId}`,
-        title: itemName,
+        id: `${idPrefix}-${item.id}`,
+        title: item.name,
         position: { x: 100 + offset, y: 50 + offset },
         size: windowSize,
         minimized: false,
         maximized: false,
-        contentType: contentType as 'folder' | 'image' | 'text' | 'markdown' | 'code' | 'get-info' | 'about' | 'audio' | 'video' | 'pdf',
-        contentId: itemId,
+        contentType: contentType as 'folder' | 'image' | 'text' | 'markdown' | 'code' | 'get-info' | 'about' | 'audio' | 'video' | 'pdf' | 'link' | 'widget',
+        contentId: item.id,
       });
     },
     [openWindow]
   );
-
-  // Handle link double-click
-  const handleLinkClick = (url?: string) => {
-    if (url) {
-      window.open(url, '_blank', 'noopener,noreferrer');
-    }
-  };
 
   // Handle pointer down on item (start potential drag)
   const handlePointerDown = useCallback(
@@ -121,17 +143,8 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false, isDr
       dragStartPos.current = { x: e.clientX, y: e.clientY };
       hasDragged.current = false;
 
-      // Dispatch drag start event for Desktop to track
-      window.dispatchEvent(
-        new CustomEvent<FolderDragEvent>(FOLDER_DRAG_START, {
-          detail: {
-            itemId,
-            sourceFolderId: folderId,
-            clientX: e.clientX,
-            clientY: e.clientY,
-          },
-        })
-      );
+      // Don't dispatch FOLDER_DRAG_START here — wait until the drag threshold
+      // is actually met (in handlePointerMove) to avoid accidental moves on click.
 
       // Capture on currentTarget (the item div) rather than target (could be child)
       const element = e.currentTarget as HTMLElement;
@@ -139,7 +152,7 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false, isDr
       capturedElementRef.current = element;
       capturedPointerIdRef.current = e.pointerId;
     },
-    [isVisitorMode, folderId]
+    [isVisitorMode]
   );
 
   // Handle pointer move during drag
@@ -152,7 +165,20 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false, isDr
 
       // Only consider it a drag if moved more than 5 pixels
       if (dx > 5 || dy > 5) {
-        hasDragged.current = true;
+        // Dispatch FOLDER_DRAG_START the first time the threshold is crossed
+        if (!hasDragged.current) {
+          hasDragged.current = true;
+          window.dispatchEvent(
+            new CustomEvent<FolderDragEvent>(FOLDER_DRAG_START, {
+              detail: {
+                itemId: draggingId,
+                sourceFolderId: folderId,
+                clientX: dragStartPos.current.x,
+                clientY: dragStartPos.current.y,
+              },
+            })
+          );
+        }
 
         // Dispatch drag move event for Desktop to track (for cross-window drops)
         window.dispatchEvent(
@@ -204,17 +230,20 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false, isDr
   // Handle pointer up (end drag)
   const handlePointerUp = useCallback(
     (e: React.PointerEvent) => {
-      // Dispatch drag end event for Desktop to potentially handle the drop
-      // The event contains drop coordinates so Desktop can determine if it's a valid drop target
-      const dragEndEvent = new CustomEvent<FolderDragEvent>(FOLDER_DRAG_END, {
-        detail: {
-          itemId: draggingId || '',
-          sourceFolderId: folderId,
-          clientX: e.clientX,
-          clientY: e.clientY,
-        },
-      });
-      window.dispatchEvent(dragEndEvent);
+      // Only dispatch FOLDER_DRAG_END if an actual drag occurred (threshold met)
+      // This prevents simple clicks from moving items to the desktop
+      if (hasDragged.current && draggingId) {
+        window.dispatchEvent(
+          new CustomEvent<FolderDragEvent>(FOLDER_DRAG_END, {
+            detail: {
+              itemId: draggingId,
+              sourceFolderId: folderId,
+              clientX: e.clientX,
+              clientY: e.clientY,
+            },
+          })
+        );
+      }
 
       // If we dropped on a folder within this folder view, handle it here
       if (draggingId && hasDragged.current && folderDropTargetId) {
@@ -239,17 +268,19 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false, isDr
   // Handle pointer cancel (when browser/OS interrupts the drag)
   const handlePointerCancel = useCallback(
     (e: React.PointerEvent) => {
-      // Dispatch drag end event to clean up Desktop state
-      window.dispatchEvent(
-        new CustomEvent<FolderDragEvent>(FOLDER_DRAG_END, {
-          detail: {
-            itemId: draggingId || '',
-            sourceFolderId: folderId,
-            clientX: e.clientX,
-            clientY: e.clientY,
-          },
-        })
-      );
+      // Only dispatch drag end if a drag was actually in progress
+      if (hasDragged.current && draggingId) {
+        window.dispatchEvent(
+          new CustomEvent<FolderDragEvent>(FOLDER_DRAG_END, {
+            detail: {
+              itemId: draggingId,
+              sourceFolderId: folderId,
+              clientX: e.clientX,
+              clientY: e.clientY,
+            },
+          })
+        );
+      }
 
       releasePointerCapture();
       setDraggingId(null);
@@ -270,6 +301,184 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false, isDr
   // Clear selection when clicking empty area
   const handleBackgroundClick = useCallback(() => {
     setSelectedId(null);
+  }, []);
+
+  // Right-click on empty area inside folder
+  const handleFolderContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      if (isVisitorMode) return;
+      e.preventDefault();
+      e.stopPropagation();
+      // Only trigger when clicking the background, not an item
+      if (e.target === e.currentTarget || (e.target as HTMLElement).closest(`.${styles.itemGrid}`) === e.target) {
+        setContextMenu({
+          position: { x: e.clientX, y: e.clientY },
+          targetItem: null,
+        });
+      }
+    },
+    [isVisitorMode]
+  );
+
+  // Right-click on an item inside folder
+  const handleItemContextMenu = useCallback(
+    (item: DesktopItem, e: React.MouseEvent) => {
+      if (isVisitorMode) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setSelectedId(item.id);
+      setContextMenu({
+        position: { x: e.clientX, y: e.clientY },
+        targetItem: item,
+      });
+    },
+    [isVisitorMode]
+  );
+
+  // Build context menu items
+  const getContextMenuItems = useCallback((): ContextMenuItem[] => {
+    const { addItem, moveToTrash, duplicateItems } = useDesktopStore.getState();
+
+    if (contextMenu?.targetItem) {
+      // Context menu for an item
+      const item = contextMenu.targetItem;
+      return [
+        {
+          id: 'open',
+          label: 'Open',
+          action: () => handleItemOpen(item),
+        },
+        {
+          id: 'get-info',
+          label: 'Get Info',
+          shortcut: '⌘I',
+          action: () => {
+            openWindow({
+              id: `info-${item.id}`,
+              title: `${item.name} Info`,
+              position: { x: 200, y: 150 },
+              size: { width: 280, height: 320 },
+              minimized: false,
+              maximized: false,
+              contentType: 'get-info',
+              contentId: item.id,
+            });
+          },
+        },
+        { id: 'divider-1', label: '', divider: true },
+        {
+          id: 'rename',
+          label: 'Rename...',
+          action: () => {
+            openWindow({
+              id: `info-${item.id}`,
+              title: `${item.name} Info`,
+              position: { x: 200, y: 150 },
+              size: { width: 280, height: 320 },
+              minimized: false,
+              maximized: false,
+              contentType: 'get-info',
+              contentId: item.id,
+            });
+          },
+        },
+        {
+          id: 'duplicate',
+          label: 'Duplicate',
+          shortcut: '⌘D',
+          action: () => {
+            duplicateItems([item.id], folderId);
+          },
+        },
+        { id: 'divider-2', label: '', divider: true },
+        {
+          id: 'toggle-public',
+          label: item.isPublic ? 'Make Private' : 'Make Public',
+          checked: item.isPublic,
+          action: () => {
+            updateItem(item.id, { isPublic: !item.isPublic });
+          },
+        },
+        { id: 'divider-3', label: '', divider: true },
+        {
+          id: 'move-to-trash',
+          label: 'Move to Trash',
+          shortcut: '⌘⌫',
+          action: () => {
+            moveToTrash([item.id]);
+            setSelectedId(null);
+          },
+        },
+      ];
+    } else {
+      // Context menu for empty area inside folder
+      const now = Date.now();
+      return [
+        {
+          id: 'new-folder',
+          label: 'New Folder',
+          action: () => {
+            const siblingItems = storeItems.filter((i) => i.parentId === folderId && !i.isTrashed);
+            let maxY = -1;
+            siblingItems.forEach((i) => {
+              if (i.position.x === 0 && i.position.y > maxY) {
+                maxY = i.position.y;
+              }
+            });
+            addItem({
+              id: `folder-${now}`,
+              type: 'folder',
+              name: 'Untitled Folder',
+              parentId: folderId,
+              position: { x: 0, y: maxY + 1 },
+              isPublic: false,
+              createdAt: now,
+              updatedAt: now,
+            });
+          },
+        },
+        {
+          id: 'new-text',
+          label: 'New Text File',
+          action: () => {
+            const siblingItems = storeItems.filter((i) => i.parentId === folderId && !i.isTrashed);
+            let maxY = -1;
+            siblingItems.forEach((i) => {
+              if (i.position.x === 0 && i.position.y > maxY) {
+                maxY = i.position.y;
+              }
+            });
+            addItem({
+              id: `text-${now}`,
+              type: 'text',
+              name: 'Untitled.txt',
+              parentId: folderId,
+              position: { x: 0, y: maxY + 1 },
+              isPublic: false,
+              textContent: '',
+              createdAt: now,
+              updatedAt: now,
+            });
+          },
+        },
+        { id: 'divider-1', label: '', divider: true },
+        {
+          id: 'select-all',
+          label: 'Select All',
+          disabled: items.length === 0,
+          action: () => {
+            // Folder view currently supports single selection only
+            if (items.length > 0) {
+              setSelectedId(items[0].id);
+            }
+          },
+        },
+      ];
+    }
+  }, [contextMenu, handleItemOpen, openWindow, updateItem, folderId, storeItems, items]);
+
+  const closeContextMenu = useCallback(() => {
+    setContextMenu(null);
   }, []);
 
   // Get icon for item - images with r2Key use ThumbnailIcon for preview
@@ -329,8 +538,16 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false, isDr
       <div
         className={`${styles.emptyFolder} ${isDropTarget ? styles.windowDropTarget : ''}`}
         data-folder-window-id={folderId}
+        onContextMenu={handleFolderContextMenu}
       >
         <p>This folder is empty</p>
+        {contextMenu && (
+          <ContextMenu
+            items={getContextMenuItems()}
+            position={contextMenu.position}
+            onClose={closeContextMenu}
+          />
+        )}
       </div>
     );
   }
@@ -340,6 +557,7 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false, isDr
       className={`${styles.folderView} ${isDropTarget ? styles.windowDropTarget : ''}`}
       data-folder-window-id={folderId}
       onClick={handleBackgroundClick}
+      onContextMenu={handleFolderContextMenu}
       onPointerMove={draggingId ? handlePointerMove : undefined}
       onPointerUp={draggingId ? handlePointerUp : undefined}
       onPointerCancel={draggingId ? handlePointerCancel : undefined}
@@ -358,13 +576,8 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false, isDr
               e.stopPropagation();
               setSelectedId(item.id);
             }}
-            onDoubleClick={() => {
-              if (item.type === 'link') {
-                handleLinkClick(item.url);
-              } else {
-                handleDoubleClick(item.id, item.type, item.name);
-              }
-            }}
+            onDoubleClick={() => handleItemOpen(item)}
+            onContextMenu={(e) => handleItemContextMenu(item, e)}
             onPointerDown={(e) => handlePointerDown(e, item.id)}
           >
             <div className={styles.itemIcon}>{getIcon(item)}</div>
@@ -372,6 +585,13 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false, isDr
           </div>
         ))}
       </div>
+      {contextMenu && (
+        <ContextMenu
+          items={getContextMenuItems()}
+          position={contextMenu.position}
+          onClose={closeContextMenu}
+        />
+      )}
     </div>
   );
 }

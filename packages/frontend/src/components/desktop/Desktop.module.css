@@ -39,3 +39,47 @@
   pointer-events: none;
   z-index: 9999;
 }
+
+/* Minimized windows dock - sits at bottom of desktop */
+.minimizedDock {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  right: 80px; /* Leave room for trash icon */
+  display: flex;
+  flex-wrap: wrap-reverse;
+  gap: 2px;
+  z-index: 10;
+  pointer-events: auto;
+}
+
+.minimizedWindow {
+  display: flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 8px;
+  background: var(--platinum, #c0c0c0);
+  border: 1px solid;
+  border-color: var(--white, #ffffff) var(--shadow, #808080) var(--shadow, #808080) var(--white, #ffffff);
+  box-shadow: inset 1px 1px 0 var(--highlight, #dfdfdf);
+  font-family: var(--font-chicago, 'Chicago', sans-serif);
+  font-size: 11px;
+  cursor: pointer;
+  max-width: 160px;
+  overflow: hidden;
+}
+
+.minimizedWindow:hover {
+  background: var(--highlight, #dfdfdf);
+}
+
+.minimizedWindow:active {
+  border-color: var(--shadow, #808080) var(--white, #ffffff) var(--white, #ffffff) var(--shadow, #808080);
+  box-shadow: inset 1px 1px 0 var(--shadow, #808080);
+}
+
+.minimizedTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

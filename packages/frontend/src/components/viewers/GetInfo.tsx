@@ -29,7 +29,7 @@ export function GetInfo({ item, isOwner = true }: GetInfoProps) {
   const [isPublic, setIsPublic] = useState(item.isPublic);
   const [name, setName] = useState(item.name);
   const [isEditingName, setIsEditingName] = useState(false);
-  const { updateItem } = useDesktopStore();
+  const { updateItem, items } = useDesktopStore();
 
   // Get the appropriate icon for this item type
   // Custom icon takes precedence if set
@@ -213,7 +213,10 @@ export function GetInfo({ item, isOwner = true }: GetInfoProps) {
         <>
           <div className={styles.divider} />
           <div className={styles.infoTable}>
-            <InfoRow label="Location" value={`In folder`} />
+            <InfoRow label="Location" value={(() => {
+              const parent = items.find((i) => i.id === item.parentId);
+              return parent ? parent.name : 'Unknown folder';
+            })()} />
           </div>
         </>
       )}

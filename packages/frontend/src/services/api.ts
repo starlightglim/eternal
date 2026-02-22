@@ -165,6 +165,12 @@ export async function deleteItem(id: string): Promise<{ deleted: boolean }> {
   });
 }
 
+export async function emptyTrashApi(): Promise<{ deleted: number; r2Keys: string[] }> {
+  return apiRequest<{ deleted: number; r2Keys: string[] }>('/api/trash', {
+    method: 'DELETE',
+  });
+}
+
 // ============ Upload API ============
 
 export interface UploadResponse {

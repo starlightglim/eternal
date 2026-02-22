@@ -97,14 +97,14 @@ function WindowContent({
   folderWindowDropTargetId?: string | null;
   ownerUid?: string;
 }) {
-  const getItem = useDesktopStore((state) => state.getItem);
-
-  // In visitor mode, look up items from visitorItems instead of the store
-  const item = contentId
-    ? isVisitorMode && visitorItems
-      ? visitorItems.find((i) => i.id === contentId)
-      : getItem(contentId)
-    : undefined;
+  // Subscribe to the specific item by contentId so the component re-renders
+  // when the item data changes (e.g., after API fetch replaces cached items).
+  // Using getItem(fn ref) alone won't trigger re-renders on item changes.
+  const item = useDesktopStore((state) =>
+    contentId && !isVisitorMode ? state.items.find((i) => i.id === contentId) : undefined
+  ) ?? (contentId && isVisitorMode && visitorItems
+    ? visitorItems.find((i) => i.id === contentId)
+    : undefined);
 
   switch (contentType) {
     case 'folder':

@@ -17,10 +17,26 @@ interface WidgetRendererProps {
 }
 
 /**
+ * Infer widget type from item name when widgetType field is missing.
+ * Handles legacy items created before widgetType was stored on the backend.
+ */
+function inferWidgetType(name: string): WidgetType | null {
+  const lower = name.toLowerCase();
+  if (lower.includes('sticky') || lower.includes('note')) return 'sticky-note';
+  if (lower.includes('guestbook') || lower.includes('guest book')) return 'guestbook';
+  if (lower.includes('music') || lower.includes('player')) return 'music-player';
+  if (lower.includes('pixel') || lower.includes('canvas') || lower.includes('draw')) return 'pixel-canvas';
+  if (lower.includes('link') || lower.includes('board') || lower.includes('bookmark')) return 'link-board';
+  return null;
+}
+
+/**
  * Renders the appropriate widget based on widgetType
  */
 export function WidgetRenderer({ item, isOwner, onConfigUpdate, ownerUid }: WidgetRendererProps) {
-  const { widgetType, widgetConfig } = item;
+  const { widgetConfig } = item;
+  // Use stored widgetType, or infer from name for legacy items
+  const widgetType = item.widgetType || inferWidgetType(item.name);
 
   if (!widgetType) {
     return (

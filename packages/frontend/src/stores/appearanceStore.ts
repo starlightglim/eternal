@@ -219,9 +219,12 @@ function scopeCSSToUserDesktop(css: string): string {
       continue;
     }
 
-    // Handle @media/@supports - keep as-is (inner rules should already be scoped)
+    // Handle @media/@supports — recursively scope inner selectors
     if (selectors.startsWith('@media') || selectors.startsWith('@supports')) {
-      scopedRules.push(`${rule}}`);
+      const atRuleHeader = selectors;
+      const innerScoped = scopeCSSToUserDesktop(declarations + '}');
+      const cleanInner = innerScoped.trim().replace(/}\s*$/, '');
+      scopedRules.push(`${atRuleHeader} { ${cleanInner} }}`);
       continue;
     }
 

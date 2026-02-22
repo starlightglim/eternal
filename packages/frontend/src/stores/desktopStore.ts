@@ -10,6 +10,7 @@ import {
   deleteItem as apiDeleteItem,
   uploadFile as apiUploadFile,
   fetchDesktop as apiFetchDesktop,
+  emptyTrashApi,
 } from '../services/api';
 import { useAlertStore } from './alertStore';
 import { useSoundStore, type SoundType } from './soundStore';
@@ -318,6 +319,10 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
     if (isApiConfigured) {
       apiUpdateItems([{ id, updates }]).catch((error) => {
         console.error('Failed to update item:', error);
+        showError(
+          'Your changes may not have been saved. Please reload to check.',
+          'Sync Failed'
+        );
       });
     }
   },
@@ -420,9 +425,9 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
   },
 
   cleanUp: (parentId = null) => {
-    // Sort items by name and arrange in columns
-    const itemsInParent = get().items.filter((item) => item.parentId === parentId);
-    const otherItems = get().items.filter((item) => item.parentId !== parentId);
+    // Sort items by name and arrange in columns (exclude trashed items)
+    const itemsInParent = get().items.filter((item) => item.parentId === parentId && !item.isTrashed);
+    const otherItems = get().items.filter((item) => item.parentId !== parentId || item.isTrashed);
 
     // Sort alphabetically by name
     const sortedItems = [...itemsInParent].sort((a, b) =>
@@ -458,9 +463,9 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
   },
 
   sortByName: (parentId = null) => {
-    // Sort items by name and arrange in columns
-    const itemsInParent = get().items.filter((item) => item.parentId === parentId);
-    const otherItems = get().items.filter((item) => item.parentId !== parentId);
+    // Sort items by name and arrange in columns (exclude trashed items)
+    const itemsInParent = get().items.filter((item) => item.parentId === parentId && !item.isTrashed);
+    const otherItems = get().items.filter((item) => item.parentId !== parentId || item.isTrashed);
 
     const sortedItems = [...itemsInParent].sort((a, b) =>
       a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
@@ -495,9 +500,9 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
   },
 
   sortByDate: (parentId = null) => {
-    // Sort items by date (newest first) and arrange in columns
-    const itemsInParent = get().items.filter((item) => item.parentId === parentId);
-    const otherItems = get().items.filter((item) => item.parentId !== parentId);
+    // Sort items by date (newest first) and arrange in columns (exclude trashed items)
+    const itemsInParent = get().items.filter((item) => item.parentId === parentId && !item.isTrashed);
+    const otherItems = get().items.filter((item) => item.parentId !== parentId || item.isTrashed);
 
     const sortedItems = [...itemsInParent].sort((a, b) => b.updatedAt - a.updatedAt);
 
@@ -530,16 +535,20 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
   },
 
   sortByKind: (parentId = null) => {
-    // Sort items by type (folders first, then by type, then by name) and arrange in columns
-    const itemsInParent = get().items.filter((item) => item.parentId === parentId);
-    const otherItems = get().items.filter((item) => item.parentId !== parentId);
+    // Sort items by type (folders first, then by type, then by name) and arrange in columns (exclude trashed items)
+    const itemsInParent = get().items.filter((item) => item.parentId === parentId && !item.isTrashed);
+    const otherItems = get().items.filter((item) => item.parentId !== parentId || item.isTrashed);
 
-    // Type order: folder, text, image, link
+    // Type order: all item types in logical grouping
     const typeOrder: Record<string, number> = {
       folder: 0,
       text: 1,
       image: 2,
-      link: 3,
+      video: 3,
+      audio: 4,
+      pdf: 5,
+      link: 6,
+      widget: 7,
     };
 
     const sortedItems = [...itemsInParent].sort((a, b) => {
@@ -792,9 +801,32 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
 
   moveToTrash: (ids) => {
     const now = Date.now();
+
+    // Cascade: collect all descendant items of any trashed folders
+    const { items } = get();
+    const allIdsToTrash = new Set(ids);
+    const collectChildren = (parentId: string) => {
+      for (const item of items) {
+        if (item.parentId === parentId && !allIdsToTrash.has(item.id)) {
+          allIdsToTrash.add(item.id);
+          if (item.type === 'folder') {
+            collectChildren(item.id);
+          }
+        }
+      }
+    };
+    for (const id of ids) {
+      const item = items.find((i) => i.id === id);
+      if (item?.type === 'folder') {
+        collectChildren(id);
+      }
+    }
+
+    const idsArray = Array.from(allIdsToTrash);
+
     set((state) => {
       const newItems = state.items.map((item) =>
-        ids.includes(item.id)
+        allIdsToTrash.has(item.id)
           ? { ...item, isTrashed: true, trashedAt: now, updatedAt: now }
           : item
       );
@@ -803,7 +835,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
       }
       return {
         items: newItems,
-        selectedIds: new Set([...state.selectedIds].filter((id) => !ids.includes(id))),
+        selectedIds: new Set([...state.selectedIds].filter((id) => !allIdsToTrash.has(id))),
       };
     });
 
@@ -812,12 +844,16 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
 
     // Sync to API if configured
     if (isApiConfigured) {
-      const updates = ids.map((id) => ({
+      const updates = idsArray.map((id) => ({
         id,
         updates: { isTrashed: true, trashedAt: now },
       }));
       apiUpdateItems(updates).catch((error) => {
         console.error('Failed to move items to trash:', error);
+        showError(
+          'Failed to move items to trash. Your changes may not be saved.',
+          'Trash Failed'
+        );
       });
     }
   },
@@ -843,15 +879,18 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
       }));
       apiUpdateItems(updates).catch((error) => {
         console.error('Failed to restore items from trash:', error);
+        showError(
+          'Failed to restore items. Please try again.',
+          'Restore Failed'
+        );
       });
     }
   },
 
   emptyTrash: () => {
     const trashedItems = get().items.filter((item) => item.isTrashed);
-    const trashedIds = trashedItems.map((item) => item.id);
 
-    if (trashedIds.length === 0) return;
+    if (trashedItems.length === 0) return;
 
     // Play empty trash sound
     playSound('emptyTrash');
@@ -865,13 +904,14 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
       return { items: newItems };
     });
 
-    // Delete from API
+    // Use the server-side empty trash endpoint (atomic, handles R2 cleanup)
     if (isApiConfigured) {
-      // Delete each trashed item
-      trashedIds.forEach((id) => {
-        apiDeleteItem(id).catch((error) => {
-          console.error('Failed to permanently delete item:', error);
-        });
+      emptyTrashApi().catch((error) => {
+        console.error('Failed to empty trash:', error);
+        showError(
+          'Failed to permanently delete some items. They may reappear on reload.',
+          'Empty Trash Failed'
+        );
       });
     }
   },

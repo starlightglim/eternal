@@ -67,11 +67,39 @@ export function PreferencesWindow() {
     }
   }, [isEditingName]);
 
-  const handleSaveDisplayName = useCallback(() => {
-    // In a real app, this would call an API endpoint
-    // For now, display name is read-only since we don't have the endpoint
+  const handleSaveDisplayName = useCallback(async () => {
+    const trimmedName = displayName.trim();
+    if (!trimmedName) {
+      setDisplayName(profile?.displayName || '');
+      setIsEditingName(false);
+      return;
+    }
+
     setIsEditingName(false);
-  }, []);
+
+    // Save display name via API if it actually changed
+    if (trimmedName !== profile?.displayName && isApiConfigured) {
+      // Update local state immediately so the UI reflects the change
+      if (profile) {
+        useAuthStore.setState({
+          profile: { ...profile, displayName: trimmedName },
+        });
+      }
+
+      try {
+        await updateProfile({ displayName: trimmedName });
+      } catch (error) {
+        console.error('Failed to save display name:', error);
+        // Revert on error — both local state and input
+        if (profile) {
+          useAuthStore.setState({
+            profile: { ...profile, displayName: profile.displayName },
+          });
+        }
+        setDisplayName(profile?.displayName || '');
+      }
+    }
+  }, [displayName, profile]);
 
   const handleNameKeyDown = useCallback(
     (e: React.KeyboardEvent) => {

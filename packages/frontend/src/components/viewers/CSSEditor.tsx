@@ -30,7 +30,8 @@ const DANGEROUS_PATTERNS = [
   /-moz-binding/i,
   /<script/i,
   /<\/script/i,
-  /\/\*.*\*\//s, // Block comments that might hide injection (optional, can be relaxed)
+  // CSS comments (/* ... */) are intentionally allowed — they're a standard
+  // part of CSS authoring and don't pose an injection risk on their own.
 ];
 
 // More specific dangerous patterns for XSS
@@ -112,9 +113,13 @@ function scopeCSS(css: string): string {
     }
 
     if (selectors.startsWith('@media') || selectors.startsWith('@supports')) {
-      // For media queries, we need to scope the inner rules
-      // This is a simplified approach - just add it as-is for now
-      scopedRules.push(`${rule}}`);
+      // Scope the inner selectors of @media/@supports blocks
+      const atRuleHeader = selectors; // e.g. "@media (max-width: 800px)"
+      // `declarations` here is the inner CSS rules (everything after the first {)
+      // Recursively scope them with .user-desktop
+      const innerScoped = scopeCSS(declarations + '}');
+      const cleanInner = innerScoped.trim().replace(/}\s*$/, '');
+      scopedRules.push(`${atRuleHeader} { ${cleanInner} }}`);
       continue;
     }
 

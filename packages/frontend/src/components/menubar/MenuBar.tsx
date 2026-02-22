@@ -36,10 +36,16 @@ export function MenuBar() {
   // ============================================
 
   const handleNewFolder = useCallback(() => {
-    // Find next available position
-    const rootItems = items.filter((item) => item.parentId === null);
+    // Check if top window is a folder — if so, create inside it
+    const topWindow = getTopWindow();
+    const targetParentId = topWindow && topWindow.contentType === 'folder' && topWindow.contentId
+      ? topWindow.contentId
+      : null;
+
+    // Find next available position within the target folder/desktop
+    const siblingItems = items.filter((item) => item.parentId === targetParentId && !item.isTrashed);
     let maxY = -1;
-    rootItems.forEach((item) => {
+    siblingItems.forEach((item) => {
       if (item.position.x === 0 && item.position.y > maxY) {
         maxY = item.position.y;
       }
@@ -49,7 +55,7 @@ export function MenuBar() {
       id: `folder-${Date.now()}`,
       type: 'folder' as const,
       name: 'Untitled Folder',
-      parentId: null,
+      parentId: targetParentId,
       position: { x: 0, y: maxY + 1 },
       isPublic: true,
       createdAt: Date.now(),
@@ -58,7 +64,7 @@ export function MenuBar() {
 
     addItem(newFolder);
     setActiveMenu(null);
-  }, [items, addItem]);
+  }, [items, addItem, getTopWindow]);
 
   const handleCloseWindow = useCallback(() => {
     const topWindow = getTopWindow();
@@ -303,6 +309,17 @@ export function MenuBar() {
           minimized: false,
           maximized: false,
           contentType: 'link',
+          contentId: item.id,
+        });
+      } else if (item.type === 'widget') {
+        openWindow({
+          id: `widget-${item.id}`,
+          title: item.name,
+          position: { x: 100 + Math.random() * 100, y: 80 + Math.random() * 80 },
+          size: { width: 250, height: 250 },
+          minimized: false,
+          maximized: false,
+          contentType: 'widget',
           contentId: item.id,
         });
       }

@@ -64,7 +64,6 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
     moveToTrash,
     getTrashCount,
     uploadFile,
-    loadDesktop,
     loading,
     cleanUp,
     selectAll,
@@ -79,12 +78,8 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
     return new Set<string>();
   }, [clipboard]);
 
-  // Load desktop from API on mount (if API is configured)
-  useEffect(() => {
-    if (isApiConfigured && !isVisitorMode) {
-      loadDesktop();
-    }
-  }, [loadDesktop, isVisitorMode]);
+  // Note: Desktop items are loaded by useDesktopSync hook (called above)
+  // which fetches items + profile from the API when user is authenticated.
 
   // Restore window state from localStorage after items are loaded
   // This runs once when loading finishes and we have items
@@ -1223,8 +1218,9 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
         return;
       }
 
-      // Handle Delete/Backspace to trash selected items
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedArray.length > 0) {
+      // Handle Cmd+Backspace / Cmd+Delete to trash selected items
+      // Requires modifier to prevent accidental deletion (matches MenuBar shortcut ⌘⌫)
+      if ((e.key === 'Delete' || e.key === 'Backspace') && (e.metaKey || e.ctrlKey) && selectedArray.length > 0) {
         e.preventDefault();
         moveToTrash(selectedArray);
         deselectAll();
@@ -1351,13 +1347,31 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
         {
           id: 'rename',
           label: 'Rename...',
-          disabled: true, // TODO: Implement inline rename
+          action: () => {
+            // Open Get Info which has rename functionality
+            openWindow({
+              id: `info-${item.id}`,
+              title: `${item.name} Info`,
+              position: { x: 200, y: 150 },
+              size: { width: 280, height: 320 },
+              minimized: false,
+              maximized: false,
+              contentType: 'get-info',
+              contentId: item.id,
+            });
+          },
         },
         {
           id: 'duplicate',
           label: 'Duplicate',
           shortcut: '⌘D',
-          disabled: true, // TODO: Implement duplicate
+          action: () => {
+            const { duplicateItems } = useDesktopStore.getState();
+            const idsToDuplicate = selectedIds.size > 0 && selectedIds.has(item.id)
+              ? Array.from(selectedIds)
+              : [item.id];
+            duplicateItems(idsToDuplicate, item.parentId);
+          },
         },
         {
           id: 'change-icon',
@@ -1596,6 +1610,28 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
         />
       )}
 
+        {/* Minimized windows dock - shows minimized windows as small title bars at bottom */}
+        {windows.filter((w) => w.minimized).length > 0 && (
+          <div className={styles.minimizedDock}>
+            {windows
+              .filter((w) => w.minimized)
+              .map((win) => (
+                <button
+                  key={win.id}
+                  className={styles.minimizedWindow}
+                  onClick={() => {
+                    const { restoreWindow, focusWindow } = useWindowStore.getState();
+                    restoreWindow(win.id);
+                    focusWindow(win.id);
+                  }}
+                  title={`Restore "${win.title}"`}
+                >
+                  <span className={styles.minimizedTitle}>{win.title}</span>
+                </button>
+              ))}
+          </div>
+        )}
+
         {/* Window Manager renders all open windows */}
         <WindowManager folderWindowDropTargetId={folderWindowDropTargetId} />
 
@@ -1670,7 +1706,7 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
               // Open the widget window
               const defaultSize = getWidgetDefaultSize(widgetType);
               openWindow({
-                id: `widget-window-${now}`,
+                id: `widget-${newWidgetItem.id}`,
                 title: name,
                 position: { x: 100 + finalPos.x * 20, y: 60 + finalPos.y * 20 },
                 size: defaultSize,
