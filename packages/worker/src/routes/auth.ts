@@ -25,6 +25,13 @@ interface LoginBody {
   password: string;
 }
 
+/**
+ * Generate a secure refresh token
+ */
+function generateRefreshToken(): string {
+  return crypto.randomUUID() + '-' + crypto.randomUUID();
+}
+
 // Validation helpers
 function validateEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -154,14 +161,9 @@ export async function handleSignup(request: Request, env: Env): Promise<Response
     return Response.json({ error: 'signup_step_6_store_uid_index', details: String(e) }, { status: 500 });
   }
 
-  // Track this user for scheduled jobs
+  // Track this user for scheduled jobs (per-user key avoids read-modify-write race)
   try {
-    const existingUsers = await env.AUTH_KV.get('all_users');
-    const userList = existingUsers ? JSON.parse(existingUsers) as string[] : [];
-    if (!userList.includes(uid)) {
-      userList.push(uid);
-      await env.AUTH_KV.put('all_users', JSON.stringify(userList));
-    }
+    await env.AUTH_KV.put(`user_index:${uid}`, normalizedEmail);
   } catch (e) {
     return Response.json({ error: 'signup_step_7_update_user_list', details: String(e) }, { status: 500 });
   }
@@ -331,7 +333,7 @@ Try saying:
     return Response.json({ error: 'signup_step_9_sign_jwt', details: String(e) }, { status: 500 });
   }
 
-  const refreshToken = crypto.randomUUID() + '-' + crypto.randomUUID();
+  const refreshToken = generateRefreshToken();
   const accessExpiry = 15 * 60;
   const refreshExpiry = 7 * 24 * 60 * 60;
 
@@ -352,12 +354,13 @@ Try saying:
     return Response.json({ error: 'signup_step_10_store_session', details: String(e) }, { status: 500 });
   }
 
-  // Store refresh token
+  // Store refresh token (includes issuedAt for password-change invalidation)
   const refreshData = {
     uid,
     username: normalizedUsername,
     accessToken: token,
     expiresAt: now + (refreshExpiry * 1000),
+    issuedAt: now,
   };
 
   try {
@@ -456,7 +459,7 @@ export async function handleLogin(request: Request, env: Env): Promise<Response>
 
   // Generate refresh token
   const now = Date.now();
-  const refreshToken = crypto.randomUUID() + '-' + crypto.randomUUID();
+  const refreshToken = generateRefreshToken();
 
   // Access token: 15 minutes, Refresh token: 7 days
   const accessExpiry = 15 * 60; // 15 minutes in seconds
@@ -480,12 +483,13 @@ export async function handleLogin(request: Request, env: Env): Promise<Response>
     return Response.json({ error: 'Session creation error' }, { status: 500 });
   }
 
-  // Store refresh token
+  // Store refresh token (includes issuedAt for password-change invalidation)
   const refreshData = {
     uid: userRecord.uid,
     username: userRecord.username,
     accessToken: token,
     expiresAt: now + (refreshExpiry * 1000),
+    issuedAt: now,
   };
 
   try {
@@ -536,13 +540,6 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
   return Response.json({ success: true });
 }
 
-/**
- * Generate a secure refresh token
- */
-function generateRefreshToken(): string {
-  return crypto.randomUUID() + '-' + crypto.randomUUID();
-}
-
 interface RefreshTokenBody {
   refreshToken: string;
 }
@@ -576,6 +573,7 @@ export async function handleRefreshToken(request: Request, env: Env): Promise<Re
     username: string;
     accessToken: string;
     expiresAt: number;
+    issuedAt?: number; // Added for password-change invalidation
   };
 
   // Check if refresh token has expired
@@ -584,22 +582,34 @@ export async function handleRefreshToken(request: Request, env: Env): Promise<Re
     return Response.json({ error: 'Refresh token has expired' }, { status: 401 });
   }
 
-  // Check if password was changed after refresh token was issued
+  // Check if password was changed after refresh token was issued.
+  // Uses issuedAt from the refresh token record directly — does NOT depend
+  // on the access token session existing (which expires after 15 min).
   const uidIndexJson = await env.AUTH_KV.get(`uid:${refreshData.uid}`);
   if (uidIndexJson) {
     const { email } = JSON.parse(uidIndexJson) as { email: string };
     const userJson = await env.AUTH_KV.get(`user:${email}`);
     if (userJson) {
       const user = JSON.parse(userJson) as UserRecord;
-      // Get the old session to check its issuedAt
-      const oldSessionJson = await env.AUTH_KV.get(`session:${refreshData.accessToken}`);
-      if (oldSessionJson) {
-        const oldSession = JSON.parse(oldSessionJson) as SessionRecord;
-        if (user.passwordChangedAt && oldSession.issuedAt < user.passwordChangedAt) {
-          // Password was changed - invalidate refresh token
-          await env.AUTH_KV.delete(`refresh:${refreshToken}`);
-          await env.AUTH_KV.delete(`session:${refreshData.accessToken}`);
-          return Response.json({ error: 'Session invalidated due to password change' }, { status: 401 });
+      // Use refresh token's own issuedAt (reliable), fall back to old session check
+      const tokenIssuedAt = refreshData.issuedAt;
+      if (tokenIssuedAt && user.passwordChangedAt && tokenIssuedAt < user.passwordChangedAt) {
+        // Password was changed after this refresh token was issued — invalidate
+        await env.AUTH_KV.delete(`refresh:${refreshToken}`);
+        await env.AUTH_KV.delete(`session:${refreshData.accessToken}`);
+        return Response.json({ error: 'Session invalidated due to password change' }, { status: 401 });
+      }
+
+      // Fallback for old refresh tokens that don't have issuedAt yet
+      if (!tokenIssuedAt && user.passwordChangedAt) {
+        const oldSessionJson = await env.AUTH_KV.get(`session:${refreshData.accessToken}`);
+        if (oldSessionJson) {
+          const oldSession = JSON.parse(oldSessionJson) as SessionRecord;
+          if (oldSession.issuedAt < user.passwordChangedAt) {
+            await env.AUTH_KV.delete(`refresh:${refreshToken}`);
+            await env.AUTH_KV.delete(`session:${refreshData.accessToken}`);
+            return Response.json({ error: 'Session invalidated due to password change' }, { status: 401 });
+          }
         }
       }
     }
@@ -631,12 +641,13 @@ export async function handleRefreshToken(request: Request, env: Env): Promise<Re
     expirationTtl: accessExpiry,
   });
 
-  // Store new refresh token
+  // Store new refresh token (includes issuedAt for password-change invalidation)
   const newRefreshData = {
     uid: refreshData.uid,
     username: refreshData.username,
     accessToken: newAccessToken,
     expiresAt: now + (refreshExpiry * 1000),
+    issuedAt: now,
   };
   await env.AUTH_KV.put(`refresh:${newRefreshToken}`, JSON.stringify(newRefreshData), {
     expirationTtl: refreshExpiry,
@@ -708,15 +719,15 @@ export async function handleForgotPassword(request: Request, env: Env): Promise<
     expirationTtl: ttlSeconds,
   });
 
-  // In production, you would send this via email using an email service
-  // For now, we return the token in the response (for development/demo purposes)
-  // In production, remove the resetToken from the response and send via email
+  // In production, send this via email using an email service (e.g., Resend, Mailgun)
+  // In development, the token is returned in the response for testing convenience
+  const isDev = env.ENVIRONMENT !== 'production';
+
   return Response.json({
     success: true,
     message: 'If an account with that email exists, a reset link has been generated.',
-    // Development only - remove in production!
-    resetToken,
-    resetUrl: `/reset-password?token=${resetToken}`,
+    // Only include token in development mode — NEVER in production
+    ...(isDev ? { resetToken, resetUrl: `/reset-password?token=${resetToken}` } : {}),
   });
 }
 

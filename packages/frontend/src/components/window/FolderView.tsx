@@ -431,7 +431,7 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false, isDr
               name: 'Untitled Folder',
               parentId: folderId,
               position: { x: 0, y: maxY + 1 },
-              isPublic: false,
+              isPublic: true,
               createdAt: now,
               updatedAt: now,
             });
@@ -454,7 +454,7 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false, isDr
               name: 'Untitled.txt',
               parentId: folderId,
               position: { x: 0, y: maxY + 1 },
-              isPublic: false,
+              isPublic: true,
               textContent: '',
               createdAt: now,
               updatedAt: now,

@@ -5,10 +5,10 @@ import { WindowManager } from '../components/window';
 import { DesktopIcon } from '../components/icons';
 import { MobileBrowser } from '../components/desktop/MobileBrowser';
 import { VisitorMenuBar } from '../components/menubar/VisitorMenuBar';
-import { useWindowStore } from '../stores/windowStore';
+import { useWindowStore, setVisitorWindowMode } from '../stores/windowStore';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import { useIsMobile } from '../hooks/useIsMobile';
-import { isApiConfigured, fetchVisitorDesktop, getWallpaperUrl } from '../services/api';
+import { isApiConfigured, fetchVisitorDesktop, getWallpaperUrl, type SavedWindowState } from '../services/api';
 import { applyAppearance, clearAppearance, useAppearanceStore } from '../stores/appearanceStore';
 import { getTextFileContentType, type DesktopItem, type UserProfile } from '../types';
 import styles from './VisitorPage.module.css';
@@ -54,15 +54,20 @@ const mockVisitorItems: DesktopItem[] = [
 ];
 
 export function VisitorPage() {
-  const { username } = useParams<{ username: string }>();
-  const { openWindow } = useWindowStore();
+  // Extract username from URL pathname manually since React Router v6
+  // can't match /@:username (params must be full path segments).
+  const { username: routeUsername } = useParams<{ username: string }>();
+  const username = routeUsername || window.location.pathname.slice(2).split('?')[0] || undefined;
+  const { openWindow, loadVisitorWindows } = useWindowStore();
   const isMobile = useIsMobile();
 
   const [loadingState, setLoadingState] = useState<LoadingState>('loading');
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [items, setItems] = useState<DesktopItem[]>([]);
+  const [savedWindows, setSavedWindows] = useState<SavedWindowState[] | undefined>();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const hasRestoredWindows = useRef(false);
 
   // Build meta config based on current state
   const metaConfig = useMemo(() => {
@@ -154,6 +159,7 @@ export function VisitorPage() {
           setLoadingState('empty');
         } else {
           setItems(data.items);
+          setSavedWindows(data.windows);
           setLoadingState('loaded');
         }
       } catch (error) {
@@ -169,6 +175,28 @@ export function VisitorPage() {
 
     loadVisitorData();
   }, [username]);
+
+  // Restore owner's saved windows once items are loaded
+  useEffect(() => {
+    if (hasRestoredWindows.current) return;
+    if (loadingState !== 'loaded') return;
+    if (!savedWindows || savedWindows.length === 0) return;
+
+    const validItemIds = new Set(items.map((i) => i.id));
+    loadVisitorWindows(savedWindows, validItemIds);
+    hasRestoredWindows.current = true;
+  }, [loadingState, items, savedWindows, loadVisitorWindows]);
+
+  // Set visitor mode to prevent window saves to localStorage/server
+  useEffect(() => {
+    setVisitorWindowMode(true);
+    return () => {
+      setVisitorWindowMode(false);
+      // Clear visitor windows so they don't leak into the owner's desktop
+      // Only clear in-memory state, don't touch localStorage (owner's windows)
+      useWindowStore.setState({ windows: [], nextZIndex: 1 });
+    };
+  }, []);
 
   // Get root-level items (parentId === null)
   const rootItems = items.filter((item) => item.parentId === null);

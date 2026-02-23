@@ -39,3 +39,6 @@ pnpm-debug.log*
 .ralph/
 .ralphrc
 temp-app/
+
+# Claude Code
+.claude/

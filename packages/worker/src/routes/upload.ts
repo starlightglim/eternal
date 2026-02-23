@@ -465,6 +465,23 @@ export async function handleWallpaperUpload(
       );
     }
 
+    // Get the current wallpaper before uploading new one (so we can clean up the old R2 file)
+    const profileResponse1 = await stub.fetch(new Request('http://internal/profile'));
+    let oldWallpaperR2Key: string | null = null;
+    if (profileResponse1.ok) {
+      const profileData = await profileResponse1.json() as { profile?: { wallpaper?: string } };
+      const oldWallpaper = profileData.profile?.wallpaper;
+      if (oldWallpaper?.startsWith('custom:')) {
+        // Extract the R2 key from the wallpaper value: "custom:uid/wallpaperId/filename"
+        const oldPath = oldWallpaper.slice('custom:'.length);
+        // R2 key format: uid/wallpaper/wallpaperId/filename
+        const parts = oldPath.split('/');
+        if (parts.length >= 3) {
+          oldWallpaperR2Key = `${parts[0]}/wallpaper/${parts[1]}/${parts[2]}`;
+        }
+      }
+    }
+
     // Generate unique wallpaper ID
     const wallpaperId = crypto.randomUUID();
     const ext = WALLPAPER_ALLOWED_TYPES[mimeType];
@@ -507,6 +524,16 @@ export async function handleWallpaperUpload(
     }
 
     const updatedProfile = await profileResponse.json();
+
+    // Clean up the old wallpaper file from R2 (prevent orphaned files)
+    if (oldWallpaperR2Key) {
+      try {
+        await env.ETERNALOS_FILES.delete(oldWallpaperR2Key);
+      } catch (cleanupError) {
+        // Non-critical — old file remains but doesn't affect functionality
+        console.error('Failed to clean up old wallpaper:', cleanupError);
+      }
+    }
 
     return Response.json({
       success: true,

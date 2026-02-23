@@ -10,6 +10,19 @@
 import type { Env } from '../index';
 import type { DesktopItem, UserProfile } from '../types';
 
+interface SavedWindowState {
+  id: string;
+  title: string;
+  position: { x: number; y: number };
+  size: { width: number; height: number };
+  zIndex: number;
+  minimized: boolean;
+  maximized: boolean;
+  collapsed?: boolean;
+  contentType: string;
+  contentId?: string;
+}
+
 interface VisitorResponse {
   username: string;
   displayName: string;
@@ -22,6 +35,7 @@ interface VisitorResponse {
   customCSS?: string;
   hideWatermark?: boolean;
   items: DesktopItem[];
+  windows?: SavedWindowState[];
 }
 
 /**
@@ -91,7 +105,11 @@ export async function handleVisit(
       return Response.json(emptyResponse);
     }
 
-    const data = await doResponse.json() as { items: DesktopItem[]; profile?: UserProfile };
+    const data = await doResponse.json() as {
+      items: DesktopItem[];
+      profile?: UserProfile;
+      windows?: SavedWindowState[];
+    };
 
     // Build visitor response with appearance settings
     const visitorResponse: VisitorResponse = {
@@ -105,6 +123,7 @@ export async function handleVisit(
       customCSS: data.profile?.customCSS,
       hideWatermark: data.profile?.hideWatermark,
       items: data.items,
+      windows: data.windows,
     };
 
     // Cache in KV for future visitors (5 minute TTL)

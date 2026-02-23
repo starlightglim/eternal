@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useSearchParams, useLocation } from 'react-router-dom'
 import { Desktop } from './components/desktop/Desktop'
 import { MobileBrowser } from './components/desktop/MobileBrowser'
 import { LandingPage } from './pages/LandingPage'
@@ -81,22 +81,45 @@ function ResponsiveDesktop() {
 }
 
 // Smart route that shows owner Desktop or visitor view based on auth
+// Note: React Router v6 doesn't support mixed literal+param segments like /@:username,
+// so we extract the username from window.location.pathname manually.
 function UserDesktopRoute() {
   const { user, initialized } = useAuthStore()
   const isMobile = useIsMobile()
-  const username = window.location.pathname.slice(2) // Remove "/@"
+  const [searchParams] = useSearchParams()
+  const username = window.location.pathname.slice(2).split('?')[0] // Remove "/@" and query params
 
   if (!initialized && isApiConfigured) {
     return <LoadingOverlay message="Loading..." />
   }
 
-  // If logged in as this user, show owner's Desktop (responsive)
-  if (user?.username?.toLowerCase() === username.toLowerCase()) {
+  // Force visitor view when ?visitor=true is set (used by "Preview as Visitor")
+  const forceVisitor = searchParams.get('visitor') === 'true'
+
+  // If logged in as this user and not forcing visitor mode, show owner's Desktop
+  if (!forceVisitor && user?.username?.toLowerCase() === username.toLowerCase()) {
     return isMobile ? <MobileBrowser /> : <Desktop />
   }
 
   // Otherwise show visitor view (has its own mobile handling)
   return <VisitorPage />
+}
+
+/**
+ * Catch-all route handler.
+ * React Router v6 can't match /@:username (params must be full segments),
+ * so we handle /@username URLs here by checking the pathname manually.
+ */
+function CatchAllRoute() {
+  const location = useLocation()
+
+  // Handle /@username paths
+  if (location.pathname.startsWith('/@') && location.pathname.length > 2) {
+    return <UserDesktopRoute />
+  }
+
+  // Everything else → redirect to landing page
+  return <Navigate to="/" replace />
 }
 
 function App() {
@@ -124,7 +147,6 @@ function App() {
       <Route path="/signup" element={<SignupPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
-      <Route path="/@:username" element={<UserDesktopRoute />} />
 
       {/* Protected routes */}
       <Route
@@ -136,8 +158,8 @@ function App() {
         }
       />
 
-      {/* Catch-all redirect */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      {/* Catch-all: handles /@username visitor routes + redirects unknown paths */}
+      <Route path="*" element={<CatchAllRoute />} />
     </Routes>
     </>
   )

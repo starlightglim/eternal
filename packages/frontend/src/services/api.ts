@@ -171,6 +171,15 @@ export async function emptyTrashApi(): Promise<{ deleted: number; r2Keys: string
   });
 }
 
+// ============ Window State API ============
+
+export async function saveWindowsToServer(windows: SavedWindowState[]): Promise<void> {
+  await apiRequest('/api/desktop/windows', {
+    method: 'PUT',
+    body: JSON.stringify(windows),
+  });
+}
+
 // ============ Upload API ============
 
 export interface UploadResponse {
@@ -237,6 +246,20 @@ export async function uploadFile(
 
 // ============ Visitor API ============
 
+/** Window state as returned by the server */
+export interface SavedWindowState {
+  id: string;
+  title: string;
+  position: { x: number; y: number };
+  size: { width: number; height: number };
+  zIndex: number;
+  minimized: boolean;
+  maximized: boolean;
+  collapsed?: boolean;
+  contentType: string;
+  contentId?: string;
+}
+
 interface VisitorApiResponse {
   username: string;
   displayName: string;
@@ -247,11 +270,13 @@ interface VisitorApiResponse {
   windowBgColor?: string;
   fontSmoothing?: boolean;
   items: DesktopItem[];
+  windows?: SavedWindowState[];
 }
 
 export interface VisitorResponse {
   items: DesktopItem[];
   profile: UserProfile;
+  windows?: SavedWindowState[];
 }
 
 export async function fetchVisitorDesktop(username: string): Promise<VisitorResponse> {
@@ -281,6 +306,7 @@ export async function fetchVisitorDesktop(username: string): Promise<VisitorResp
       fontSmoothing: data.fontSmoothing,
       createdAt: 0, // Not exposed to visitors
     },
+    windows: data.windows,
   };
 }
 

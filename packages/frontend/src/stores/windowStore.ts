@@ -1,15 +1,28 @@
 import { create } from 'zustand';
 import type { WindowState } from '../types';
 import { useSoundStore } from './soundStore';
+import { isApiConfigured, getAuthToken, saveWindowsToServer, type SavedWindowState } from '../services/api';
 
 const WINDOW_STATE_KEY = 'eternalos-window-state';
 
 // Types that require a valid desktop item to exist
 const CONTENT_DEPENDENT_TYPES = ['folder', 'image', 'text', 'markdown', 'code', 'audio', 'video', 'pdf', 'get-info', 'widget'];
 
-// Debounce helper
+// Debounce helper for localStorage (fast, 300ms)
 let saveTimeout: ReturnType<typeof setTimeout> | null = null;
+// Debounce helper for server sync (slower, 2s to avoid excessive API calls)
+let serverSyncTimeout: ReturnType<typeof setTimeout> | null = null;
+
+// Track whether we're in visitor mode to avoid persisting visitor window changes
+let isVisitorMode = false;
+export function setVisitorWindowMode(visitor: boolean) {
+  isVisitorMode = visitor;
+}
+
 function debouncedSave(windows: WindowState[], nextZIndex: number) {
+  // Don't persist visitor window changes to localStorage or server
+  if (isVisitorMode) return;
+
   if (saveTimeout) {
     clearTimeout(saveTimeout);
   }
@@ -21,6 +34,37 @@ function debouncedSave(windows: WindowState[], nextZIndex: number) {
       console.warn('Failed to save window state:', e);
     }
   }, 300); // 300ms debounce
+
+  // Also sync to server (debounced at 2s)
+  debouncedServerSync(windows);
+}
+
+function debouncedServerSync(windows: WindowState[]) {
+  if (!isApiConfigured) return;
+  // Don't sync visitor windows to the server — only the owner's
+  if (!getAuthToken()) return;
+
+  if (serverSyncTimeout) {
+    clearTimeout(serverSyncTimeout);
+  }
+  serverSyncTimeout = setTimeout(() => {
+    // Strip preMaximized fields and only send essential data
+    const savedWindows: SavedWindowState[] = windows.map((w) => ({
+      id: w.id,
+      title: w.title,
+      position: w.position,
+      size: w.size,
+      zIndex: w.zIndex,
+      minimized: w.minimized,
+      maximized: w.maximized,
+      collapsed: w.collapsed,
+      contentType: w.contentType,
+      contentId: w.contentId,
+    }));
+    saveWindowsToServer(savedWindows).catch((e) => {
+      console.warn('Failed to sync window state to server:', e);
+    });
+  }, 2000); // 2s debounce
 }
 
 interface WindowStore {
@@ -42,6 +86,7 @@ interface WindowStore {
 
   // Persistence
   loadWindowState: (validItemIds?: Set<string>) => void;
+  loadVisitorWindows: (windows: SavedWindowState[], validItemIds: Set<string>) => void;
   clearWindowState: () => void;
 }
 
@@ -301,6 +346,76 @@ export const useWindowStore = create<WindowStore>((set, get) => ({
       console.warn('Failed to load window state:', e);
       // Clear corrupted state
       localStorage.removeItem(WINDOW_STATE_KEY);
+    }
+  },
+
+  loadVisitorWindows: (serverWindows: SavedWindowState[], validItemIds: Set<string>) => {
+    try {
+      if (!serverWindows || serverWindows.length === 0) return;
+
+      // Filter windows that reference valid public items
+      const validWindows = serverWindows.filter((w) => {
+        if (CONTENT_DEPENDENT_TYPES.includes(w.contentType)) {
+          if (!w.contentId) return false;
+          if (!validItemIds.has(w.contentId)) return false;
+        }
+        return true;
+      });
+
+      if (validWindows.length === 0) return;
+
+      // Map server windows to WindowState, adding visitor- prefix to IDs
+      // so they match the visitor double-click behavior
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const menuBarHeight = 20;
+
+      const windowStates: WindowState[] = validWindows.map((w, i) => {
+        // Build the visitor-style ID based on contentType
+        const visitorId = w.contentId
+          ? `visitor-${w.contentType}-${w.contentId}`
+          : w.id;
+
+        let position = { ...w.position };
+        const size = { ...w.size };
+
+        // Ensure window is not off-screen
+        if (position.x < 0) position = { ...position, x: 0 };
+        if (position.y < menuBarHeight) position = { ...position, y: menuBarHeight };
+        if (position.x + size.width > viewportWidth) {
+          position = { ...position, x: Math.max(0, viewportWidth - size.width) };
+        }
+        if (position.y + size.height > viewportHeight) {
+          position = { ...position, y: Math.max(menuBarHeight, viewportHeight - size.height) };
+        }
+
+        // If maximized, recalculate to visitor's viewport
+        if (w.maximized) {
+          position = { x: 0, y: menuBarHeight };
+          size.width = viewportWidth;
+          size.height = viewportHeight - menuBarHeight;
+        }
+
+        return {
+          id: visitorId,
+          title: w.title,
+          position,
+          size,
+          zIndex: i + 1,
+          minimized: w.minimized,
+          maximized: w.maximized,
+          collapsed: w.collapsed,
+          contentType: w.contentType as WindowState['contentType'],
+          contentId: w.contentId,
+        };
+      });
+
+      set({
+        windows: windowStates,
+        nextZIndex: windowStates.length + 1,
+      });
+    } catch (e) {
+      console.warn('Failed to load visitor windows:', e);
     }
   },
 

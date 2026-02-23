@@ -116,8 +116,9 @@ export function MenuBar() {
 
   const handlePreviewAsVisitor = useCallback(() => {
     if (profile?.username) {
-      // Open visitor view in new tab
-      window.open(`/@${profile.username}`, '_blank');
+      // Open visitor view in new tab with ?visitor flag to force visitor mode
+      // even when logged in as the same user
+      window.open(`/@${profile.username}?visitor=true`, '_blank');
     }
     setActiveMenu(null);
   }, [profile]);

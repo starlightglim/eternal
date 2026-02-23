@@ -102,42 +102,68 @@ export default {
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
     console.log('Running scheduled trash cleanup...');
 
-    // Get all user UIDs from KV
-    const allUsersJson = await env.AUTH_KV.get('all_users');
-    if (!allUsersJson) {
+    // Enumerate all users via per-user index keys (avoids race condition of a single JSON array).
+    // KV.list() returns keys in pages of up to 1000.
+    const userUids: string[] = [];
+    let cursor: string | undefined;
+    do {
+      const listResult = await env.AUTH_KV.list({ prefix: 'user_index:', cursor });
+      for (const key of listResult.keys) {
+        // key.name is "user_index:{uid}" — extract uid
+        userUids.push(key.name.slice('user_index:'.length));
+      }
+      cursor = listResult.list_complete ? undefined : (listResult.cursor ?? undefined);
+    } while (cursor);
+
+    if (userUids.length === 0) {
       console.log('No users found, skipping cleanup');
       return;
     }
 
-    const userUids = JSON.parse(allUsersJson) as string[];
     console.log(`Processing ${userUids.length} users for trash cleanup`);
 
     let totalDeleted = 0;
     let totalR2Deleted = 0;
 
-    // Process each user's trash
-    for (const uid of userUids) {
-      try {
-        const doId = env.USER_DESKTOP.idFromName(uid);
-        const stub = env.USER_DESKTOP.get(doId);
-        const response = await stub.fetch(new Request('http://internal/trash/cleanup', {
-          method: 'POST',
-        }));
+    // Workers have a 1000 subrequest limit. Each user needs 1 DO fetch + N R2 deletes.
+    // Process in batches to stay within limits and avoid timeout.
+    const BATCH_SIZE = 50; // Conservative: leaves room for R2 deletes per batch
 
-        const result = await response.json() as { deleted: number; r2Keys: string[] };
+    for (let i = 0; i < userUids.length; i += BATCH_SIZE) {
+      const batch = userUids.slice(i, i + BATCH_SIZE);
 
-        if (result.deleted > 0) {
-          console.log(`User ${uid}: deleted ${result.deleted} old trash items`);
-          totalDeleted += result.deleted;
+      // Process batch concurrently
+      const results = await Promise.allSettled(
+        batch.map(async (uid) => {
+          const doId = env.USER_DESKTOP.idFromName(uid);
+          const stub = env.USER_DESKTOP.get(doId);
+          const response = await stub.fetch(new Request('http://internal/trash/cleanup', {
+            method: 'POST',
+          }));
 
-          // Clean up R2 files
-          if (result.r2Keys.length > 0) {
-            await Promise.all(result.r2Keys.map((key) => env.ETERNALOS_FILES.delete(key)));
-            totalR2Deleted += result.r2Keys.length;
+          const result = await response.json() as { deleted: number; r2Keys: string[] };
+
+          if (result.deleted > 0) {
+            console.log(`User ${uid}: deleted ${result.deleted} old trash items`);
+
+            // Clean up R2 files
+            if (result.r2Keys.length > 0) {
+              await Promise.all(result.r2Keys.map((key) => env.ETERNALOS_FILES.delete(key)));
+            }
           }
+
+          return result;
+        })
+      );
+
+      // Tally results
+      for (const result of results) {
+        if (result.status === 'fulfilled') {
+          totalDeleted += result.value.deleted;
+          totalR2Deleted += result.value.r2Keys.length;
+        } else {
+          console.error('Batch cleanup error:', result.reason);
         }
-      } catch (error) {
-        console.error(`Error cleaning trash for user ${uid}:`, error);
       }
     }
 
@@ -291,13 +317,31 @@ export default {
           method: 'DELETE',
         }));
 
-        // If there was an R2 key, clean up the file
-        const result = await doResponse.json() as { deleted: boolean; r2Key?: string };
-        if (result.r2Key) {
-          await env.ETERNALOS_FILES.delete(result.r2Key);
+        // Clean up R2 files (including cascaded children)
+        const result = await doResponse.json() as { deleted: boolean; r2Key?: string; r2Keys?: string[] };
+        const keysToDelete = result.r2Keys || (result.r2Key ? [result.r2Key] : []);
+        if (keysToDelete.length > 0) {
+          await Promise.all(keysToDelete.map((key) => env.ETERNALOS_FILES.delete(key)));
         }
 
         return withCors(Response.json(result), corsHeaders);
+      }
+
+      // Window state persistence
+      if (path === '/api/desktop/windows' && request.method === 'PUT') {
+        const authResult = await requireAuth(request, env);
+        if (authResult instanceof Response) {
+          return withCors(authResult, corsHeaders);
+        }
+
+        const doId = env.USER_DESKTOP.idFromName(authResult.uid);
+        const stub = env.USER_DESKTOP.get(doId);
+        const body = await request.text();
+        const doResponse = await stub.fetch(new Request('http://internal/windows', {
+          method: 'PUT',
+          body,
+        }));
+        return withCors(doResponse, corsHeaders);
       }
 
       // File upload

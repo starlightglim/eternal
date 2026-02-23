@@ -20,11 +20,26 @@ export interface QuotaInfo {
   itemCount: number; // Number of items with files
 }
 
+/** Minimal window state persisted for visitor mode */
+export interface SavedWindowState {
+  id: string;
+  title: string;
+  position: { x: number; y: number };
+  size: { width: number; height: number };
+  zIndex: number;
+  minimized: boolean;
+  maximized: boolean;
+  collapsed?: boolean;
+  contentType: string;
+  contentId?: string;
+}
+
 export class UserDesktop {
   private state: DurableObjectState;
   private env: Env;
   private items: Map<string, DesktopItem> = new Map();
   private profile: UserProfile | null = null;
+  private windows: SavedWindowState[] = [];
   private initialized = false;
 
   constructor(state: DurableObjectState, env: Env) {
@@ -48,6 +63,9 @@ export class UserDesktop {
 
     // Load profile
     this.profile = await this.state.storage.get<UserProfile>('profile') ?? null;
+
+    // Load saved window state
+    this.windows = await this.state.storage.get<SavedWindowState[]>('windows') ?? [];
 
     this.initialized = true;
   }
@@ -115,6 +133,13 @@ export class UserDesktop {
       // GET /profile - Get profile
       if (path === '/profile' && method === 'GET') {
         return Response.json({ profile: this.profile });
+      }
+
+      // PUT /windows - Save window state
+      if (path === '/windows' && method === 'PUT') {
+        const windowData = await request.json() as SavedWindowState[];
+        await this.saveWindows(windowData);
+        return Response.json({ success: true });
       }
 
       // GET /trash - Get trashed items
@@ -189,7 +214,7 @@ export class UserDesktop {
       name: partial.name ?? 'Untitled',
       parentId: partial.parentId ?? null,
       position: partial.position ?? { x: 0, y: 0 },
-      isPublic: partial.isPublic ?? false,
+      isPublic: partial.isPublic ?? true,
       createdAt: now,
       updatedAt: now,
       r2Key: partial.r2Key,
@@ -209,18 +234,43 @@ export class UserDesktop {
 
   /**
    * Batch update items (positions, names, visibility, etc.)
+   * Only allows updating safe fields — prevents IDOR attacks that could
+   * overwrite r2Key, fileSize, id, or other sensitive fields.
    */
   private async updateItems(
     patches: Array<{ id: string; updates: Partial<DesktopItem> }>
   ): Promise<DesktopItem[]> {
+    // Only these fields can be updated via the PATCH endpoint
+    const ALLOWED_UPDATE_FIELDS: (keyof DesktopItem)[] = [
+      'name',
+      'position',
+      'parentId',
+      'isPublic',
+      'textContent',
+      'url',
+      'customIcon',
+      'widgetType',
+      'widgetConfig',
+      'isTrashed',
+      'trashedAt',
+    ];
+
     const updated: DesktopItem[] = [];
 
     for (const { id, updates } of patches) {
       const item = this.items.get(id);
       if (item) {
+        // Filter updates to only allowed fields
+        const filteredUpdates: Partial<DesktopItem> = {};
+        for (const field of ALLOWED_UPDATE_FIELDS) {
+          if (updates[field] !== undefined) {
+            (filteredUpdates as Record<string, unknown>)[field] = updates[field];
+          }
+        }
+
         const updatedItem = {
           ...item,
-          ...updates,
+          ...filteredUpdates,
           updatedAt: Date.now(),
         };
         this.items.set(id, updatedItem);
@@ -236,38 +286,70 @@ export class UserDesktop {
   }
 
   /**
-   * Delete an item and return its r2Key for cleanup
+   * Delete an item and all its children (cascade), return r2Keys for cleanup
    */
-  private async deleteItem(id: string): Promise<{ deleted: boolean; r2Key?: string }> {
+  private async deleteItem(id: string): Promise<{ deleted: boolean; r2Key?: string; r2Keys?: string[] }> {
     const item = this.items.get(id);
     if (!item) {
       return { deleted: false };
     }
 
-    const r2Key = item.r2Key;
+    const r2Keys: string[] = [];
+
+    // Collect this item's r2Key
+    if (item.r2Key) {
+      r2Keys.push(item.r2Key);
+    }
+
+    // Cascade delete: recursively find and delete all children
+    const collectChildren = (parentId: string) => {
+      for (const [childId, child] of this.items) {
+        if (child.parentId === parentId) {
+          if (child.r2Key) {
+            r2Keys.push(child.r2Key);
+          }
+          collectChildren(childId); // recurse into subfolders
+          this.items.delete(childId);
+        }
+      }
+    };
+
+    // If this is a folder, delete all descendants
+    if (item.type === 'folder') {
+      collectChildren(id);
+    }
+
     this.items.delete(id);
     await this.saveItems();
 
-    return { deleted: true, r2Key };
+    return { deleted: true, r2Key: item.r2Key, r2Keys };
   }
 
   /**
-   * Get public items only (for visitor mode)
-   * Excludes trashed items from the public snapshot
+   * Get visitor-visible items (for visitor mode)
+   * Shows all non-trashed items unless explicitly marked private (isPublic === false).
+   * Items default to visible — users opt-out by setting isPublic to false.
    */
   private async getPublicSnapshot(): Promise<{
     items: DesktopItem[];
     profile: UserProfile | null;
+    windows: SavedWindowState[];
   }> {
     const publicItems = Array.from(this.items.values()).filter(
-      (item) => item.isPublic && !item.isTrashed
+      (item) => item.isPublic !== false && !item.isTrashed
+    );
+
+    // Filter windows to only include those referencing public items
+    const publicItemIds = new Set(publicItems.map((i) => i.id));
+    const publicWindows = this.windows.filter(
+      (w) => !w.contentId || publicItemIds.has(w.contentId)
     );
 
     // Also push to KV for fast visitor reads (if we have the UID in profile)
     if (this.profile?.uid) {
       await this.env.DESKTOP_KV.put(
         `public:${this.profile.uid}`,
-        JSON.stringify({ items: publicItems, profile: this.profile }),
+        JSON.stringify({ items: publicItems, profile: this.profile, windows: publicWindows }),
         { expirationTtl: 300 } // Cache for 5 minutes
       );
     }
@@ -275,6 +357,7 @@ export class UserDesktop {
     return {
       items: publicItems,
       profile: this.profile,
+      windows: publicWindows,
     };
   }
 
@@ -329,6 +412,27 @@ export class UserDesktop {
   private async saveItems(): Promise<void> {
     const itemsArray = Array.from(this.items.values());
     await this.state.storage.put('items', itemsArray);
+  }
+
+  /**
+   * Save window state to DO storage
+   * Only stores essential fields, max 20 windows to prevent abuse.
+   */
+  private async saveWindows(windowData: SavedWindowState[]): Promise<void> {
+    // Limit to 20 windows to prevent storage abuse
+    this.windows = windowData.slice(0, 20).map((w) => ({
+      id: w.id,
+      title: String(w.title || '').slice(0, 200),
+      position: { x: Number(w.position?.x) || 0, y: Number(w.position?.y) || 0 },
+      size: { width: Number(w.size?.width) || 300, height: Number(w.size?.height) || 200 },
+      zIndex: Number(w.zIndex) || 1,
+      minimized: Boolean(w.minimized),
+      maximized: Boolean(w.maximized),
+      collapsed: w.collapsed ? true : undefined,
+      contentType: String(w.contentType || 'folder'),
+      contentId: w.contentId ? String(w.contentId) : undefined,
+    }));
+    await this.state.storage.put('windows', this.windows);
   }
 
   /**
@@ -412,15 +516,16 @@ export class UserDesktop {
 
   /**
    * Get storage quota usage
-   * Calculates total bytes used by summing fileSize of all items
+   * Calculates total bytes used by summing fileSize of ALL items (including trashed).
+   * Trashed items still consume R2 storage until permanently deleted, so they must
+   * count toward the quota to prevent the trash-cycling bypass.
    */
   private async getQuota(): Promise<QuotaInfo> {
     let usedBytes = 0;
     let itemCount = 0;
 
     for (const item of this.items.values()) {
-      // Only count non-trashed items with file sizes
-      if (!item.isTrashed && item.fileSize) {
+      if (item.fileSize) {
         usedBytes += item.fileSize;
         itemCount++;
       }

@@ -1,9 +1,39 @@
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
+
+/**
+ * Vite plugin to handle /@username SPA routes.
+ * Vite reserves /@* for internal routes (/@vite/, /@fs/, /@id/),
+ * so /@username requests may not reach the SPA fallback.
+ * This middleware intercepts them and serves index.html.
+ */
+function atSignRoutePlugin(): Plugin {
+  return {
+    name: 'at-sign-route',
+    configureServer(server) {
+      // Run before Vite's internal middleware
+      server.middlewares.use((req, _res, next) => {
+        if (req.url && req.url.startsWith('/@')) {
+          // Don't rewrite Vite's internal /@* routes
+          const viteInternal =
+            req.url.startsWith('/@vite/') ||
+            req.url.startsWith('/@fs/') ||
+            req.url.startsWith('/@id/') ||
+            req.url.startsWith('/@react-refresh')
+          if (!viteInternal) {
+            // Rewrite to / so Vite serves index.html (SPA fallback)
+            req.url = '/'
+          }
+        }
+        next()
+      })
+    },
+  }
+}
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [atSignRoutePlugin(), react()],
   build: {
     // Output to dist folder for Cloudflare Pages
     outDir: 'dist',
