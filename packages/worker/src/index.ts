@@ -191,6 +191,27 @@ export default {
       return Response.json({ status: 'ok', timestamp: Date.now() }, { headers: corsHeaders });
     }
 
+    // WebSocket live-sync for visitors: /api/ws/:username
+    if (path.startsWith('/api/ws/') && request.headers.get('Upgrade') === 'websocket') {
+      const wsUsername = path.slice('/api/ws/'.length);
+      if (!wsUsername) {
+        return new Response('Username required', { status: 400 });
+      }
+
+      // Look up uid by username
+      const uid = await env.AUTH_KV.get(`username:${wsUsername}`);
+      if (!uid) {
+        return new Response('User not found', { status: 404 });
+      }
+
+      // Forward WebSocket upgrade to user's Durable Object
+      const doId = env.USER_DESKTOP.idFromName(uid);
+      const stub = env.USER_DESKTOP.get(doId);
+      return stub.fetch(new Request('http://internal/ws', {
+        headers: request.headers,
+      }));
+    }
+
     // Route to appropriate handler
     try {
       let response: Response;

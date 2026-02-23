@@ -9,6 +9,7 @@ import { useWindowStore, setVisitorWindowMode } from '../stores/windowStore';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { isApiConfigured, fetchVisitorDesktop, getWallpaperUrl, type SavedWindowState } from '../services/api';
+import { useVisitorSync } from '../hooks/useVisitorSync';
 import { applyAppearance, clearAppearance, useAppearanceStore } from '../stores/appearanceStore';
 import { getTextFileContentType, type DesktopItem, type UserProfile } from '../types';
 import styles from './VisitorPage.module.css';
@@ -197,6 +198,40 @@ export function VisitorPage() {
       useWindowStore.setState({ windows: [], nextZIndex: 1 });
     };
   }, []);
+
+  // --- Live sync via WebSocket ---
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+
+  const handleLiveItems = useCallback((newItems: DesktopItem[]) => {
+    setItems(newItems);
+    if (newItems.length === 0) {
+      setLoadingState('empty');
+    } else {
+      setLoadingState('loaded');
+    }
+  }, []);
+
+  const handleLiveWindows = useCallback((newWindows: SavedWindowState[]) => {
+    setSavedWindows(newWindows);
+    // After initial restore, update window store directly on live updates
+    if (hasRestoredWindows.current) {
+      const validItemIds = new Set(itemsRef.current.map((i) => i.id));
+      loadVisitorWindows(newWindows, validItemIds);
+    }
+  }, [loadVisitorWindows]);
+
+  const handleLiveProfile = useCallback((newProfile: UserProfile) => {
+    setProfile((prev) => prev ? { ...prev, ...newProfile } : newProfile);
+  }, []);
+
+  useVisitorSync({
+    username,
+    enabled: isApiConfigured && (loadingState === 'loaded' || loadingState === 'empty'),
+    onItemsUpdate: handleLiveItems,
+    onWindowsUpdate: handleLiveWindows,
+    onProfileUpdate: handleLiveProfile,
+  });
 
   // Get root-level items (parentId === null)
   const rootItems = items.filter((item) => item.parentId === null);

@@ -81,6 +81,20 @@ export class UserDesktop {
     const method = request.method;
 
     try {
+      // WebSocket upgrade for visitor live-sync
+      if (path === '/ws' && request.headers.get('Upgrade') === 'websocket') {
+        const pair = new WebSocketPair();
+        const [client, server] = Object.values(pair);
+
+        this.state.acceptWebSocket(server);
+
+        // Send initial snapshot to the new visitor
+        const snapshot = this.getVisitorData();
+        server.send(JSON.stringify({ type: 'snapshot', ...snapshot }));
+
+        return new Response(null, { status: 101, webSocket: client });
+      }
+
       // GET /items - Get all items
       if (path === '/items' && method === 'GET') {
         return Response.json({
@@ -229,6 +243,7 @@ export class UserDesktop {
 
     this.items.set(item.id, item);
     await this.saveItems();
+    this.broadcastItems();
     return item;
   }
 
@@ -280,6 +295,7 @@ export class UserDesktop {
 
     if (updated.length > 0) {
       await this.saveItems();
+      this.broadcastItems();
     }
 
     return updated;
@@ -321,8 +337,31 @@ export class UserDesktop {
 
     this.items.delete(id);
     await this.saveItems();
+    this.broadcastItems();
+    this.broadcastWindows();
 
     return { deleted: true, r2Key: item.r2Key, r2Keys };
+  }
+
+  /**
+   * Compute public items (non-trashed, not explicitly private)
+   */
+  private getPublicItemsFiltered(): DesktopItem[] {
+    return Array.from(this.items.values()).filter(
+      (item) => item.isPublic !== false && !item.isTrashed
+    );
+  }
+
+  /**
+   * Compute visitor-visible data (items, windows, profile) without side effects
+   */
+  private getVisitorData(): { items: DesktopItem[]; windows: SavedWindowState[]; profile: UserProfile | null } {
+    const items = this.getPublicItemsFiltered();
+    const publicItemIds = new Set(items.map((i) => i.id));
+    const windows = this.windows.filter(
+      (w) => !w.contentId || publicItemIds.has(w.contentId)
+    );
+    return { items, windows, profile: this.profile };
   }
 
   /**
@@ -335,30 +374,18 @@ export class UserDesktop {
     profile: UserProfile | null;
     windows: SavedWindowState[];
   }> {
-    const publicItems = Array.from(this.items.values()).filter(
-      (item) => item.isPublic !== false && !item.isTrashed
-    );
-
-    // Filter windows to only include those referencing public items
-    const publicItemIds = new Set(publicItems.map((i) => i.id));
-    const publicWindows = this.windows.filter(
-      (w) => !w.contentId || publicItemIds.has(w.contentId)
-    );
+    const data = this.getVisitorData();
 
     // Also push to KV for fast visitor reads (if we have the UID in profile)
     if (this.profile?.uid) {
       await this.env.DESKTOP_KV.put(
         `public:${this.profile.uid}`,
-        JSON.stringify({ items: publicItems, profile: this.profile, windows: publicWindows }),
+        JSON.stringify(data),
         { expirationTtl: 300 } // Cache for 5 minutes
       );
     }
 
-    return {
-      items: publicItems,
-      profile: this.profile,
-      windows: publicWindows,
-    };
+    return data;
   }
 
   /**
@@ -367,6 +394,7 @@ export class UserDesktop {
   private async setProfile(profile: UserProfile): Promise<void> {
     this.profile = profile;
     await this.state.storage.put('profile', profile);
+    this.broadcastProfile();
   }
 
   /**
@@ -403,6 +431,7 @@ export class UserDesktop {
     };
 
     await this.state.storage.put('profile', this.profile);
+    this.broadcastProfile();
     return this.profile;
   }
 
@@ -433,6 +462,7 @@ export class UserDesktop {
       contentId: w.contentId ? String(w.contentId) : undefined,
     }));
     await this.state.storage.put('windows', this.windows);
+    this.broadcastWindows();
   }
 
   /**
@@ -460,6 +490,7 @@ export class UserDesktop {
 
     this.items.set(id, restoredItem);
     await this.saveItems();
+    this.broadcastItems();
 
     return { restored: true, item: restoredItem };
   }
@@ -482,6 +513,7 @@ export class UserDesktop {
 
     if (deletedCount > 0) {
       await this.saveItems();
+      this.broadcastItems();
     }
 
     return { deleted: deletedCount, r2Keys };
@@ -509,6 +541,7 @@ export class UserDesktop {
 
     if (deletedCount > 0) {
       await this.saveItems();
+      this.broadcastItems();
     }
 
     return { deleted: deletedCount, r2Keys };
@@ -595,7 +628,60 @@ export class UserDesktop {
 
     this.items.set(itemId, updatedItem);
     await this.saveItems();
+    this.broadcastItems();
 
     return { success: true, entries: trimmedEntries };
+  }
+
+  // --- WebSocket live-sync broadcast helpers ---
+
+  /** Send a JSON message to all connected visitor WebSockets */
+  private broadcastToVisitors(data: Record<string, unknown>): void {
+    const message = JSON.stringify(data);
+    for (const ws of this.state.getWebSockets()) {
+      try {
+        ws.send(message);
+      } catch {
+        // WebSocket already closed, will be cleaned up
+      }
+    }
+  }
+
+  /** Broadcast current public items to all visitors */
+  private broadcastItems(): void {
+    if (this.state.getWebSockets().length === 0) return;
+    const items = this.getPublicItemsFiltered();
+    this.broadcastToVisitors({ type: 'items', items });
+  }
+
+  /** Broadcast current public windows to all visitors */
+  private broadcastWindows(): void {
+    if (this.state.getWebSockets().length === 0) return;
+    const publicItems = this.getPublicItemsFiltered();
+    const publicItemIds = new Set(publicItems.map((i) => i.id));
+    const windows = this.windows.filter(
+      (w) => !w.contentId || publicItemIds.has(w.contentId)
+    );
+    this.broadcastToVisitors({ type: 'windows', windows });
+  }
+
+  /** Broadcast profile to all visitors */
+  private broadcastProfile(): void {
+    if (this.state.getWebSockets().length === 0) return;
+    this.broadcastToVisitors({ type: 'profile', profile: this.profile });
+  }
+
+  // --- WebSocket hibernation handlers ---
+
+  async webSocketMessage(_ws: WebSocket, _message: string | ArrayBuffer): Promise<void> {
+    // Visitors are read-only, ignore all incoming messages
+  }
+
+  async webSocketClose(ws: WebSocket, code: number, _reason: string, _wasClean: boolean): Promise<void> {
+    ws.close(code, 'Connection closed');
+  }
+
+  async webSocketError(_ws: WebSocket, _error: unknown): Promise<void> {
+    // Error will trigger close, handled by webSocketClose
   }
 }
