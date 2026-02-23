@@ -105,6 +105,19 @@ export function TextViewer({
     }
   }, [content, isDirty, isOwner, itemId, updateItem]);
 
+  // Auto-save on unmount (e.g., when window is closed) if there are unsaved changes
+  const contentRef = useRef(content);
+  const isDirtyRef = useRef(isDirty);
+  contentRef.current = content;
+  isDirtyRef.current = isDirty;
+  useEffect(() => {
+    return () => {
+      if (isDirtyRef.current && isOwner) {
+        updateItem(itemId, { textContent: contentRef.current });
+      }
+    };
+  }, [itemId, isOwner, updateItem]);
+
   // Handle keyboard shortcuts — only save if this editor's textarea is focused
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

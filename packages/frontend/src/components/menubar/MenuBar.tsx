@@ -365,32 +365,41 @@ export function MenuBar() {
     setActiveMenu(null);
   }, [cleanUp, getTopWindow]);
 
+  // Get the focused folder from the top window (if it's a folder window)
+  const getFocusedFolder = useCallback((): string | null => {
+    const topWindow = getTopWindow();
+    if (topWindow && topWindow.contentType === 'folder' && topWindow.contentId) {
+      return topWindow.contentId;
+    }
+    return null;
+  }, [getTopWindow]);
+
   const handleCut = useCallback(() => {
     if (selectedIds.size === 0) return;
-    cut(Array.from(selectedIds), null);
+    cut(Array.from(selectedIds), getFocusedFolder());
     setActiveMenu(null);
-  }, [selectedIds, cut]);
+  }, [selectedIds, cut, getFocusedFolder]);
 
   const handleCopy = useCallback(() => {
     if (selectedIds.size === 0) return;
-    copy(Array.from(selectedIds), null);
+    copy(Array.from(selectedIds), getFocusedFolder());
     setActiveMenu(null);
-  }, [selectedIds, copy]);
+  }, [selectedIds, copy, getFocusedFolder]);
 
   const handlePaste = useCallback(async () => {
     if (!clipboard) return;
-    await pasteItems(clipboard.itemIds, clipboard.isCut, null);
+    await pasteItems(clipboard.itemIds, clipboard.isCut, getFocusedFolder());
     if (clipboard.isCut) {
       clearClipboard();
     }
     setActiveMenu(null);
-  }, [clipboard, pasteItems, clearClipboard]);
+  }, [clipboard, pasteItems, clearClipboard, getFocusedFolder]);
 
   const handleDuplicate = useCallback(async () => {
     if (selectedIds.size === 0) return;
-    await duplicateItems(Array.from(selectedIds), null);
+    await duplicateItems(Array.from(selectedIds), getFocusedFolder());
     setActiveMenu(null);
-  }, [selectedIds, duplicateItems]);
+  }, [selectedIds, duplicateItems, getFocusedFolder]);
 
   // Helper to get the target folder for sorting
   // If top window is a folder, sort that folder; otherwise sort desktop
@@ -565,8 +574,6 @@ export function MenuBar() {
       { label: 'Export Desktop...', action: handleExportDesktop },
     ],
     edit: [
-      { label: 'Undo', shortcut: '⌘Z', disabled: true },
-      { divider: true, label: '' },
       { label: 'Cut', shortcut: '⌘X', action: handleCut, disabled: selectedIds.size === 0 },
       { label: 'Copy', shortcut: '⌘C', action: handleCopy, disabled: selectedIds.size === 0 },
       { label: 'Paste', shortcut: '⌘V', action: handlePaste, disabled: !hasClipboardItems() },
@@ -595,10 +602,6 @@ export function MenuBar() {
       { divider: true, label: '' },
       { label: 'Share Desktop...', action: handleShareDesktop, disabled: !profile?.username },
       { label: 'Preview as Visitor', action: handlePreviewAsVisitor, disabled: !profile?.username },
-      { divider: true, label: '' },
-      { label: 'Eject', disabled: true },
-      { label: 'Restart', disabled: true },
-      { label: 'Shut Down', disabled: true },
       { divider: true, label: '' },
       { label: 'Log Out', action: handleLogout, disabled: !isApiConfigured },
     ],

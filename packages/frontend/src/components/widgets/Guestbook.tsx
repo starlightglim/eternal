@@ -11,6 +11,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import type { GuestbookConfig } from '../../types';
 import { useDesktopStore } from '../../stores/desktopStore';
+import { useAlertStore } from '../../stores/alertStore';
 import { postGuestbookEntry } from '../../services/api';
 import styles from './Guestbook.module.css';
 
@@ -86,8 +87,8 @@ export function Guestbook({ itemId, ownerUid, config, isOwner, onConfigUpdate }:
         } else {
           setError(result.error || 'Failed to submit entry');
         }
-      } catch (err: any) {
-        setError(err.message || 'Failed to submit entry');
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to submit entry');
       } finally {
         setIsSubmitting(false);
       }
@@ -107,10 +108,15 @@ export function Guestbook({ itemId, ownerUid, config, isOwner, onConfigUpdate }:
   };
 
   const clearGuestbook = useCallback(() => {
-    if (confirm('Are you sure you want to clear all guestbook entries? This cannot be undone.')) {
-      updateItem(itemId, { widgetConfig: { entries: [] } });
-      onConfigUpdate?.({ entries: [] });
-    }
+    useAlertStore.getState().showConfirm(
+      'Are you sure you want to clear all guestbook entries? This cannot be undone.',
+      () => {
+        updateItem(itemId, { widgetConfig: { entries: [] } });
+        onConfigUpdate?.({ entries: [] });
+      },
+      undefined,
+      'Clear Guestbook'
+    );
   }, [itemId, updateItem, onConfigUpdate]);
 
   return (

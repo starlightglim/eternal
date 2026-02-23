@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useDesktopStore } from '../../stores/desktopStore';
+import { useWindowStore } from '../../stores/windowStore';
 import {
   FolderIcon,
   TextFileIcon,
@@ -70,14 +71,27 @@ export function GetInfo({ item, isOwner = true }: GetInfoProps) {
   }, [isOwner, isPublic, updateItem, item.id]);
 
   // Handle name edit
+  const { updateWindowTitle } = useWindowStore();
   const handleNameBlur = useCallback(() => {
     setIsEditingName(false);
-    if (name !== item.name && name.trim()) {
-      updateItem(item.id, { name: name.trim() });
+    const trimmed = name.trim();
+    if (trimmed && trimmed !== item.name) {
+      updateItem(item.id, { name: trimmed });
+      // Update the item's content window title (e.g., folder-xxx, text-xxx)
+      const { windows } = useWindowStore.getState();
+      const itemWindow = windows.find((w) => w.contentId === item.id && w.contentType !== 'get-info');
+      if (itemWindow) {
+        updateWindowTitle(itemWindow.id, trimmed);
+      }
+      // Update the Get Info window title itself
+      const getInfoWindow = windows.find((w) => w.contentId === item.id && w.contentType === 'get-info');
+      if (getInfoWindow) {
+        updateWindowTitle(getInfoWindow.id, `${trimmed} Info`);
+      }
     } else {
       setName(item.name); // Reset if empty
     }
-  }, [name, item.name, item.id, updateItem]);
+  }, [name, item.name, item.id, updateItem, updateWindowTitle]);
 
   const handleNameKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
