@@ -67,7 +67,7 @@ function getCorsHeaders(request: Request, env: Env): Record<string, string> {
   if (!isProduction) {
     return {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     };
   }
@@ -87,7 +87,7 @@ function getCorsHeaders(request: Request, env: Env): Record<string, string> {
 
   return {
     'Access-Control-Allow-Origin': isAllowed ? origin : '',
-    'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Credentials': 'true',
     'Vary': 'Origin', // Important for caching with different origins
@@ -193,19 +193,19 @@ export default {
 
     // WebSocket live-sync for visitors: /api/ws/:username
     if (path.startsWith('/api/ws/') && request.headers.get('Upgrade') === 'websocket') {
-      const wsUsername = path.slice('/api/ws/'.length);
+      const wsUsername = path.slice('/api/ws/'.length).toLowerCase();
       if (!wsUsername) {
         return new Response('Username required', { status: 400 });
       }
 
-      // Look up uid by username
-      const uid = await env.AUTH_KV.get(`username:${wsUsername}`);
-      if (!uid) {
+      // Look up uid by username (stored as JSON { uid })
+      const usernameData = await env.AUTH_KV.get<{ uid: string }>(`username:${wsUsername}`, 'json');
+      if (!usernameData) {
         return new Response('User not found', { status: 404 });
       }
 
       // Forward WebSocket upgrade to user's Durable Object
-      const doId = env.USER_DESKTOP.idFromName(uid);
+      const doId = env.USER_DESKTOP.idFromName(usernameData.uid);
       const stub = env.USER_DESKTOP.get(doId);
       return stub.fetch(new Request('http://internal/ws', {
         headers: request.headers,

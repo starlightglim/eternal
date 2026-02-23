@@ -214,11 +214,10 @@ export function VisitorPage() {
 
   const handleLiveWindows = useCallback((newWindows: SavedWindowState[]) => {
     setSavedWindows(newWindows);
-    // After initial restore, update window store directly on live updates
-    if (hasRestoredWindows.current) {
-      const validItemIds = new Set(itemsRef.current.map((i) => i.id));
-      loadVisitorWindows(newWindows, validItemIds);
-    }
+    // Always apply live window updates to the window store
+    const validItemIds = new Set(itemsRef.current.map((i) => i.id));
+    loadVisitorWindows(newWindows, validItemIds);
+    hasRestoredWindows.current = true;
   }, [loadVisitorWindows]);
 
   const handleLiveProfile = useCallback((newProfile: UserProfile) => {

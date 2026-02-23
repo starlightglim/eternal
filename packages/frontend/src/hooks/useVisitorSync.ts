@@ -24,7 +24,7 @@ export function useVisitorSync({
   onProfileUpdate,
 }: UseVisitorSyncOptions) {
   const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const reconnectDelayRef = useRef(1000);
   const enabledRef = useRef(enabled);
   enabledRef.current = enabled;

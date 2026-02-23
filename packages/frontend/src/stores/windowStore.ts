@@ -19,7 +19,7 @@ export function setVisitorWindowMode(visitor: boolean) {
   isVisitorMode = visitor;
 }
 
-function debouncedSave(windows: WindowState[], nextZIndex: number) {
+function debouncedSave(windows: WindowState[], nextZIndex: number, immediateSync = false) {
   // Don't persist visitor window changes to localStorage or server
   if (isVisitorMode) return;
 
@@ -35,8 +35,42 @@ function debouncedSave(windows: WindowState[], nextZIndex: number) {
     }
   }, 300); // 300ms debounce
 
-  // Also sync to server (debounced at 2s)
-  debouncedServerSync(windows);
+  // Sync to server — immediate for open/close, debounced for move/resize
+  if (immediateSync) {
+    immediateServerSync(windows);
+  } else {
+    debouncedServerSync(windows);
+  }
+}
+
+function toSavedWindows(windows: WindowState[]): SavedWindowState[] {
+  return windows.map((w) => ({
+    id: w.id,
+    title: w.title,
+    position: w.position,
+    size: w.size,
+    zIndex: w.zIndex,
+    minimized: w.minimized,
+    maximized: w.maximized,
+    collapsed: w.collapsed,
+    contentType: w.contentType,
+    contentId: w.contentId,
+  }));
+}
+
+function immediateServerSync(windows: WindowState[]) {
+  if (!isApiConfigured) return;
+  if (!getAuthToken()) return;
+
+  // Cancel any pending debounced sync to avoid double-send
+  if (serverSyncTimeout) {
+    clearTimeout(serverSyncTimeout);
+    serverSyncTimeout = null;
+  }
+
+  saveWindowsToServer(toSavedWindows(windows)).catch((e) => {
+    console.warn('Failed to sync window state to server:', e);
+  });
 }
 
 function debouncedServerSync(windows: WindowState[]) {
@@ -48,20 +82,7 @@ function debouncedServerSync(windows: WindowState[]) {
     clearTimeout(serverSyncTimeout);
   }
   serverSyncTimeout = setTimeout(() => {
-    // Strip preMaximized fields and only send essential data
-    const savedWindows: SavedWindowState[] = windows.map((w) => ({
-      id: w.id,
-      title: w.title,
-      position: w.position,
-      size: w.size,
-      zIndex: w.zIndex,
-      minimized: w.minimized,
-      maximized: w.maximized,
-      collapsed: w.collapsed,
-      contentType: w.contentType,
-      contentId: w.contentId,
-    }));
-    saveWindowsToServer(savedWindows).catch((e) => {
+    saveWindowsToServer(toSavedWindows(windows)).catch((e) => {
       console.warn('Failed to sync window state to server:', e);
     });
   }, 2000); // 2s debounce
@@ -124,8 +145,8 @@ export const useWindowStore = create<WindowStore>((set, get) => ({
     // Play window open sound
     useSoundStore.getState().playSound('windowOpen');
 
-    // Save to localStorage (debounced)
-    debouncedSave(newWindows, newNextZIndex);
+    // Save to localStorage + immediate server sync for live visitor updates
+    debouncedSave(newWindows, newNextZIndex, true);
   },
 
   closeWindow: (id) => {
@@ -136,8 +157,8 @@ export const useWindowStore = create<WindowStore>((set, get) => ({
 
     set({ windows: newWindows });
 
-    // Save to localStorage (debounced)
-    debouncedSave(newWindows, get().nextZIndex);
+    // Save to localStorage + immediate server sync for live visitor updates
+    debouncedSave(newWindows, get().nextZIndex, true);
   },
 
   focusWindow: (id) => {
