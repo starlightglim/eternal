@@ -264,11 +264,14 @@ interface VisitorApiResponse {
   username: string;
   displayName: string;
   wallpaper?: string;
+  wallpaperMode?: 'cover' | 'tile' | 'center';
   // Custom appearance settings
   accentColor?: string;
   desktopColor?: string;
   windowBgColor?: string;
   fontSmoothing?: boolean;
+  customCSS?: string;
+  hideWatermark?: boolean;
   items: DesktopItem[];
   windows?: SavedWindowState[];
 }
@@ -300,10 +303,13 @@ export async function fetchVisitorDesktop(username: string): Promise<VisitorResp
       username: data.username,
       displayName: data.displayName,
       wallpaper: data.wallpaper,
+      wallpaperMode: data.wallpaperMode,
       accentColor: data.accentColor,
       desktopColor: data.desktopColor,
       windowBgColor: data.windowBgColor,
       fontSmoothing: data.fontSmoothing,
+      customCSS: data.customCSS,
+      hideWatermark: data.hideWatermark,
       createdAt: 0, // Not exposed to visitors
     },
     windows: data.windows,
@@ -402,6 +408,77 @@ export async function uploadWallpaper(
   });
 }
 
+// ============ CSS Asset API ============
+
+export interface CSSAsset {
+  assetId: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  uploadedAt: number;
+  url: string;
+}
+
+export async function uploadCSSAsset(
+  file: File,
+  onProgress?: (progress: number) => void
+): Promise<{ success: boolean; asset: CSSAsset }> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+
+    xhr.upload.addEventListener('progress', (event) => {
+      if (event.lengthComputable && onProgress) {
+        const progress = Math.round((event.loaded / event.total) * 100);
+        onProgress(progress);
+      }
+    });
+
+    xhr.addEventListener('load', () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(JSON.parse(xhr.responseText));
+        } catch {
+          reject(new Error('Invalid response from server'));
+        }
+      } else {
+        try {
+          const error = JSON.parse(xhr.responseText);
+          reject(new Error(error.error || `HTTP ${xhr.status}`));
+        } catch {
+          reject(new Error(`CSS asset upload failed: HTTP ${xhr.status}`));
+        }
+      }
+    });
+
+    xhr.addEventListener('error', () => reject(new Error('Network error during CSS asset upload')));
+    xhr.addEventListener('abort', () => reject(new Error('CSS asset upload cancelled')));
+
+    xhr.open('POST', `${API_URL}/api/css-assets`);
+    if (authToken) {
+      xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);
+    }
+    xhr.send(formData);
+  });
+}
+
+export async function listCSSAssets(): Promise<CSSAsset[]> {
+  const response = await apiRequest<{ assets: CSSAsset[] }>('/api/css-assets');
+  return response.assets;
+}
+
+export async function deleteCSSAsset(assetId: string): Promise<{ success: boolean }> {
+  return apiRequest<{ success: boolean }>(`/api/css-assets/${assetId}`, {
+    method: 'DELETE',
+  });
+}
+
+export function getCSSAssetUrl(urlPath: string): string {
+  return `${API_URL}${urlPath}`;
+}
+
 // ============ Assistant API ============
 
 export interface AssistantMessage {
@@ -440,6 +517,7 @@ export async function sendAssistantMessage(
 export interface ProfileUpdateRequest {
   displayName?: string;
   wallpaper?: string;
+  wallpaperMode?: 'cover' | 'tile' | 'center';
   // Onboarding flag
   isNewUser?: boolean;
   // Custom appearance settings

@@ -30,6 +30,7 @@ interface AuthActions {
   clearError: () => void;
   initialize: () => () => void;
   setWallpaper: (wallpaper: string) => void;
+  setWallpaperMode: (mode: 'cover' | 'tile' | 'center') => void;
 }
 
 type AuthStore = AuthState & AuthActions;
@@ -221,6 +222,21 @@ export const useAuthStore = create<AuthStore>()(
           if (isApiConfigured) {
             apiUpdateProfile({ wallpaper }).catch((error) => {
               console.error('Failed to sync wallpaper to backend:', error);
+            });
+          }
+        }
+      },
+
+      setWallpaperMode: (wallpaperMode: 'cover' | 'tile' | 'center') => {
+        const { profile } = get();
+        if (profile) {
+          set({
+            profile: { ...profile, wallpaperMode },
+          });
+
+          if (isApiConfigured) {
+            apiUpdateProfile({ wallpaperMode }).catch((error) => {
+              console.error('Failed to sync wallpaper mode to backend:', error);
             });
           }
         }

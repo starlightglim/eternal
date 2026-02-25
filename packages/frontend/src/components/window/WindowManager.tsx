@@ -59,6 +59,7 @@ export function WindowManager({ isVisitorMode = false, visitorItems, folderWindo
           minimized={win.minimized}
           collapsed={win.collapsed}
           isActive={win.id === activeWindowId}
+          contentType={win.contentType}
         >
           {/* Window content will be rendered based on contentType */}
           <WindowContent

@@ -9,6 +9,7 @@
 
 import type { Env } from '../index';
 import type { DesktopItem, UserProfile, GuestbookConfig, GuestbookEntry } from '../types';
+import type { CSSAssetMeta } from '../routes/upload';
 
 // Default storage quota: 100MB per user
 export const DEFAULT_QUOTA_BYTES = 100 * 1024 * 1024;
@@ -40,6 +41,7 @@ export class UserDesktop {
   private items: Map<string, DesktopItem> = new Map();
   private profile: UserProfile | null = null;
   private windows: SavedWindowState[] = [];
+  private cssAssets: CSSAssetMeta[] = [];
   private initialized = false;
 
   constructor(state: DurableObjectState, env: Env) {
@@ -66,6 +68,9 @@ export class UserDesktop {
 
     // Load saved window state
     this.windows = await this.state.storage.get<SavedWindowState[]>('windows') ?? [];
+
+    // Load CSS assets
+    this.cssAssets = await this.state.storage.get<CSSAssetMeta[]>('css-assets') ?? [];
 
     this.initialized = true;
   }
@@ -192,6 +197,27 @@ export class UserDesktop {
         const { fileSize } = await request.json() as { fileSize: number };
         const result = await this.checkQuota(fileSize);
         return Response.json(result);
+      }
+
+      // GET /css-assets - List CSS assets
+      if (path === '/css-assets' && method === 'GET') {
+        return Response.json({ assets: this.cssAssets });
+      }
+
+      // POST /css-assets - Add CSS asset metadata
+      if (path === '/css-assets' && method === 'POST') {
+        const meta = await request.json() as CSSAssetMeta;
+        this.cssAssets.push(meta);
+        await this.state.storage.put('css-assets', this.cssAssets);
+        return Response.json({ success: true });
+      }
+
+      // DELETE /css-assets/:assetId - Remove CSS asset metadata
+      if (path.startsWith('/css-assets/') && method === 'DELETE') {
+        const assetId = path.slice('/css-assets/'.length);
+        this.cssAssets = this.cssAssets.filter(a => a.assetId !== assetId);
+        await this.state.storage.put('css-assets', this.cssAssets);
+        return Response.json({ success: true });
       }
 
       // POST /guestbook/:itemId - Add guestbook entry
@@ -416,12 +442,50 @@ export class UserDesktop {
       'customCSS',
       'isNewUser',
       'hideWatermark',
+      'wallpaperMode',
     ];
     const filteredUpdates: Partial<UserProfile> = {};
 
     for (const field of allowedFields) {
       if (updates[field] !== undefined) {
         (filteredUpdates as Record<string, unknown>)[field] = updates[field];
+      }
+    }
+
+    // Server-side validation for customCSS
+    if (typeof filteredUpdates.customCSS === 'string') {
+      const css = filteredUpdates.customCSS;
+
+      // Enforce 50KB limit
+      if (css.length > 50 * 1024) {
+        throw new Error('Custom CSS exceeds maximum size of 50KB');
+      }
+
+      // Block dangerous patterns
+      const dangerousPatterns = [
+        /@import/i,
+        /expression\s*\(/i,
+        /javascript:/i,
+        /behavior\s*:/i,
+        /-moz-binding/i,
+        /<script/i,
+        /<\/script/i,
+      ];
+      for (const pattern of dangerousPatterns) {
+        if (pattern.test(css)) {
+          throw new Error('Custom CSS contains disallowed patterns');
+        }
+      }
+
+      // Validate url() references — only allow first-party asset paths
+      const allowedUrlPrefixes = ['/api/css-assets/', '/api/wallpaper/', '/api/icon/'];
+      const urlPattern = /url\s*\(\s*(['"]?)([^'")\s]+)\1\s*\)/gi;
+      let urlMatch: RegExpExecArray | null;
+      while ((urlMatch = urlPattern.exec(css)) !== null) {
+        const urlValue = urlMatch[2];
+        if (!allowedUrlPrefixes.some((prefix) => urlValue.startsWith(prefix))) {
+          throw new Error('Custom CSS contains disallowed url() references');
+        }
       }
     }
 

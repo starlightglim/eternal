@@ -39,6 +39,20 @@ const WALLPAPER_ALLOWED_TYPES: Record<string, string> = {
   'image/png': 'png',
 };
 
+// Allowed MIME types for CSS assets (images for use in custom CSS)
+const CSS_ASSET_ALLOWED_TYPES: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/gif': 'gif',
+  'image/webp': 'webp',
+};
+
+// Max CSS asset size: 500KB
+const MAX_CSS_ASSET_SIZE = 500 * 1024;
+
+// Max CSS assets per user
+const MAX_CSS_ASSETS_PER_USER = 10;
+
 // Max file size: 10MB for regular files
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
@@ -785,4 +799,281 @@ export async function handleServeIcon(
       { status: 500 }
     );
   }
+}
+
+// ============ CSS Asset Upload & Serving ============
+
+/**
+ * Handle CSS asset upload
+ * POST /api/css-assets
+ *
+ * Expects multipart/form-data with:
+ * - file: The image file (jpg/png/gif/webp, max 500KB)
+ *
+ * CSS assets are images intended for use in custom CSS (backgrounds, cursors, stickers).
+ * They are always publicly accessible since visitors need to load them.
+ */
+export async function handleCSSAssetUpload(
+  request: Request,
+  env: Env,
+  auth: AuthContext
+): Promise<Response> {
+  try {
+    const formData = await request.formData();
+    const file = formData.get('file');
+
+    if (!file || typeof file === 'string') {
+      return Response.json({ error: 'No file provided' }, { status: 400 });
+    }
+
+    const fileBlob = file as File;
+
+    // Validate file type
+    const mimeType = fileBlob.type;
+    if (!CSS_ASSET_ALLOWED_TYPES[mimeType]) {
+      return Response.json(
+        { error: `Invalid file type: ${mimeType}. Allowed: JPG, PNG, GIF, WebP.` },
+        { status: 400 }
+      );
+    }
+
+    // Validate file size
+    if (fileBlob.size > MAX_CSS_ASSET_SIZE) {
+      return Response.json(
+        { error: `File too large. Maximum CSS asset size: ${MAX_CSS_ASSET_SIZE / 1024}KB` },
+        { status: 400 }
+      );
+    }
+
+    // Check existing asset count via Durable Object
+    const doId = env.USER_DESKTOP.idFromName(auth.uid);
+    const stub = env.USER_DESKTOP.get(doId);
+
+    const listResponse = await stub.fetch(new Request('http://internal/css-assets'));
+    if (!listResponse.ok) {
+      return Response.json({ error: 'Failed to check CSS assets' }, { status: 500 });
+    }
+
+    const { assets } = await listResponse.json() as { assets: CSSAssetMeta[] };
+    if (assets.length >= MAX_CSS_ASSETS_PER_USER) {
+      return Response.json(
+        { error: `Maximum ${MAX_CSS_ASSETS_PER_USER} CSS assets allowed. Delete some assets to upload more.` },
+        { status: 400 }
+      );
+    }
+
+    // Check storage quota
+    const quotaCheckResponse = await stub.fetch(
+      new Request('http://internal/quota/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileSize: fileBlob.size }),
+      })
+    );
+
+    if (!quotaCheckResponse.ok) {
+      return Response.json({ error: 'Failed to check storage quota' }, { status: 500 });
+    }
+
+    const quotaCheck = await quotaCheckResponse.json() as { allowed: boolean; quota: { used: number; limit: number } };
+    if (!quotaCheck.allowed) {
+      return Response.json(
+        { error: 'Storage quota exceeded. Delete some files to free up space.' },
+        { status: 413 }
+      );
+    }
+
+    // Generate asset ID and R2 key
+    const assetId = crypto.randomUUID();
+    const originalName = fileBlob.name || `asset.${CSS_ASSET_ALLOWED_TYPES[mimeType]}`;
+    const sanitizedName = sanitizeFilename(originalName);
+    const r2Key = `${auth.uid}/css-assets/${assetId}/${sanitizedName}`;
+
+    // Upload to R2
+    const fileBuffer = await fileBlob.arrayBuffer();
+    await env.ETERNALOS_FILES.put(r2Key, fileBuffer, {
+      httpMetadata: { contentType: mimeType },
+      customMetadata: {
+        uploadedBy: auth.uid,
+        assetId,
+        type: 'css-asset',
+      },
+    });
+
+    // Store metadata in Durable Object
+    const meta: CSSAssetMeta = {
+      assetId,
+      filename: sanitizedName,
+      mimeType,
+      size: fileBlob.size,
+      uploadedAt: Date.now(),
+    };
+
+    const addResponse = await stub.fetch(
+      new Request('http://internal/css-assets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(meta),
+      })
+    );
+
+    if (!addResponse.ok) {
+      // Cleanup R2 on failure
+      await env.ETERNALOS_FILES.delete(r2Key);
+      return Response.json({ error: 'Failed to save CSS asset metadata' }, { status: 500 });
+    }
+
+    return Response.json({
+      success: true,
+      asset: {
+        ...meta,
+        url: `/api/css-assets/${auth.uid}/${assetId}/${sanitizedName}`,
+      },
+    });
+
+  } catch (error) {
+    console.error('CSS asset upload error:', error);
+    return Response.json(
+      { error: error instanceof Error ? error.message : 'CSS asset upload failed' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * Serve CSS asset from R2
+ * GET /api/css-assets/:uid/:assetId/:filename
+ *
+ * CSS assets are always public (visitors see the owner's custom CSS)
+ */
+export async function handleServeCSSAsset(
+  request: Request,
+  env: Env,
+  uid: string,
+  assetId: string,
+  filename: string
+): Promise<Response> {
+  try {
+    const r2Key = `${uid}/css-assets/${assetId}/${filename}`;
+    const object = await env.ETERNALOS_FILES.get(r2Key);
+
+    if (!object) {
+      return Response.json({ error: 'CSS asset not found' }, { status: 404 });
+    }
+
+    // Validate Content-Type — only serve known image types from CSS assets
+    const storedType = object.httpMetadata?.contentType || '';
+    const safeImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    const contentType = safeImageTypes.includes(storedType) ? storedType : 'application/octet-stream';
+
+    const headers = new Headers();
+    headers.set('Content-Type', contentType);
+    headers.set('Content-Length', object.size.toString());
+    headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+    headers.set('ETag', object.httpEtag);
+    // Security: prevent MIME type sniffing and enforce inline display only
+    headers.set('X-Content-Type-Options', 'nosniff');
+    headers.set('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'");
+
+    const ifNoneMatch = request.headers.get('If-None-Match');
+    if (ifNoneMatch === object.httpEtag) {
+      return new Response(null, { status: 304, headers });
+    }
+
+    return new Response(object.body, { headers });
+
+  } catch (error) {
+    console.error('Serve CSS asset error:', error);
+    return Response.json({ error: 'Failed to serve CSS asset' }, { status: 500 });
+  }
+}
+
+/**
+ * List CSS assets for a user
+ * GET /api/css-assets
+ */
+export async function handleListCSSAssets(
+  request: Request,
+  env: Env,
+  auth: AuthContext
+): Promise<Response> {
+  try {
+    const doId = env.USER_DESKTOP.idFromName(auth.uid);
+    const stub = env.USER_DESKTOP.get(doId);
+
+    const response = await stub.fetch(new Request('http://internal/css-assets'));
+    if (!response.ok) {
+      return Response.json({ error: 'Failed to list CSS assets' }, { status: 500 });
+    }
+
+    const data = await response.json() as { assets: CSSAssetMeta[] };
+
+    // Add full URL path to each asset
+    const assetsWithUrls = data.assets.map(asset => ({
+      ...asset,
+      url: `/api/css-assets/${auth.uid}/${asset.assetId}/${asset.filename}`,
+    }));
+
+    return Response.json({ assets: assetsWithUrls });
+
+  } catch (error) {
+    console.error('List CSS assets error:', error);
+    return Response.json({ error: 'Failed to list CSS assets' }, { status: 500 });
+  }
+}
+
+/**
+ * Delete a CSS asset
+ * DELETE /api/css-assets/:assetId
+ */
+export async function handleDeleteCSSAsset(
+  request: Request,
+  env: Env,
+  auth: AuthContext,
+  assetId: string
+): Promise<Response> {
+  try {
+    const doId = env.USER_DESKTOP.idFromName(auth.uid);
+    const stub = env.USER_DESKTOP.get(doId);
+
+    // Get the asset metadata to find the R2 key
+    const listResponse = await stub.fetch(new Request('http://internal/css-assets'));
+    if (!listResponse.ok) {
+      return Response.json({ error: 'Failed to find CSS asset' }, { status: 500 });
+    }
+
+    const { assets } = await listResponse.json() as { assets: CSSAssetMeta[] };
+    const asset = assets.find(a => a.assetId === assetId);
+    if (!asset) {
+      return Response.json({ error: 'CSS asset not found' }, { status: 404 });
+    }
+
+    // Delete from R2
+    const r2Key = `${auth.uid}/css-assets/${assetId}/${asset.filename}`;
+    await env.ETERNALOS_FILES.delete(r2Key);
+
+    // Remove metadata from Durable Object
+    const deleteResponse = await stub.fetch(
+      new Request(`http://internal/css-assets/${assetId}`, { method: 'DELETE' })
+    );
+
+    if (!deleteResponse.ok) {
+      return Response.json({ error: 'Failed to delete CSS asset metadata' }, { status: 500 });
+    }
+
+    return Response.json({ success: true });
+
+  } catch (error) {
+    console.error('Delete CSS asset error:', error);
+    return Response.json({ error: 'Failed to delete CSS asset' }, { status: 500 });
+  }
+}
+
+// CSS Asset metadata type (shared with Durable Object)
+export interface CSSAssetMeta {
+  assetId: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  uploadedAt: number;
 }

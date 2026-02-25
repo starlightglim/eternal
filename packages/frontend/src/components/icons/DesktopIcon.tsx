@@ -161,6 +161,7 @@ function DesktopIconInner({
 
   const iconClasses = [
     styles.desktopIcon,
+    'desktopIcon', // Plain class for user custom CSS targeting
     isSelected && styles.selected,
     isDragging && styles.dragging,
     isDropTarget && styles.dropTarget,
@@ -173,6 +174,7 @@ function DesktopIconInner({
     <div
       ref={iconRef}
       className={iconClasses}
+      data-item-type={item.type}
       style={{
         left: displayX,
         top: displayY,
@@ -226,7 +228,7 @@ function DesktopIconInner({
           </>
         )}
       </div>
-      <div className={`${styles.iconLabel} ${isSelected ? styles.labelSelected : ''}`}>
+      <div className={`${styles.iconLabel} iconLabel ${isSelected ? styles.labelSelected : ''}`}>
         <span>{item.name}</span>
       </div>
     </div>

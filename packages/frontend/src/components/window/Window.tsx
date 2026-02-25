@@ -11,6 +11,7 @@ interface WindowProps {
   minimized: boolean;
   collapsed?: boolean;
   isActive: boolean;
+  contentType?: string;
   children?: React.ReactNode;
 }
 
@@ -31,6 +32,7 @@ export function Window({
   minimized,
   collapsed,
   isActive,
+  contentType,
   children,
 }: WindowProps) {
   const { closeWindow, focusWindow, moveWindow, resizeWindow, toggleCollapse, toggleMaximize } = useWindowStore();
@@ -223,6 +225,7 @@ export function Window({
 
   const windowClasses = [
     styles.window,
+    'window', // Plain class for user custom CSS targeting
     !isActive && styles.inactive,
     minimized && styles.minimized,
     collapsed && styles.collapsed,
@@ -234,6 +237,7 @@ export function Window({
     <div
       ref={windowRef}
       className={windowClasses}
+      data-content-type={contentType}
       style={{
         left: position.x,
         top: position.y,
@@ -246,7 +250,7 @@ export function Window({
       <div className={styles.windowInner}>
         {/* Title Bar */}
         <div
-          className={styles.titleBar}
+          className={`${styles.titleBar} titleBar`}
           onPointerDown={handleDragStart}
           onPointerMove={handleDragMove}
           onPointerUp={handleDragEnd}
@@ -262,7 +266,7 @@ export function Window({
           {isActive && <div className={styles.titleBarStripes} />}
 
           {/* Title Text */}
-          <span className={styles.titleText}>{title}</span>
+          <span className={`${styles.titleText} titleText`}>{title}</span>
 
           {/* Zoom Box (Maximize/Restore) */}
           <div
@@ -280,7 +284,7 @@ export function Window({
         </div>
 
         {/* Content Area (hidden when collapsed) */}
-        {!collapsed && <div className={styles.content}>{children}</div>}
+        {!collapsed && <div className={`${styles.content} windowContent`}>{children}</div>}
 
         {/* Resize Handle (hidden when collapsed) */}
         {!collapsed && (

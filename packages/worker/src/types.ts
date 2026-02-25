@@ -90,7 +90,9 @@ export interface UserProfile {
   windowBgColor?: string;   // Hex color for window content area
   fontSmoothing?: boolean;  // Override theme's font smoothing
   // Custom CSS (Layer 4 customization)
-  customCSS?: string;       // User-defined CSS, max 10KB, scoped to .user-desktop
+  customCSS?: string;       // User-defined CSS, max 50KB, scoped to .user-desktop
+  // Wallpaper display mode
+  wallpaperMode?: 'cover' | 'tile' | 'center'; // How custom wallpaper images are displayed
   // Watermark setting
   hideWatermark?: boolean;  // Hide "Made with EternalOS" watermark in visitor mode
 }

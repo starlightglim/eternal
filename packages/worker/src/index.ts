@@ -7,7 +7,7 @@
 
 import { UserDesktop } from './durable-objects/UserDesktop';
 import { handleSignup, handleLogin, handleLogout, handleForgotPassword, handleResetPassword, handleRefreshToken } from './routes/auth';
-import { handleUpload, handleServeFile, handleWallpaperUpload, handleServeWallpaper, handleIconUpload, handleServeIcon } from './routes/upload';
+import { handleUpload, handleServeFile, handleWallpaperUpload, handleServeWallpaper, handleIconUpload, handleServeIcon, handleCSSAssetUpload, handleServeCSSAsset, handleListCSSAssets, handleDeleteCSSAsset } from './routes/upload';
 import { handleVisit } from './routes/visit';
 import { handleOgImage } from './routes/ogImage';
 import { handleAssistant } from './routes/assistant';
@@ -222,7 +222,7 @@ export default {
       const rateLimitConfig = isAuthRoute ? RATE_LIMIT_AUTH : RATE_LIMIT_API;
 
       // Check rate limit (skip for file serving to avoid latency)
-      const skipRateLimit = path.startsWith('/api/files/') || path.startsWith('/api/wallpaper/');
+      const skipRateLimit = path.startsWith('/api/files/') || path.startsWith('/api/wallpaper/') || path.startsWith('/api/css-assets/');
       if (!skipRateLimit) {
         rateLimitResult = await checkRateLimit(request, env, rateLimitConfig);
         if (!rateLimitResult.allowed) {
@@ -422,6 +422,48 @@ export default {
 
         response = await handleServeIcon(request, env, uid, itemId, filename);
         return withCors(response, corsHeaders);
+      }
+
+      // CSS asset upload
+      if (path === '/api/css-assets' && request.method === 'POST') {
+        const authResult = await requireAuth(request, env);
+        if (authResult instanceof Response) {
+          return withCors(authResult, corsHeaders);
+        }
+        response = await handleCSSAssetUpload(request, env, authResult);
+        return withCors(response, corsHeaders);
+      }
+
+      // CSS asset list
+      if (path === '/api/css-assets' && request.method === 'GET') {
+        const authResult = await requireAuth(request, env);
+        if (authResult instanceof Response) {
+          return withCors(authResult, corsHeaders);
+        }
+        response = await handleListCSSAssets(request, env, authResult);
+        return withCors(response, corsHeaders);
+      }
+
+      // CSS asset delete: /api/css-assets/:assetId
+      if (path.startsWith('/api/css-assets/') && request.method === 'DELETE') {
+        const authResult = await requireAuth(request, env);
+        if (authResult instanceof Response) {
+          return withCors(authResult, corsHeaders);
+        }
+        const assetId = path.slice('/api/css-assets/'.length);
+        response = await handleDeleteCSSAsset(request, env, authResult, assetId);
+        return withCors(response, corsHeaders);
+      }
+
+      // CSS asset serving: /api/css-assets/:uid/:assetId/:filename (public)
+      if (path.startsWith('/api/css-assets/') && request.method === 'GET') {
+        const parts = path.slice('/api/css-assets/'.length).split('/');
+        if (parts.length >= 3) {
+          const [uid, assetId, ...filenameParts] = parts;
+          const filename = decodeURIComponent(filenameParts.join('/'));
+          response = await handleServeCSSAsset(request, env, uid, assetId, filename);
+          return withCors(response, corsHeaders);
+        }
       }
 
       // File serving: /api/files/:uid/:itemId/:filename

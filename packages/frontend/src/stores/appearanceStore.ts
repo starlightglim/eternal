@@ -171,6 +171,27 @@ export function applyAppearance(appearance: CustomAppearance) {
   applyCustomCSS(appearance.customCSS);
 }
 
+// Allowed url() path prefixes for defense-in-depth sanitization
+const ALLOWED_CSS_URL_PREFIXES = [
+  '/api/css-assets/',
+  '/api/wallpaper/',
+  '/api/icon/',
+];
+
+/**
+ * Sanitize CSS url() values — strip any url() not matching the allowlist.
+ * This is defense-in-depth; the editor validates before saving,
+ * but this catches anything that slips through (e.g., visitor mode injection).
+ */
+function sanitizeCSSUrls(css: string): string {
+  return css.replace(/url\s*\(\s*(['"]?)([^'")\s]+)\1\s*\)/gi, (match, _quote, urlValue) => {
+    if (ALLOWED_CSS_URL_PREFIXES.some((prefix) => urlValue.startsWith(prefix))) {
+      return match; // Allowed — keep it
+    }
+    return 'url(about:blank)'; // Blocked — neutralize
+  });
+}
+
 /**
  * Apply custom CSS by injecting a style element
  * CSS is scoped to .user-desktop for security
@@ -184,8 +205,11 @@ export function applyCustomCSS(css: string | undefined) {
 
   if (!css || !css.trim()) return;
 
+  // Defense-in-depth: sanitize url() values before injection
+  const sanitizedCSS = sanitizeCSSUrls(css);
+
   // Scope the CSS to .user-desktop
-  const scopedCSS = scopeCSSToUserDesktop(css);
+  const scopedCSS = scopeCSSToUserDesktop(sanitizedCSS);
 
   // Create and inject style element
   const style = document.createElement('style');

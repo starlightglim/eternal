@@ -22,6 +22,73 @@
   -moz-osx-font-smoothing: unset;
 }
 
+/* ============================================
+   DISPLAY MODE SELECTOR
+   ============================================ */
+
+.modeSection {
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--shadow);
+}
+
+.modeLabel {
+  display: block;
+  font-family: var(--font-geneva);
+  font-size: 10px;
+  color: var(--black);
+  margin-bottom: 6px;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+.modeButtons {
+  display: flex;
+  gap: 4px;
+}
+
+.modeButton {
+  flex: 1;
+  padding: 5px 8px;
+  font-family: var(--font-geneva);
+  font-size: 10px;
+  background: var(--white);
+  border: 1px solid var(--shadow);
+  cursor: pointer;
+  color: var(--black);
+  text-align: center;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+  box-shadow:
+    inset 1px 1px 0 var(--highlight),
+    inset -1px -1px 0 var(--shadow);
+}
+
+.modeButton:hover {
+  background: var(--highlight);
+}
+
+.modeButton:active {
+  background: var(--selection);
+  color: var(--selection-text, var(--white));
+  box-shadow:
+    inset -1px -1px 0 var(--highlight),
+    inset 1px 1px 0 var(--shadow);
+}
+
+.modeButton.modeSelected {
+  background: var(--selection);
+  color: var(--selection-text, var(--white));
+  border-color: var(--black);
+  box-shadow:
+    inset -1px -1px 0 var(--highlight),
+    inset 1px 1px 0 var(--shadow);
+}
+
+/* ============================================
+   PATTERN GRID
+   ============================================ */
+
 .grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

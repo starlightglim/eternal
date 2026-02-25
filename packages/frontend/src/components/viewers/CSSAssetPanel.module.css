@@ -1,0 +1,222 @@
+/* CSSAssetPanel - Image assets for custom CSS */
+
+.panel {
+  padding: 10px;
+  background: var(--white);
+  border-bottom: 1px solid var(--shadow);
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.panelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.panelTitle {
+  font-family: var(--font-chicago);
+  font-size: 11px;
+  color: var(--text-color);
+}
+
+.assetCount {
+  font-family: var(--font-monaco);
+  font-size: 10px;
+  color: var(--text-color-secondary);
+  padding: 2px 6px;
+  background: var(--platinum);
+  border: 1px solid var(--shadow);
+}
+
+.panelNote {
+  font-size: 10px;
+  color: var(--text-color-secondary);
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.panelNote code {
+  font-family: var(--font-monaco);
+  background: var(--platinum);
+  padding: 1px 3px;
+  font-size: 9px;
+}
+
+/* ============================================
+   UPLOAD
+   ============================================ */
+
+.uploadSection {
+  margin-bottom: 8px;
+}
+
+.fileInput {
+  display: none;
+}
+
+.uploadButton {
+  width: 100%;
+  padding: 6px 12px;
+  font-family: var(--font-geneva);
+  font-size: 10px;
+  background: var(--platinum);
+  border: 1px solid var(--shadow);
+  cursor: pointer;
+  color: var(--text-color);
+  box-shadow:
+    inset 1px 1px 0 var(--highlight),
+    inset -1px -1px 0 var(--shadow);
+}
+
+.uploadButton:hover:not(:disabled) {
+  background: var(--highlight);
+}
+
+.uploadButton:active:not(:disabled) {
+  background: var(--selection);
+  color: var(--selection-text, var(--white));
+  box-shadow:
+    inset -1px -1px 0 var(--highlight),
+    inset 1px 1px 0 var(--shadow);
+}
+
+.uploadButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.progressBar {
+  height: 4px;
+  background: var(--platinum);
+  border: 1px solid var(--shadow);
+  margin-top: 4px;
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--selection);
+  transition: width 0.2s;
+}
+
+/* ============================================
+   ERROR
+   ============================================ */
+
+.error {
+  padding: 6px 8px;
+  background: #FFEEEE;
+  border: 1px solid #CC0000;
+  color: #CC0000;
+  font-size: 10px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ============================================
+   ASSET GRID
+   ============================================ */
+
+.assetGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.loadingText,
+.emptyText {
+  font-family: var(--font-geneva);
+  font-size: 10px;
+  color: var(--text-color-secondary);
+  text-align: center;
+  padding: 12px 0;
+}
+
+.assetItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  background: var(--platinum);
+  border: 1px solid var(--shadow);
+}
+
+.assetThumbnail {
+  width: 28px;
+  height: 28px;
+  object-fit: cover;
+  border: 1px solid var(--shadow);
+  background: var(--white);
+  image-rendering: auto;
+  flex-shrink: 0;
+}
+
+.assetInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.assetName {
+  font-family: var(--font-geneva);
+  font-size: 10px;
+  color: var(--text-color);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assetSize {
+  font-family: var(--font-monaco);
+  font-size: 9px;
+  color: var(--text-color-secondary);
+}
+
+.assetActions {
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.copyButton,
+.insertButton {
+  padding: 3px 6px;
+  font-family: var(--font-geneva);
+  font-size: 9px;
+  background: var(--white);
+  border: 1px solid var(--shadow);
+  cursor: pointer;
+  color: var(--text-color);
+  white-space: nowrap;
+}
+
+.copyButton:hover,
+.insertButton:hover {
+  background: var(--highlight);
+}
+
+.copyButton:active,
+.insertButton:active {
+  background: var(--selection);
+  color: var(--selection-text, var(--white));
+}
+
+.deleteButton {
+  padding: 3px 5px;
+  font-size: 9px;
+  background: var(--white);
+  border: 1px solid var(--shadow);
+  cursor: pointer;
+  color: #CC0000;
+  line-height: 1;
+}
+
+.deleteButton:hover {
+  background: #FFEEEE;
+  border-color: #CC0000;
+}

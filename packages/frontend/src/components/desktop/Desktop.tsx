@@ -1550,12 +1550,19 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
       <div
         data-desktop
         className={`${styles.desktop} user-desktop ${isFileDragOver ? styles.dragOver : ''} ${isDesktopDropTarget ? styles.desktopDropTarget : ''} ${profile?.wallpaper?.startsWith('custom:') ? '' : `wallpaper-${profile?.wallpaper || 'default'}`}`}
-        style={profile?.wallpaper?.startsWith('custom:') ? {
-          backgroundImage: `url(${getWallpaperUrl(profile.wallpaper)})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-        } : undefined}
+        style={profile?.wallpaper?.startsWith('custom:') ? (() => {
+          const mode = profile?.wallpaperMode || 'cover';
+          const base = { backgroundImage: `url(${getWallpaperUrl(profile.wallpaper)})` };
+          switch (mode) {
+            case 'tile':
+              return { ...base, backgroundSize: 'auto', backgroundRepeat: 'repeat', backgroundPosition: 'top left' };
+            case 'center':
+              return { ...base, backgroundSize: 'auto', backgroundRepeat: 'no-repeat', backgroundPosition: 'center' };
+            case 'cover':
+            default:
+              return { ...base, backgroundSize: 'cover', backgroundRepeat: 'no-repeat', backgroundPosition: 'center' };
+          }
+        })() : undefined}
         onClick={handleDesktopClick}
         onContextMenu={handleDesktopContextMenu}
         onPointerDown={handleSelectionStart}
@@ -1650,7 +1657,7 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
         {/* Selection Rectangle (marquee select) */}
         {selectionRect && (
           <div
-            className={styles.selectionRect}
+            className={`${styles.selectionRect} selectionRect`}
             style={{
               left: Math.min(selectionRect.startX, selectionRect.currentX),
               top: Math.min(selectionRect.startY, selectionRect.currentY),

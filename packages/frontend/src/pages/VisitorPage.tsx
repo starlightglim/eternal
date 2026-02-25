@@ -394,11 +394,19 @@ export function VisitorPage() {
   const isCustomWallpaper = wallpaperValue?.startsWith('custom:');
   const wallpaperClass = isCustomWallpaper ? '' : `wallpaper-${wallpaperValue || 'default'}`;
   const wallpaperStyle = isCustomWallpaper
-    ? {
-        backgroundImage: `url(${getWallpaperUrl(wallpaperValue!)})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      }
+    ? (() => {
+        const mode = profile?.wallpaperMode || 'cover';
+        const base = { backgroundImage: `url(${getWallpaperUrl(wallpaperValue!)})` };
+        switch (mode) {
+          case 'tile':
+            return { ...base, backgroundSize: 'auto', backgroundRepeat: 'repeat', backgroundPosition: 'top left' };
+          case 'center':
+            return { ...base, backgroundSize: 'auto', backgroundRepeat: 'no-repeat', backgroundPosition: 'center' };
+          case 'cover':
+          default:
+            return { ...base, backgroundSize: 'cover', backgroundRepeat: 'no-repeat', backgroundPosition: 'center' };
+        }
+      })()
     : undefined;
 
   // Watermark visibility - only show if not hidden by profile setting

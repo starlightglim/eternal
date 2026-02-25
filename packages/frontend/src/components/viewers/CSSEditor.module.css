@@ -22,6 +22,11 @@
   border-bottom: 1px solid var(--shadow);
 }
 
+.toolButtons {
+  display: flex;
+  gap: 4px;
+}
+
 .toolButton {
   padding: 4px 10px;
   font-family: var(--font-geneva);
@@ -30,6 +35,12 @@
   border: 1px solid var(--black);
   cursor: pointer;
   color: var(--window-text-color, var(--black));
+}
+
+.toolButtonActive {
+  background: var(--selection);
+  color: var(--selection-text, var(--white));
+  border-color: var(--black);
 }
 
 .toolButton:hover {

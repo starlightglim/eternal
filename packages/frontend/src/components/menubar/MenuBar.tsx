@@ -637,7 +637,7 @@ export function MenuBar() {
   );
 
   return (
-    <div className={styles.menuBar} ref={menuBarRef}>
+    <div className={`${styles.menuBar} menuBar`} ref={menuBarRef}>
       {/* Apple Menu */}
       <div
         className={`${styles.menuItem} ${styles.appleMenu} ${activeMenu === 'apple' ? styles.active : ''}`}

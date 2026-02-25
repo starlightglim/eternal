@@ -554,7 +554,7 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false, isDr
 
   return (
     <div
-      className={`${styles.folderView} ${isDropTarget ? styles.windowDropTarget : ''}`}
+      className={`${styles.folderView} folder-view ${isDropTarget ? styles.windowDropTarget : ''}`}
       data-folder-window-id={folderId}
       onClick={handleBackgroundClick}
       onContextMenu={handleFolderContextMenu}

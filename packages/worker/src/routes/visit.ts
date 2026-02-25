@@ -27,6 +27,7 @@ interface VisitorResponse {
   username: string;
   displayName: string;
   wallpaper?: string;
+  wallpaperMode?: 'cover' | 'tile' | 'center';
   // Custom appearance settings
   accentColor?: string;
   desktopColor?: string;
@@ -116,6 +117,7 @@ export async function handleVisit(
       username: normalizedUsername,
       displayName: data.profile?.displayName || normalizedUsername,
       wallpaper: data.profile?.wallpaper,
+      wallpaperMode: data.profile?.wallpaperMode,
       accentColor: data.profile?.accentColor,
       desktopColor: data.profile?.desktopColor,
       windowBgColor: data.profile?.windowBgColor,
