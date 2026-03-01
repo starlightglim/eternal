@@ -31,6 +31,10 @@ interface AuthActions {
   initialize: () => () => void;
   setWallpaper: (wallpaper: string) => void;
   setWallpaperMode: (mode: 'cover' | 'tile' | 'center') => void;
+  setBio: (bio: string) => void;
+  setProfileLinks: (links: { title: string; url: string }[]) => void;
+  setShareDescription: (desc: string) => void;
+  setAnalyticsEnabled: (enabled: boolean) => void;
 }
 
 type AuthStore = AuthState & AuthActions;
@@ -237,6 +241,54 @@ export const useAuthStore = create<AuthStore>()(
           if (isApiConfigured) {
             apiUpdateProfile({ wallpaperMode }).catch((error) => {
               console.error('Failed to sync wallpaper mode to backend:', error);
+            });
+          }
+        }
+      },
+
+      setBio: (bio: string) => {
+        const { profile } = get();
+        if (profile) {
+          set({ profile: { ...profile, bio } });
+          if (isApiConfigured) {
+            apiUpdateProfile({ bio }).catch((error) => {
+              console.error('Failed to sync bio to backend:', error);
+            });
+          }
+        }
+      },
+
+      setProfileLinks: (profileLinks: { title: string; url: string }[]) => {
+        const { profile } = get();
+        if (profile) {
+          set({ profile: { ...profile, profileLinks } });
+          if (isApiConfigured) {
+            apiUpdateProfile({ profileLinks }).catch((error) => {
+              console.error('Failed to sync profile links to backend:', error);
+            });
+          }
+        }
+      },
+
+      setShareDescription: (shareDescription: string) => {
+        const { profile } = get();
+        if (profile) {
+          set({ profile: { ...profile, shareDescription } });
+          if (isApiConfigured) {
+            apiUpdateProfile({ shareDescription }).catch((error) => {
+              console.error('Failed to sync share description to backend:', error);
+            });
+          }
+        }
+      },
+
+      setAnalyticsEnabled: (analyticsEnabled: boolean) => {
+        const { profile } = get();
+        if (profile) {
+          set({ profile: { ...profile, analyticsEnabled } });
+          if (isApiConfigured) {
+            apiUpdateProfile({ analyticsEnabled }).catch((error) => {
+              console.error('Failed to sync analytics setting to backend:', error);
             });
           }
         }

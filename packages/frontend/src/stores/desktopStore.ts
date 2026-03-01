@@ -11,6 +11,7 @@ import {
   uploadFile as apiUploadFile,
   fetchDesktop as apiFetchDesktop,
   emptyTrashApi,
+  type SavedWindowState,
 } from '../services/api';
 import { useAlertStore } from './alertStore';
 import { useSoundStore, type SoundType } from './soundStore';
@@ -73,6 +74,7 @@ interface DesktopStore {
   uid: string | null; // Current user's uid
   loading: boolean;
   uploads: UploadProgress[]; // Active upload progress
+  serverWindows: SavedWindowState[]; // Window state from server (for restoration)
 
   // Actions
   setItems: (items: DesktopItem[]) => void;
@@ -244,6 +246,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
   uid: null,
   loading: false,
   uploads: [],
+  serverWindows: [],
 
   setItems: (items) => {
     set({ items });

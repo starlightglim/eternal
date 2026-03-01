@@ -13,3 +13,12 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+// Custom eos-* attributes for CSS Element Picker targeting
+declare namespace React {
+  interface HTMLAttributes<T> {
+    'eos-name'?: string;
+    'eos-type'?: string;
+    'eos-folder'?: string;
+  }
+}

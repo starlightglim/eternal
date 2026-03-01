@@ -31,7 +31,7 @@ export function VisitorMenuBar({ username }: VisitorMenuBarProps) {
   };
 
   return (
-    <div className={styles.menuBar}>
+    <div className={`${styles.menuBar} menuBar`} eos-name="menubar">
       {/* Visitor indicator instead of Apple menu */}
       <div className={styles.visitorIndicator}>
         <AppleIcon />

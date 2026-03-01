@@ -16,6 +16,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAppearanceStore } from '../../stores/appearanceStore';
+import { useCSSPickerStore } from '../../stores/cssPickerStore';
 import { CSSAssetPanel } from './CSSAssetPanel';
 import styles from './CSSEditor.module.css';
 
@@ -174,13 +175,26 @@ const CSS_REFERENCE = [
   { selector: '.window', description: 'Window containers' },
   { selector: '.titleBar', description: 'Window title bars' },
   { selector: '.titleText', description: 'Title bar text' },
+  { selector: '.closeBox', description: 'Window close button' },
+  { selector: '.zoomBox', description: 'Window zoom button' },
+  { selector: '.collapseBox', description: 'Window collapse button' },
   { selector: '.windowContent', description: 'Window content area' },
+  { selector: '.resizeHandle', description: 'Window resize corner' },
   { selector: '.desktopIcon', description: 'Desktop icons' },
   { selector: '.iconLabel', description: 'Icon text labels' },
   { selector: '.menuBar', description: 'The menu bar at top' },
+  { selector: '.sticker', description: 'Sticker decorations' },
   { selector: '.folder-view', description: 'Folder window contents' },
   { selector: '.selectionRect', description: 'Drag selection rectangle' },
-  // Data attribute selectors for per-type targeting
+  // eos- attribute selectors (use Pick Element to find names)
+  { selector: '[eos-name="..."]', description: 'Target a specific item by name' },
+  { selector: '[eos-type="folder"]', description: 'All folders' },
+  { selector: '[eos-type="image"]', description: 'All images' },
+  { selector: '[eos-type="text"]', description: 'All text files' },
+  { selector: '[eos-type="link"]', description: 'All links' },
+  { selector: '[eos-type="sticker"]', description: 'All stickers' },
+  { selector: '[eos-folder="..."]', description: 'All items in a specific folder' },
+  // Legacy data attribute selectors
   { selector: '.window[data-content-type="folder"]', description: 'Folder windows' },
   { selector: '.window[data-content-type="image"]', description: 'Image windows' },
   { selector: '.window[data-content-type="text"]', description: 'Text editor windows' },
@@ -282,6 +296,14 @@ const CSS_EXAMPLES = [
   background-repeat: no-repeat;
   pointer-events: none;
   z-index: 99998;
+}`,
+  },
+  {
+    name: 'Style One Item',
+    css: `/* Use "Pick Element" to find the name of your item */
+[eos-name="my-item"] {
+  filter: drop-shadow(0 0 8px gold);
+  transform: scale(1.1);
 }`,
   },
   {
@@ -405,6 +427,7 @@ const CSS_EXAMPLES = [
 
 export function CSSEditor() {
   const { appearance, setCustomCSS, saveAppearance, isLoading } = useAppearanceStore();
+  const { isActive: pickerActive, activate: activatePicker, deactivate: deactivatePicker } = useCSSPickerStore();
   const [cssInput, setCssInput] = useState(appearance.customCSS || '');
   const [validationError, setValidationError] = useState<string | null>(null);
   const [showReference, setShowReference] = useState(false);
@@ -539,6 +562,48 @@ export function CSSEditor() {
     }, 0);
   }, [cssInput]);
 
+  // Handle selector chosen from picker — insert CSS rule block at cursor
+  const handleSelectorChosen = useCallback((selector: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const ruleBlock = `${selector} {\n  \n}`;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const before = cssInput.slice(0, start);
+    const after = cssInput.slice(end);
+    const newCSS = before + (before && !before.endsWith('\n') ? '\n\n' : '') + ruleBlock + after;
+
+    setCssInput(newCSS);
+    setHasUnsavedChanges(true);
+
+    // Position cursor inside the rule block (on the empty line)
+    setTimeout(() => {
+      textarea.focus();
+      const cursorOffset = (before && !before.endsWith('\n') ? 2 : 0);
+      const newPos = start + cursorOffset + selector.length + 4; // after "selector {\n  "
+      textarea.setSelectionRange(newPos, newPos);
+    }, 0);
+  }, [cssInput]);
+
+  // Toggle picker
+  const handleTogglePicker = useCallback(() => {
+    if (pickerActive) {
+      deactivatePicker();
+    } else {
+      setShowReference(false);
+      setShowAssets(false);
+      activatePicker(handleSelectorChosen);
+    }
+  }, [pickerActive, activatePicker, deactivatePicker, handleSelectorChosen]);
+
+  // Deactivate picker on unmount
+  useEffect(() => {
+    return () => {
+      deactivatePicker();
+    };
+  }, [deactivatePicker]);
+
   const charCount = cssInput.length;
   const charLimit = MAX_CSS_SIZE;
   const charPercent = Math.round((charCount / charLimit) * 100);
@@ -548,6 +613,13 @@ export function CSSEditor() {
       {/* Toolbar */}
       <div className={styles.toolbar}>
         <div className={styles.toolButtons}>
+          <button
+            className={`${styles.toolButton} ${pickerActive ? styles.toolButtonActive : ''}`}
+            onClick={handleTogglePicker}
+            title="Pick an element on the desktop to target with CSS"
+          >
+            &#x271B; Pick Element
+          </button>
           <button
             className={`${styles.toolButton} ${showReference ? styles.toolButtonActive : ''}`}
             onClick={() => { setShowReference(!showReference); if (!showReference) setShowAssets(false); }}

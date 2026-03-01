@@ -3,7 +3,7 @@
 /**
  * Desktop item types
  */
-export type DesktopItemType = 'folder' | 'image' | 'text' | 'link' | 'audio' | 'video' | 'pdf' | 'widget';
+export type DesktopItemType = 'folder' | 'image' | 'text' | 'link' | 'audio' | 'video' | 'pdf' | 'widget' | 'sticker';
 
 /**
  * Widget types for Layer 3 customization
@@ -55,6 +55,24 @@ export interface LinkBoardConfig {
 export type WidgetConfig = StickyNoteConfig | GuestbookConfig | MusicPlayerConfig | PixelCanvasConfig | LinkBoardConfig;
 
 /**
+ * Sticker configuration (freely placed decoration images)
+ */
+export interface StickerConfig {
+  width: number;
+  height: number;
+  rotation: number;   // degrees
+  opacity: number;    // 0-1
+}
+
+/**
+ * Profile link for the profile window
+ */
+export interface ProfileLink {
+  title: string;
+  url: string;
+}
+
+/**
  * Represents a single item on the desktop (file, folder, widget, etc.)
  */
 export interface DesktopItem {
@@ -81,6 +99,8 @@ export interface DesktopItem {
   // Widget fields (Layer 3 customization)
   widgetType?: WidgetType;
   widgetConfig?: WidgetConfig;
+  // Sticker fields (Layer 3 decoration)
+  stickerConfig?: StickerConfig;
 }
 
 /**
@@ -99,7 +119,7 @@ export interface WindowState {
   preMaximizedPosition?: { x: number; y: number };
   preMaximizedSize?: { width: number; height: number };
   // Content information
-  contentType: 'folder' | 'image' | 'text' | 'markdown' | 'code' | 'get-info' | 'about' | 'assistant' | 'wallpaper' | 'welcome' | 'search' | 'preferences' | 'trash' | 'audio' | 'video' | 'pdf' | 'calculator' | 'clock' | 'link' | 'appearance' | 'widget' | 'css-editor' | 'share-dialog';
+  contentType: 'folder' | 'image' | 'text' | 'markdown' | 'code' | 'get-info' | 'about' | 'assistant' | 'wallpaper' | 'welcome' | 'search' | 'preferences' | 'trash' | 'audio' | 'video' | 'pdf' | 'calculator' | 'clock' | 'link' | 'appearance' | 'widget' | 'css-editor' | 'share-dialog' | 'profile';
   contentId?: string; // Reference to DesktopItem id if applicable
 }
 
@@ -125,6 +145,12 @@ export interface UserProfile {
   wallpaperMode?: 'cover' | 'tile' | 'center'; // How custom wallpaper images are displayed
   // Watermark setting
   hideWatermark?: boolean;  // Hide "Made with EternalOS" watermark in visitor mode
+  // Profile fields
+  bio?: string;                    // User bio, max 500 chars
+  profileLinks?: ProfileLink[];    // User links, max 5
+  shareDescription?: string;       // Custom OG description, max 200 chars
+  // Analytics
+  analyticsEnabled?: boolean;      // Opt-in view counter
 }
 
 /**

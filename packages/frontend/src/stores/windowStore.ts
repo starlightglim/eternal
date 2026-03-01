@@ -106,7 +106,7 @@ interface WindowStore {
   getTopWindow: () => WindowState | undefined;
 
   // Persistence
-  loadWindowState: (validItemIds?: Set<string>) => void;
+  loadWindowState: (validItemIds?: Set<string>, serverWindows?: SavedWindowState[]) => void;
   loadVisitorWindows: (windows: SavedWindowState[], validItemIds: Set<string>) => void;
   clearWindowState: () => void;
 }
@@ -306,15 +306,41 @@ export const useWindowStore = create<WindowStore>((set, get) => ({
     );
   },
 
-  loadWindowState: (validItemIds?: Set<string>) => {
+  loadWindowState: (validItemIds?: Set<string>, serverWindows?: SavedWindowState[]) => {
     try {
-      const saved = localStorage.getItem(WINDOW_STATE_KEY);
-      if (!saved) return;
+      // Try localStorage first (fast, has full WindowState with collapsed etc.)
+      let windows: WindowState[] | null = null;
+      let nextZIndex = 1;
 
-      const { windows, nextZIndex } = JSON.parse(saved) as {
-        windows: WindowState[];
-        nextZIndex: number;
-      };
+      const saved = localStorage.getItem(WINDOW_STATE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as {
+          windows: WindowState[];
+          nextZIndex: number;
+        };
+        windows = parsed.windows;
+        nextZIndex = parsed.nextZIndex;
+      }
+
+      // Fall back to server windows if localStorage is empty
+      // (happens after logout/login, new device, cleared cache, etc.)
+      if ((!windows || windows.length === 0) && serverWindows && serverWindows.length > 0) {
+        windows = serverWindows.map((w, i) => ({
+          id: w.id,
+          title: w.title,
+          position: w.position,
+          size: w.size,
+          zIndex: w.zIndex || (i + 1),
+          minimized: w.minimized,
+          maximized: w.maximized,
+          collapsed: w.collapsed,
+          contentType: w.contentType as WindowState['contentType'],
+          contentId: w.contentId,
+        }));
+        nextZIndex = windows.length + 1;
+      }
+
+      if (!windows || windows.length === 0) return;
 
       // Filter out windows that depend on items that no longer exist
       const validWindows = windows.filter((w) => {
@@ -441,7 +467,10 @@ export const useWindowStore = create<WindowStore>((set, get) => ({
   },
 
   clearWindowState: () => {
-    localStorage.removeItem(WINDOW_STATE_KEY);
+    // Only clear in-memory state (for clean UI after logout).
+    // Keep localStorage intact — it serves as a fast cache for next login.
+    // The server is the source of truth; loadWindowState() falls back to
+    // server windows when localStorage doesn't match.
     set({ windows: [], nextZIndex: 1 });
   },
 }));

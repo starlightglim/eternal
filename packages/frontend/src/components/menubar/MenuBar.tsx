@@ -487,38 +487,56 @@ export function MenuBar() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isMeta = e.metaKey || e.ctrlKey;
+      if (!isMeta) return;
 
-      if (isMeta && e.key === 'n') {
+      // Check if focus is on a text-editable element — if so, let the
+      // browser handle native clipboard (copy/paste/cut/select-all) and
+      // other text-editing shortcuts so users can interact with textareas,
+      // inputs, and contenteditable elements normally.
+      const active = document.activeElement;
+      const isTextEditable =
+        active instanceof HTMLTextAreaElement ||
+        active instanceof HTMLInputElement ||
+        (active instanceof HTMLElement && active.isContentEditable);
+
+      // These shortcuts should always go to the browser when a text field
+      // is focused: cut, copy, paste, select-all, undo, redo, find
+      const textNativeKeys = new Set(['x', 'c', 'v', 'a', 'z', 'f']);
+      if (isTextEditable && textNativeKeys.has(e.key)) {
+        return; // Let browser handle natively
+      }
+
+      if (e.key === 'n') {
         e.preventDefault();
         handleNewFolder();
-      } else if (isMeta && e.key === 'o') {
+      } else if (e.key === 'o') {
         e.preventDefault();
         handleOpen();
-      } else if (isMeta && e.key === 'w') {
+      } else if (e.key === 'w') {
         e.preventDefault();
         handleCloseWindow();
-      } else if (isMeta && e.key === 'i') {
+      } else if (e.key === 'i') {
         e.preventDefault();
         handleGetInfo();
-      } else if (isMeta && (e.key === 'Backspace' || e.key === 'Delete')) {
+      } else if (e.key === 'Backspace' || e.key === 'Delete') {
         e.preventDefault();
         handleTrashSelected();
-      } else if (isMeta && e.key === 'a') {
+      } else if (e.key === 'a') {
         e.preventDefault();
         handleSelectAll();
-      } else if (isMeta && e.key === 'x') {
+      } else if (e.key === 'x') {
         e.preventDefault();
         handleCut();
-      } else if (isMeta && e.key === 'c') {
+      } else if (e.key === 'c') {
         e.preventDefault();
         handleCopy();
-      } else if (isMeta && e.key === 'v') {
+      } else if (e.key === 'v') {
         e.preventDefault();
         handlePaste();
-      } else if (isMeta && e.key === 'd') {
+      } else if (e.key === 'd') {
         e.preventDefault();
         handleDuplicate();
-      } else if (isMeta && e.key === 'f') {
+      } else if (e.key === 'f') {
         e.preventDefault();
         handleFind();
       }
@@ -589,6 +607,19 @@ export function MenuBar() {
       { label: 'Clean Up', action: handleCleanUp },
     ],
     special: [
+      { label: 'About Me...', action: () => {
+        const { openWindow } = useWindowStore.getState();
+        openWindow({
+          id: 'profile-window',
+          title: 'About Me',
+          position: { x: 150, y: 100 },
+          size: { width: 340, height: 420 },
+          minimized: false,
+          maximized: false,
+          contentType: 'profile',
+        });
+      }},
+      { divider: true, label: '' },
       { label: 'Calculator', action: handleOpenCalculator },
       { label: 'Clock', action: handleOpenClock },
       { label: 'Desk Assistant', action: handleOpenAssistant },
@@ -637,7 +668,7 @@ export function MenuBar() {
   );
 
   return (
-    <div className={`${styles.menuBar} menuBar`} ref={menuBarRef}>
+    <div className={`${styles.menuBar} menuBar`} eos-name="menubar" ref={menuBarRef}>
       {/* Apple Menu */}
       <div
         className={`${styles.menuItem} ${styles.appleMenu} ${activeMenu === 'apple' ? styles.active : ''}`}

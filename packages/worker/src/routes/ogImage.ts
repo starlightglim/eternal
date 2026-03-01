@@ -30,7 +30,6 @@ const MAX_ICONS = 12;
 const DEFAULT_DESKTOP_COLOR = '#C0C0C0'; // Platinum gray
 const DEFAULT_ACCENT_COLOR = '#000080'; // Classic Mac blue
 const WINDOW_BORDER = '#000000';
-const TITLE_BAR_INACTIVE = '#CCCCCC';
 
 /**
  * Generate an icon SVG based on item type
@@ -147,6 +146,35 @@ function getTitleBarPattern(id: string): string {
 }
 
 /**
+ * Truncate a string to a max length, adding ellipsis if needed
+ */
+function truncateText(text: string, maxLen: number): string {
+  if (text.length <= maxLen) return text;
+  return text.slice(0, maxLen - 1) + '…';
+}
+
+/**
+ * Word-wrap text into lines of max width (approximate character count)
+ */
+function wrapText(text: string, maxCharsPerLine: number): string[] {
+  const words = text.split(' ');
+  const lines: string[] = [];
+  let currentLine = '';
+
+  for (const word of words) {
+    if (currentLine.length + word.length + 1 > maxCharsPerLine) {
+      if (currentLine) lines.push(currentLine);
+      currentLine = word;
+    } else {
+      currentLine = currentLine ? `${currentLine} ${word}` : word;
+    }
+  }
+  if (currentLine) lines.push(currentLine);
+
+  return lines.slice(0, 3); // Max 3 lines
+}
+
+/**
  * Generate the complete SVG for a user's desktop
  */
 function generateDesktopSvg(
@@ -158,9 +186,9 @@ function generateDesktopSvg(
   const desktopColor = profile.desktopColor || DEFAULT_DESKTOP_COLOR;
   const accentColor = profile.accentColor || DEFAULT_ACCENT_COLOR;
 
-  // Filter to root items only, limit to MAX_ICONS
+  // Filter to root items only (exclude stickers), limit to MAX_ICONS
   const rootItems = items
-    .filter(item => item.parentId === null && !item.isTrashed)
+    .filter(item => item.parentId === null && !item.isTrashed && item.type !== 'sticker')
     .slice(0, MAX_ICONS);
 
   // Calculate icon positions
@@ -177,6 +205,27 @@ function generateDesktopSvg(
   // Generate item count text
   const itemCount = items.filter(i => !i.isTrashed).length;
   const itemText = itemCount === 1 ? '1 item' : `${itemCount} items`;
+
+  // Build description text for the info window
+  const shareDescription = profile.shareDescription || profile.bio || '';
+  const descriptionLines = shareDescription
+    ? wrapText(truncateText(shareDescription, 120), 35)
+    : [];
+
+  // Dynamically size the info window based on description
+  const baseWindowHeight = 140;
+  const descLineHeight = 16;
+  const extraDescHeight = descriptionLines.length > 0 ? (descriptionLines.length * descLineHeight + 12) : 0;
+  const windowHeight = baseWindowHeight + extraDescHeight;
+  const windowY = HEIGHT - windowHeight - 40;
+
+  // Description SVG lines
+  const descriptionSvg = descriptionLines.map((line, i) =>
+    `<text x="${WIDTH - 300}" y="${windowY + 88 + (i * descLineHeight)}" font-family="Geneva, system-ui, sans-serif" font-size="11" fill="#444444" font-style="italic">${escapeXml(line)}</text>`
+  ).join('\n    ');
+
+  // Content positions
+  const contentStartY = windowY + 50;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${WIDTH} ${HEIGHT}" width="${WIDTH}" height="${HEIGHT}">
@@ -205,26 +254,36 @@ function generateDesktopSvg(
   <!-- Info window (bottom right) -->
   <g filter="url(#shadow)">
     <!-- Window border -->
-    <rect x="${WIDTH - 320}" y="${HEIGHT - 180}" width="280" height="140" fill="#FFFFFF" stroke="${WINDOW_BORDER}" stroke-width="2"/>
+    <rect x="${WIDTH - 320}" y="${windowY}" width="280" height="${windowHeight}" fill="#FFFFFF" stroke="${WINDOW_BORDER}" stroke-width="2"/>
     <!-- Title bar -->
-    <rect x="${WIDTH - 318}" y="${HEIGHT - 178}" width="276" height="20" fill="url(#titleStripes)"/>
+    <rect x="${WIDTH - 318}" y="${windowY + 2}" width="276" height="20" fill="url(#titleStripes)"/>
     <!-- Close box -->
-    <rect x="${WIDTH - 314}" y="${HEIGHT - 174}" width="12" height="12" fill="#FFFFFF" stroke="${WINDOW_BORDER}" stroke-width="1"/>
+    <rect x="${WIDTH - 314}" y="${windowY + 6}" width="12" height="12" fill="#FFFFFF" stroke="${WINDOW_BORDER}" stroke-width="1"/>
     <!-- Title -->
-    <rect x="${WIDTH - 220}" y="${HEIGHT - 176}" width="120" height="16" fill="#FFFFFF"/>
-    <text x="${WIDTH - 180}" y="${HEIGHT - 163}" font-family="Chicago, system-ui, sans-serif" font-size="12" font-weight="bold" text-anchor="middle" fill="#000000">@${escapeXml(username)}</text>
+    <rect x="${WIDTH - 220}" y="${windowY + 4}" width="120" height="16" fill="#FFFFFF"/>
+    <text x="${WIDTH - 180}" y="${windowY + 17}" font-family="Chicago, system-ui, sans-serif" font-size="12" font-weight="bold" text-anchor="middle" fill="#000000">@${escapeXml(username)}</text>
 
     <!-- Window content -->
-    <text x="${WIDTH - 300}" y="${HEIGHT - 130}" font-family="Geneva, system-ui, sans-serif" font-size="14" fill="#000000">${escapeXml(displayName)}'s Desktop</text>
-    <text x="${WIDTH - 300}" y="${HEIGHT - 105}" font-family="Geneva, system-ui, sans-serif" font-size="12" fill="#666666">${itemText} on display</text>
+    <text x="${WIDTH - 300}" y="${contentStartY}" font-family="Geneva, system-ui, sans-serif" font-size="14" fill="#000000">${escapeXml(displayName)}'s Desktop</text>
+    <text x="${WIDTH - 300}" y="${contentStartY + 22}" font-family="Geneva, system-ui, sans-serif" font-size="12" fill="#666666">${itemText} on display</text>
+
+    ${descriptionSvg ? `<!-- Share description -->
+    ${descriptionSvg}` : ''}
 
     <!-- Accent color indicator -->
-    <rect x="${WIDTH - 300}" y="${HEIGHT - 80}" width="16" height="16" fill="${escapeXml(accentColor)}" stroke="${WINDOW_BORDER}" stroke-width="1"/>
-    <text x="${WIDTH - 278}" y="${HEIGHT - 68}" font-family="Geneva, system-ui, sans-serif" font-size="11" fill="#666666">Theme color</text>
+    <rect x="${WIDTH - 300}" y="${windowY + windowHeight - 36}" width="16" height="16" fill="${escapeXml(accentColor)}" stroke="${WINDOW_BORDER}" stroke-width="1"/>
+    <text x="${WIDTH - 278}" y="${windowY + windowHeight - 24}" font-family="Geneva, system-ui, sans-serif" font-size="11" fill="#666666">Theme color</text>
   </g>
 
-  <!-- EternalOS branding -->
-  <text x="${WIDTH - 20}" y="${HEIGHT - 10}" font-family="Chicago, system-ui, sans-serif" font-size="10" text-anchor="end" fill="#666666">EternalOS</text>
+  <!-- EternalOS logo badge (bottom right corner) -->
+  <g transform="translate(${WIDTH - 160}, ${HEIGHT - 28})">
+    <!-- Badge background -->
+    <rect x="0" y="0" width="140" height="20" rx="3" fill="rgba(0,0,0,0.6)"/>
+    <!-- Mac-style command key icon -->
+    <text x="8" y="15" font-family="Chicago, system-ui, sans-serif" font-size="11" fill="#FFFFFF">⌘</text>
+    <!-- Brand text -->
+    <text x="24" y="14" font-family="Chicago, system-ui, sans-serif" font-size="10" fill="#FFFFFF">EternalOS</text>
+  </g>
 </svg>`;
 }
 

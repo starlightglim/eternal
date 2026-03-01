@@ -4,6 +4,7 @@ import { FolderIcon, TextFileIcon, ImageFileIcon, LinkIcon, AudioFileIcon, Video
 import { ThumbnailIcon } from './ThumbnailIcon';
 import { renderCustomIcon, CUSTOM_ICON_LIBRARY, type CustomIconId } from './CustomIconLibrary';
 import { getCustomIconUrl } from '../../services/api';
+import { slugify } from '../../utils/slugify';
 import styles from './DesktopIcon.module.css';
 
 interface DesktopIconProps {
@@ -175,6 +176,8 @@ function DesktopIconInner({
       ref={iconRef}
       className={iconClasses}
       data-item-type={item.type}
+      eos-name={slugify(item.name)}
+      eos-type={item.type}
       style={{
         left: displayX,
         top: displayY,

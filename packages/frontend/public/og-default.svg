@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <rect width="1200" height="630" fill="#C0C0C0"/>
+
+  <!-- Menu bar -->
+  <rect x="0" y="0" width="1200" height="22" fill="#FFFFFF" stroke="#000000" stroke-width="1"/>
+  <text x="12" y="16" font-family="Chicago, system-ui, sans-serif" font-size="12" font-weight="bold">⌘</text>
+  <text x="36" y="16" font-family="Chicago, system-ui, sans-serif" font-size="12" font-weight="bold">File</text>
+  <text x="70" y="16" font-family="Chicago, system-ui, sans-serif" font-size="12" font-weight="bold">Edit</text>
+
+  <!-- Central window -->
+  <g>
+    <rect x="350" y="140" width="500" height="300" fill="#FFFFFF" stroke="#000000" stroke-width="2"/>
+    <rect x="352" y="142" width="496" height="20" fill="#CCCCCC"/>
+    <rect x="356" y="146" width="12" height="12" fill="#FFFFFF" stroke="#000" stroke-width="1"/>
+    <rect x="540" y="144" width="120" height="16" fill="#FFFFFF"/>
+    <text x="600" y="157" font-family="Chicago, system-ui, sans-serif" font-size="12" font-weight="bold" text-anchor="middle">Welcome</text>
+
+    <text x="600" y="230" font-family="Chicago, system-ui, sans-serif" font-size="32" text-anchor="middle" fill="#000000">EternalOS</text>
+    <text x="600" y="270" font-family="Geneva, system-ui, sans-serif" font-size="16" text-anchor="middle" fill="#666666">Your corner of the internet.</text>
+    <text x="600" y="300" font-family="Geneva, system-ui, sans-serif" font-size="14" text-anchor="middle" fill="#666666">A personal desktop in the browser.</text>
+    <text x="600" y="330" font-family="Geneva, system-ui, sans-serif" font-size="14" text-anchor="middle" fill="#666666">No algorithms. No feeds. Just you.</text>
+
+    <!-- Button -->
+    <rect x="525" y="360" width="150" height="30" rx="6" fill="#FFFFFF" stroke="#000000" stroke-width="2"/>
+    <text x="600" y="380" font-family="Chicago, system-ui, sans-serif" font-size="12" text-anchor="middle" fill="#000000">Create Desktop</text>
+  </g>
+
+  <!-- Logo badge -->
+  <g transform="translate(1040, 602)">
+    <rect x="0" y="0" width="140" height="20" rx="3" fill="rgba(0,0,0,0.6)"/>
+    <text x="8" y="15" font-family="Chicago, system-ui, sans-serif" font-size="11" fill="#FFFFFF">⌘</text>
+    <text x="24" y="14" font-family="Chicago, system-ui, sans-serif" font-size="10" fill="#FFFFFF">EternalOS</text>
+  </g>
+</svg>

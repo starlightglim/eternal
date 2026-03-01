@@ -132,11 +132,28 @@ export async function resetPassword(
   });
 }
 
+// ============ Window State ============
+
+/** Window state as saved/loaded from the server */
+export interface SavedWindowState {
+  id: string;
+  title: string;
+  position: { x: number; y: number };
+  size: { width: number; height: number };
+  zIndex: number;
+  minimized: boolean;
+  maximized: boolean;
+  collapsed?: boolean;
+  contentType: string;
+  contentId?: string;
+}
+
 // ============ Desktop API ============
 
 export interface DesktopResponse {
   items: DesktopItem[];
   profile: UserProfile | null;
+  windows?: SavedWindowState[];
 }
 
 export async function fetchDesktop(): Promise<DesktopResponse> {
@@ -246,20 +263,6 @@ export async function uploadFile(
 
 // ============ Visitor API ============
 
-/** Window state as returned by the server */
-export interface SavedWindowState {
-  id: string;
-  title: string;
-  position: { x: number; y: number };
-  size: { width: number; height: number };
-  zIndex: number;
-  minimized: boolean;
-  maximized: boolean;
-  collapsed?: boolean;
-  contentType: string;
-  contentId?: string;
-}
-
 interface VisitorApiResponse {
   username: string;
   displayName: string;
@@ -272,6 +275,10 @@ interface VisitorApiResponse {
   fontSmoothing?: boolean;
   customCSS?: string;
   hideWatermark?: boolean;
+  // Profile fields
+  bio?: string;
+  profileLinks?: { title: string; url: string }[];
+  shareDescription?: string;
   items: DesktopItem[];
   windows?: SavedWindowState[];
 }
@@ -310,6 +317,9 @@ export async function fetchVisitorDesktop(username: string): Promise<VisitorResp
       fontSmoothing: data.fontSmoothing,
       customCSS: data.customCSS,
       hideWatermark: data.hideWatermark,
+      bio: data.bio,
+      profileLinks: data.profileLinks,
+      shareDescription: data.shareDescription,
       createdAt: 0, // Not exposed to visitors
     },
     windows: data.windows,
@@ -529,6 +539,12 @@ export interface ProfileUpdateRequest {
   customCSS?: string;
   // Watermark setting
   hideWatermark?: boolean;
+  // Profile fields
+  bio?: string;
+  profileLinks?: { title: string; url: string }[];
+  shareDescription?: string;
+  // Analytics
+  analyticsEnabled?: boolean;
 }
 
 export interface ProfileUpdateResponse {
@@ -645,6 +661,19 @@ export interface GuestbookPostResponse {
  * @param itemId - The widget item ID
  * @param entry - The entry to post
  */
+// ============ Analytics API ============
+
+export interface AnalyticsData {
+  totalViews: number;
+  dailyViews: { date: string; count: number }[];
+}
+
+export async function fetchAnalytics(): Promise<AnalyticsData> {
+  return apiRequest<AnalyticsData>('/api/analytics');
+}
+
+// ============ Guestbook API ============
+
 export async function postGuestbookEntry(
   ownerUid: string,
   itemId: string,

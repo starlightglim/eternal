@@ -706,6 +706,69 @@
 }
 
 /* ============================================
+   ANALYTICS SECTION
+   ============================================ */
+
+.analyticsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--platinum);
+  border: 1px solid var(--shadow);
+}
+
+.analyticsLabel {
+  font-weight: bold;
+  color: var(--text-color);
+  font-family: var(--font-chicago);
+  font-size: 11px;
+}
+
+.analyticsToggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-geneva);
+  font-size: 11px;
+  color: var(--text-color-secondary, var(--shadow));
+  cursor: pointer;
+  user-select: none;
+}
+
+.analyticsToggle input {
+  cursor: pointer;
+}
+
+.analyticsInfo {
+  padding: 6px 0 0;
+  font-family: var(--font-geneva);
+  font-size: 11px;
+  color: var(--text-color);
+}
+
+.analyticsCount {
+  font-family: var(--font-monaco);
+  font-size: 10px;
+}
+
+.analyticsCount strong {
+  color: var(--selection);
+}
+
+.analyticsLoading {
+  font-size: 10px;
+  color: var(--text-color-secondary);
+  font-style: italic;
+}
+
+.analyticsEmpty {
+  font-size: 10px;
+  color: var(--text-color-secondary);
+  font-style: italic;
+}
+
+/* ============================================
    STORAGE QUOTA SECTION
    ============================================ */
 

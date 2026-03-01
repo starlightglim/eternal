@@ -8,6 +8,24 @@
 export type WidgetType = 'sticky-note' | 'guestbook' | 'music-player' | 'pixel-canvas' | 'link-board';
 
 /**
+ * Sticker configuration (freely placed decoration images)
+ */
+export interface StickerConfig {
+  width: number;
+  height: number;
+  rotation: number;   // degrees
+  opacity: number;    // 0-1
+}
+
+/**
+ * Profile link for the profile window
+ */
+export interface ProfileLink {
+  title: string;
+  url: string;
+}
+
+/**
  * Widget configuration types
  */
 export interface StickyNoteConfig {
@@ -53,7 +71,7 @@ export type WidgetConfig = StickyNoteConfig | GuestbookConfig | MusicPlayerConfi
 
 export interface DesktopItem {
   id: string;
-  type: 'folder' | 'image' | 'text' | 'link' | 'audio' | 'video' | 'pdf' | 'widget';
+  type: 'folder' | 'image' | 'text' | 'link' | 'audio' | 'video' | 'pdf' | 'widget' | 'sticker';
   name: string;
   parentId: string | null; // null = root desktop
   position: { x: number; y: number };
@@ -74,6 +92,8 @@ export interface DesktopItem {
   // Widget fields (Layer 3 customization)
   widgetType?: WidgetType;
   widgetConfig?: WidgetConfig;
+  // Sticker fields (Layer 3 decoration)
+  stickerConfig?: StickerConfig;
 }
 
 export interface UserProfile {
@@ -95,6 +115,12 @@ export interface UserProfile {
   wallpaperMode?: 'cover' | 'tile' | 'center'; // How custom wallpaper images are displayed
   // Watermark setting
   hideWatermark?: boolean;  // Hide "Made with EternalOS" watermark in visitor mode
+  // Profile fields
+  bio?: string;                    // User bio, max 500 chars
+  profileLinks?: ProfileLink[];    // User links, max 5
+  shareDescription?: string;       // Custom OG description, max 200 chars
+  // Analytics
+  analyticsEnabled?: boolean;      // Opt-in view counter
 }
 
 export interface UserRecord {

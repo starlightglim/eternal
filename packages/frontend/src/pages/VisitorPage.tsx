@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { WindowManager } from '../components/window';
 import { DesktopIcon } from '../components/icons';
+import { Sticker } from '../components/desktop/Sticker';
 import { MobileBrowser } from '../components/desktop/MobileBrowser';
 import { VisitorMenuBar } from '../components/menubar/VisitorMenuBar';
 import { useWindowStore, setVisitorWindowMode } from '../stores/windowStore';
@@ -75,15 +76,20 @@ export function VisitorPage() {
     const displayName = profile?.displayName || username || 'Unknown';
     const itemCount = items.filter((i) => i.parentId === null).length;
 
-    // Generate og:image URL pointing to our dynamic image endpoint
-    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-    const ogImageUrl = `${baseUrl}/api/og/${username}.png`;
+    // Generate og:image URL pointing to our dynamic image endpoint on the API
+    const apiBase = import.meta.env.VITE_API_URL || '';
+    const ogImageUrl = `${apiBase}/api/og/${username}.png`;
+
+    // Use custom shareDescription > bio > default
+    const customDesc = profile?.shareDescription || profile?.bio || '';
+    const defaultDesc = `Visit ${displayName}'s personal desktop on EternalOS. ${itemCount} item${itemCount !== 1 ? 's' : ''} on display.`;
+    const ogDesc = customDesc || `A personal corner of the internet. ${itemCount} item${itemCount !== 1 ? 's' : ''} curated by ${displayName}.`;
 
     return {
       title: `@${username}'s Desktop | EternalOS`,
-      description: `Visit ${displayName}'s personal desktop on EternalOS. ${itemCount} item${itemCount !== 1 ? 's' : ''} on display.`,
+      description: customDesc || defaultDesc,
       ogTitle: `@${username}'s Desktop`,
-      ogDescription: `A personal corner of the internet. ${itemCount} item${itemCount !== 1 ? 's' : ''} curated by ${displayName}.`,
+      ogDescription: ogDesc,
       ogType: 'website',
       ogUrl: typeof window !== 'undefined' ? window.location.href : undefined,
       ogImage: ogImageUrl,
@@ -232,8 +238,9 @@ export function VisitorPage() {
     onProfileUpdate: handleLiveProfile,
   });
 
-  // Get root-level items (parentId === null)
-  const rootItems = items.filter((item) => item.parentId === null);
+  // Get root-level items (parentId === null), split stickers from regular items
+  const rootItems = items.filter((item) => item.parentId === null && item.type !== 'sticker');
+  const stickerItems = items.filter((item) => item.parentId === null && item.type === 'sticker');
 
   // Handle icon selection (simple click, no shift-click in visitor mode)
   const handleIconSelect = useCallback((id: string) => {
@@ -419,6 +426,7 @@ export function VisitorPage() {
         <VisitorMenuBar username={username || ''} />
         <div
           className={`${styles.desktop} user-desktop ${wallpaperClass}`}
+          eos-name="desktop"
           style={wallpaperStyle}
         >
           <div className={styles.emptyDesktopWindow}>
@@ -455,6 +463,7 @@ export function VisitorPage() {
       <VisitorMenuBar username={username || ''} />
       <div
         className={`${styles.desktop} user-desktop ${wallpaperClass}`}
+        eos-name="desktop"
         style={wallpaperStyle}
         onClick={handleDesktopClick}
       >
@@ -472,6 +481,15 @@ export function VisitorPage() {
             onDragMove={undefined}
             onDragEnd={undefined}
             isDragging={false}
+          />
+        ))}
+
+        {/* Sticker Layer - decorative images */}
+        {stickerItems.map((item) => (
+          <Sticker
+            key={item.id}
+            item={item}
+            isOwner={false}
           />
         ))}
 

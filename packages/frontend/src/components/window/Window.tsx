@@ -2,6 +2,34 @@ import { useRef, useCallback, useEffect } from 'react';
 import { useWindowStore } from '../../stores/windowStore';
 import styles from './Window.module.css';
 
+// Tags considered interactive — clicks on these shouldn't trigger body-drag
+const INTERACTIVE_TAGS = new Set([
+  'button', 'a', 'input', 'textarea', 'select',
+  'video', 'audio', 'canvas', 'label',
+]);
+
+// Containers that handle their own pointer interactions (e.g. folder selection rect)
+const INTERACTIVE_CONTAINERS = new Set(['folder-view']);
+
+/** Walk up from target to boundary, checking for interactive elements */
+function isInteractiveTarget(target: EventTarget | null, boundary: HTMLElement | null): boolean {
+  let el = target as HTMLElement | null;
+  while (el && el !== boundary) {
+    const tag = el.tagName?.toLowerCase();
+    if (tag && INTERACTIVE_TAGS.has(tag)) return true;
+    if (el.isContentEditable) return true;
+    if (el.draggable) return true;
+    const role = el.getAttribute?.('role');
+    if (role === 'button' || role === 'link' || role === 'slider' || role === 'textbox') return true;
+    if (el.dataset?.noDrag !== undefined) return true;
+    for (const cls of el.classList || []) {
+      if (INTERACTIVE_CONTAINERS.has(cls)) return true;
+    }
+    el = el.parentElement as HTMLElement | null;
+  }
+  return false;
+}
+
 interface WindowProps {
   id: string;
   title: string;
@@ -12,6 +40,9 @@ interface WindowProps {
   collapsed?: boolean;
   isActive: boolean;
   contentType?: string;
+  eosName?: string;
+  eosType?: string;
+  eosFolder?: string;
   children?: React.ReactNode;
 }
 
@@ -33,6 +64,9 @@ export function Window({
   collapsed,
   isActive,
   contentType,
+  eosName,
+  eosType,
+  eosFolder,
   children,
 }: WindowProps) {
   const { closeWindow, focusWindow, moveWindow, resizeWindow, toggleCollapse, toggleMaximize } = useWindowStore();
@@ -165,6 +199,39 @@ export function Window({
   }, []);
 
   // ============================================
+  // BODY DRAG HANDLING (Content Area)
+  // Click-drag from non-interactive content areas moves the window
+  // ============================================
+
+  const handleBodyDragStart = useCallback(
+    (e: React.PointerEvent) => {
+      if (e.button !== 0) return;
+
+      // Don't initiate drag from interactive elements
+      if (isInteractiveTarget(e.target, windowRef.current)) return;
+
+      // Don't drag when clicking on a scrollbar
+      const el = e.currentTarget as HTMLElement;
+      const rect = el.getBoundingClientRect();
+      if (e.clientX > rect.left + el.clientWidth) return;
+      if (e.clientY > rect.top + el.clientHeight) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      isDragging.current = true;
+      dragOffset.current = {
+        x: e.clientX - position.x,
+        y: e.clientY - position.y,
+      };
+
+      focusWindow(id);
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    },
+    [position, focusWindow, id]
+  );
+
+  // ============================================
   // RESIZE HANDLING (Bottom-Right Corner)
   // ============================================
 
@@ -238,6 +305,9 @@ export function Window({
       ref={windowRef}
       className={windowClasses}
       data-content-type={contentType}
+      eos-name={eosName}
+      eos-type={eosType}
+      {...(eosFolder ? { 'eos-folder': eosFolder } : {})}
       style={{
         left: position.x,
         top: position.y,
@@ -257,7 +327,7 @@ export function Window({
         >
           {/* Close Box */}
           <div
-            className={styles.closeBox}
+            className={`${styles.closeBox} closeBox`}
             onPointerDown={(e) => e.stopPropagation()}
             onClick={handleClose}
           />
@@ -270,26 +340,35 @@ export function Window({
 
           {/* Zoom Box (Maximize/Restore) */}
           <div
-            className={styles.zoomBox}
+            className={`${styles.zoomBox} zoomBox`}
             onPointerDown={(e) => e.stopPropagation()}
             onClick={handleZoom}
           />
 
           {/* Collapse Box (Window Shade) */}
           <div
-            className={styles.collapseBox}
+            className={`${styles.collapseBox} collapseBox`}
             onPointerDown={(e) => e.stopPropagation()}
             onClick={handleCollapse}
           />
         </div>
 
-        {/* Content Area (hidden when collapsed) */}
-        {!collapsed && <div className={`${styles.content} windowContent`}>{children}</div>}
+        {/* Content Area (hidden when collapsed) — also draggable from non-interactive areas */}
+        {!collapsed && (
+          <div
+            className={`${styles.content} windowContent`}
+            onPointerDown={handleBodyDragStart}
+            onPointerMove={handleDragMove}
+            onPointerUp={handleDragEnd}
+          >
+            {children}
+          </div>
+        )}
 
         {/* Resize Handle (hidden when collapsed) */}
         {!collapsed && (
           <div
-            className={styles.resizeHandle}
+            className={`${styles.resizeHandle} resizeHandle`}
             onPointerDown={handleResizeStart}
             onPointerMove={handleResizeMove}
             onPointerUp={handleResizeEnd}

@@ -1,0 +1,156 @@
+/* CSSElementPicker - Element picker overlay for CSS targeting */
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 99998;
+  cursor: crosshair;
+}
+
+/* Highlight box drawn over hovered element */
+.highlight {
+  position: fixed;
+  pointer-events: none;
+  border: 2px dashed #0066FF;
+  background: rgba(0, 102, 255, 0.08);
+  z-index: 99998;
+  transition: all 0.05s ease;
+}
+
+/* Tooltip shown near cursor */
+.tooltip {
+  position: fixed;
+  pointer-events: none;
+  z-index: 99999;
+  background: var(--white, #FFFFFF);
+  border: 2px solid var(--black, #000000);
+  padding: 6px 10px;
+  font-family: var(--font-geneva, Geneva, sans-serif);
+  font-size: 11px;
+  color: var(--black, #000000);
+  white-space: nowrap;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+.tooltipName {
+  font-weight: bold;
+}
+
+.tooltipType {
+  color: var(--shadow, #808080);
+  margin-left: 6px;
+}
+
+.tooltipFolder {
+  color: var(--shadow, #808080);
+  margin-left: 6px;
+  font-style: italic;
+}
+
+/* Popover shown when user clicks an element */
+.popover {
+  position: fixed;
+  z-index: 99999;
+  background: var(--white, #FFFFFF);
+  border: 2px solid var(--black, #000000);
+  min-width: 200px;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.3);
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+.popoverHeader {
+  padding: 8px 10px;
+  font-family: var(--font-chicago, Chicago, sans-serif);
+  font-size: 11px;
+  font-weight: bold;
+  background: var(--platinum, #C0C0C0);
+  border-bottom: 1px solid var(--shadow, #808080);
+  color: var(--black, #000000);
+}
+
+.popoverOption {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  font-family: var(--font-geneva, Geneva, sans-serif);
+  font-size: 11px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--highlight, #DFDFDF);
+  cursor: pointer;
+  text-align: left;
+  color: var(--black, #000000);
+}
+
+.popoverOption:last-child {
+  border-bottom: none;
+}
+
+.popoverOption:hover {
+  background: var(--selection, #000080);
+  color: var(--selection-text, #FFFFFF);
+}
+
+.popoverOptionLabel {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 2px;
+}
+
+.popoverOptionSelector {
+  display: block;
+  font-family: var(--font-monaco, Monaco, monospace);
+  font-size: 10px;
+  color: #0000CC;
+}
+
+.popoverOption:hover .popoverOptionSelector {
+  color: #AACCFF;
+}
+
+.popoverCancel {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  font-family: var(--font-geneva, Geneva, sans-serif);
+  font-size: 11px;
+  background: var(--platinum, #C0C0C0);
+  border: none;
+  border-top: 1px solid var(--shadow, #808080);
+  cursor: pointer;
+  text-align: center;
+  color: var(--shadow, #808080);
+}
+
+.popoverCancel:hover {
+  background: var(--highlight, #DFDFDF);
+  color: var(--black, #000000);
+}
+
+/* Status bar at top during picking */
+.statusBar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 20px;
+  z-index: 99999;
+  background: var(--selection, #000080);
+  color: var(--selection-text, #FFFFFF);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-chicago, Chicago, sans-serif);
+  font-size: 11px;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}

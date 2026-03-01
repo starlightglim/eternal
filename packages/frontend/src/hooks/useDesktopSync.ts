@@ -78,6 +78,11 @@ export function useDesktopSync() {
         setItems(data.items);
         setLoading(false);
 
+        // Store server window state for restoration by Desktop.tsx
+        if (data.windows && data.windows.length > 0) {
+          useDesktopStore.setState({ serverWindows: data.windows });
+        }
+
         // Update profile from backend if available
         // This syncs wallpaper and other preferences from the server
         if (data.profile) {

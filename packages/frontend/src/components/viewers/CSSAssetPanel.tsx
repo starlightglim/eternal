@@ -6,7 +6,6 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { useAuthStore } from '../../stores/authStore';
 import {
   uploadCSSAsset,
   listCSSAssets,
@@ -23,7 +22,6 @@ interface CSSAssetPanelProps {
 }
 
 export function CSSAssetPanel({ onInsertUrl }: CSSAssetPanelProps) {
-  const { profile } = useAuthStore();
   const [assets, setAssets] = useState<CSSAsset[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);

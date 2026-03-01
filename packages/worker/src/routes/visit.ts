@@ -35,6 +35,10 @@ interface VisitorResponse {
   fontSmoothing?: boolean;
   customCSS?: string;
   hideWatermark?: boolean;
+  // Profile fields
+  bio?: string;
+  profileLinks?: { title: string; url: string }[];
+  shareDescription?: string;
   items: DesktopItem[];
   windows?: SavedWindowState[];
 }
@@ -124,6 +128,9 @@ export async function handleVisit(
       fontSmoothing: data.profile?.fontSmoothing,
       customCSS: data.profile?.customCSS,
       hideWatermark: data.profile?.hideWatermark,
+      bio: data.profile?.bio,
+      profileLinks: data.profile?.profileLinks,
+      shareDescription: data.profile?.shareDescription,
       items: data.items,
       windows: data.windows,
     };

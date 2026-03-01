@@ -6,6 +6,7 @@ import { FolderIcon, ImageFileIcon, TextFileIcon, LinkIcon, AudioFileIcon, Video
 import { ThumbnailIcon } from '../icons/ThumbnailIcon';
 import { renderCustomIcon, CUSTOM_ICON_LIBRARY, type CustomIconId } from '../icons/CustomIconLibrary';
 import { getCustomIconUrl } from '../../services/api';
+import { slugify } from '../../utils/slugify';
 import { getTextFileContentType, type DesktopItem } from '../../types';
 import { ContextMenu, type ContextMenuItem } from '../ui';
 import styles from './FolderView.module.css';
@@ -70,6 +71,11 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false, isDr
     ? visitorItems.filter((item) => item.parentId === folderId)
     : storeItems.filter((item) => item.parentId === folderId)
   ).filter((item) => !item.isTrashed);
+
+  // Resolve folder name for eos-folder attribute
+  const allItems = visitorItems || storeItems;
+  const folderItem = folderId ? allItems.find((i) => i.id === folderId) : undefined;
+  const eosFolderName = folderItem ? slugify(folderItem.name) : undefined;
 
   // Handle double-click to open any item — uses same window ID patterns as Desktop
   const handleItemOpen = useCallback(
@@ -572,6 +578,9 @@ export function FolderView({ folderId, visitorItems, isVisitorMode = false, isDr
               cutItemIds.has(item.id) ? styles.cut : ''
             }`}
             data-folder-id={item.type === 'folder' ? item.id : undefined}
+            eos-name={slugify(item.name)}
+            eos-type={item.type}
+            {...(eosFolderName ? { 'eos-folder': eosFolderName } : {})}
             onClick={(e) => {
               e.stopPropagation();
               setSelectedId(item.id);

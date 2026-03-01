@@ -12,6 +12,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAuthStore } from '../../stores/authStore';
 import { useSoundStore } from '../../stores/soundStore';
+import { fetchAnalytics, type AnalyticsData } from '../../services/api';
 import { useThemeStore, THEMES } from '../../stores/themeStore';
 import { WALLPAPER_OPTIONS, type WallpaperId } from '../desktop/Desktop';
 import { uploadWallpaper, isApiConfigured, getWallpaperUrl, fetchQuota, updateProfile, type QuotaInfo } from '../../services/api';
@@ -20,7 +21,7 @@ import styles from './PreferencesWindow.module.css';
 type TabId = 'account' | 'desktop' | 'sound' | 'theme';
 
 export function PreferencesWindow() {
-  const { user, profile, setWallpaper } = useAuthStore();
+  const { user, profile, setWallpaper, setAnalyticsEnabled } = useAuthStore();
   const { enabled: soundEnabled, volume, setEnabled: setSoundEnabled, setVolume, playSound } = useSoundStore();
   const { currentTheme, setTheme } = useThemeStore();
   const [activeTab, setActiveTab] = useState<TabId>('account');
@@ -32,6 +33,8 @@ export function PreferencesWindow() {
   const [quotaLoading, setQuotaLoading] = useState(false);
   const [hideWatermark, setHideWatermark] = useState(profile?.hideWatermark || false);
   const [watermarkSaving, setWatermarkSaving] = useState(false);
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -58,6 +61,17 @@ export function PreferencesWindow() {
         .finally(() => setQuotaLoading(false));
     }
   }, [activeTab, quota, quotaLoading]);
+
+  // Fetch analytics when enabled and on account tab
+  useEffect(() => {
+    if (activeTab === 'account' && profile?.analyticsEnabled && isApiConfigured && !analyticsData && !analyticsLoading) {
+      setAnalyticsLoading(true);
+      fetchAnalytics()
+        .then(setAnalyticsData)
+        .catch(console.error)
+        .finally(() => setAnalyticsLoading(false));
+    }
+  }, [activeTab, profile?.analyticsEnabled, analyticsData, analyticsLoading]);
 
   // Focus input when editing
   useEffect(() => {
@@ -334,6 +348,39 @@ export function PreferencesWindow() {
                 </label>
               )}
             </div>
+
+            {/* Analytics Toggle */}
+            {isApiConfigured && (
+              <div className={styles.analyticsSection}>
+                <span className={styles.analyticsLabel}>Visitor Analytics:</span>
+                <label className={styles.analyticsToggle}>
+                  <input
+                    type="checkbox"
+                    checked={profile?.analyticsEnabled || false}
+                    onChange={(e) => {
+                      setAnalyticsEnabled(e.target.checked);
+                      // Reset data so it refetches
+                      if (e.target.checked) setAnalyticsData(null);
+                    }}
+                    className={styles.checkbox}
+                  />
+                  <span>Track desktop visitor count</span>
+                </label>
+                {profile?.analyticsEnabled && (
+                  <div className={styles.analyticsInfo}>
+                    {analyticsLoading ? (
+                      <span className={styles.analyticsLoading}>Loading...</span>
+                    ) : analyticsData ? (
+                      <span className={styles.analyticsCount}>
+                        Total views: <strong>{analyticsData.totalViews.toLocaleString()}</strong>
+                      </span>
+                    ) : (
+                      <span className={styles.analyticsEmpty}>No data yet</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Storage Quota */}
             {isApiConfigured && (

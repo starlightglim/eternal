@@ -11,6 +11,7 @@ import { handleUpload, handleServeFile, handleWallpaperUpload, handleServeWallpa
 import { handleVisit } from './routes/visit';
 import { handleOgImage } from './routes/ogImage';
 import { handleAssistant } from './routes/assistant';
+import { trackVisitAnalytics, handleGetAnalytics } from './routes/analytics';
 import { requireAuth, authenticate } from './middleware/auth';
 import {
   checkRateLimit,
@@ -491,6 +492,14 @@ export default {
           return Response.json({ error: 'Username required' }, { status: 400, headers: corsHeaders });
         }
         response = await handleVisit(request, env, username);
+
+        // Track analytics non-blocking (if user opted in)
+        const normalizedUsername = username.toLowerCase();
+        const usernameData = await env.AUTH_KV.get<{ uid: string }>(`username:${normalizedUsername}`, 'json');
+        if (usernameData) {
+          ctx.waitUntil(trackVisitAnalytics(request, env, usernameData.uid));
+        }
+
         return withCors(response, corsHeaders);
       }
 
@@ -609,6 +618,16 @@ export default {
         }
 
         return withCors(Response.json(result), corsHeaders);
+      }
+
+      // Analytics route (requires auth)
+      if (path === '/api/analytics' && request.method === 'GET') {
+        const authResult = await requireAuth(request, env);
+        if (authResult instanceof Response) {
+          return withCors(authResult, corsHeaders);
+        }
+        response = await handleGetAnalytics(request, env, authResult);
+        return withCors(response, corsHeaders);
       }
 
       // Guestbook route (no auth required, rate limited)

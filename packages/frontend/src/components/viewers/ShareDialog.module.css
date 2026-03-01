@@ -75,6 +75,59 @@
   -moz-osx-font-smoothing: unset;
 }
 
+/* Description Section */
+.descriptionSection {
+  display: flex;
+  flex-direction: column;
+}
+
+.descriptionInput {
+  font-family: var(--font-geneva);
+  font-size: 11px;
+  padding: 6px 8px;
+  border: 2px solid var(--border);
+  border-top-color: var(--shadow);
+  border-left-color: var(--shadow);
+  background: var(--white);
+  color: var(--window-text-color, var(--black));
+  resize: vertical;
+  min-height: 40px;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+.descriptionInput:focus {
+  outline: none;
+  border-color: var(--selection, #000080);
+}
+
+.descriptionInput::placeholder {
+  color: var(--shadow);
+  font-style: italic;
+}
+
+.descriptionHint {
+  font-family: var(--font-geneva);
+  font-size: 10px;
+  color: var(--window-text-secondary, var(--shadow));
+  margin-top: 4px;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+.savingIndicator {
+  font-weight: normal;
+  font-size: 10px;
+  color: var(--shadow);
+  font-style: italic;
+}
+
+.savedIndicator {
+  font-weight: normal;
+  font-size: 10px;
+  color: var(--selection, #000080);
+}
+
 /* URL Section */
 .urlSection {
   display: flex;

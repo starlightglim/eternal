@@ -105,6 +105,7 @@ export class UserDesktop {
         return Response.json({
           items: Array.from(this.items.values()),
           profile: this.profile,
+          windows: this.windows,
         });
       }
 
@@ -265,6 +266,7 @@ export class UserDesktop {
       customIcon: partial.customIcon,
       widgetType: partial.widgetType,
       widgetConfig: partial.widgetConfig,
+      stickerConfig: partial.stickerConfig,
     };
 
     this.items.set(item.id, item);
@@ -292,6 +294,7 @@ export class UserDesktop {
       'customIcon',
       'widgetType',
       'widgetConfig',
+      'stickerConfig',
       'isTrashed',
       'trashedAt',
     ];
@@ -443,6 +446,10 @@ export class UserDesktop {
       'isNewUser',
       'hideWatermark',
       'wallpaperMode',
+      'bio',
+      'profileLinks',
+      'shareDescription',
+      'analyticsEnabled',
     ];
     const filteredUpdates: Partial<UserProfile> = {};
 
@@ -485,6 +492,40 @@ export class UserDesktop {
         const urlValue = urlMatch[2];
         if (!allowedUrlPrefixes.some((prefix) => urlValue.startsWith(prefix))) {
           throw new Error('Custom CSS contains disallowed url() references');
+        }
+      }
+    }
+
+    // Validate bio (max 500 chars)
+    if (typeof filteredUpdates.bio === 'string') {
+      if (filteredUpdates.bio.length > 500) {
+        throw new Error('Bio exceeds maximum length of 500 characters');
+      }
+    }
+
+    // Validate shareDescription (max 200 chars)
+    if (typeof filteredUpdates.shareDescription === 'string') {
+      if (filteredUpdates.shareDescription.length > 200) {
+        throw new Error('Share description exceeds maximum length of 200 characters');
+      }
+    }
+
+    // Validate profileLinks (max 5, valid URLs)
+    if (Array.isArray(filteredUpdates.profileLinks)) {
+      if (filteredUpdates.profileLinks.length > 5) {
+        throw new Error('Maximum 5 profile links allowed');
+      }
+      for (const link of filteredUpdates.profileLinks) {
+        if (!link.title || typeof link.title !== 'string' || link.title.length > 100) {
+          throw new Error('Profile link title must be 1-100 characters');
+        }
+        if (!link.url || typeof link.url !== 'string') {
+          throw new Error('Profile link URL is required');
+        }
+        try {
+          new URL(link.url);
+        } catch {
+          throw new Error(`Invalid profile link URL: ${link.url}`);
         }
       }
     }

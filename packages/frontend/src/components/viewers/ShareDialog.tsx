@@ -9,7 +9,7 @@
  * - Social sharing links
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAuthStore } from '../../stores/authStore';
 import styles from './ShareDialog.module.css';
 
@@ -18,14 +18,24 @@ interface ShareDialogProps {
 }
 
 export function ShareDialog({ isOwner = true }: ShareDialogProps) {
-  const { profile } = useAuthStore();
+  const { profile, setShareDescription } = useAuthStore();
   const [copied, setCopied] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [description, setDescription] = useState(profile?.shareDescription || '');
+  const [descSaving, setDescSaving] = useState(false);
+  const [descSaved, setDescSaved] = useState(false);
+  const descTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const username = profile?.username;
   const shareUrl = username ? `${window.location.origin}/@${username}` : '';
-  const ogImageUrl = username ? `${window.location.origin}/api/og/${username}.png` : '';
+  const apiBase = import.meta.env.VITE_API_URL || '';
+  const ogImageUrl = username ? `${apiBase}/api/og/${username}.png` : '';
+
+  // Sync description from profile
+  useEffect(() => {
+    setDescription(profile?.shareDescription || '');
+  }, [profile?.shareDescription]);
 
   // Reset copied state after 2 seconds
   useEffect(() => {
@@ -34,6 +44,47 @@ export function ShareDialog({ isOwner = true }: ShareDialogProps) {
       return () => clearTimeout(timer);
     }
   }, [copied]);
+
+  // Reset descSaved state after 2 seconds
+  useEffect(() => {
+    if (descSaved) {
+      const timer = setTimeout(() => setDescSaved(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [descSaved]);
+
+  const handleSaveDescription = useCallback(async () => {
+    const trimmed = description.trim();
+    if (trimmed === (profile?.shareDescription || '')) return;
+
+    setDescSaving(true);
+    try {
+      await setShareDescription(trimmed);
+      setDescSaved(true);
+    } catch (error) {
+      console.error('Failed to save share description:', error);
+    } finally {
+      setDescSaving(false);
+    }
+  }, [description, profile?.shareDescription, setShareDescription]);
+
+  // Auto-save description on blur or after typing stops (debounce)
+  const handleDescriptionChange = useCallback((value: string) => {
+    if (value.length > 200) return;
+    setDescription(value);
+    // Clear existing timer
+    if (descTimerRef.current) clearTimeout(descTimerRef.current);
+    // Auto-save after 1.5s of no typing
+    descTimerRef.current = setTimeout(() => {
+      const trimmed = value.trim();
+      if (trimmed !== (profile?.shareDescription || '')) {
+        setDescSaving(true);
+        setShareDescription(trimmed);
+        setDescSaved(true);
+        setDescSaving(false);
+      }
+    }, 1500);
+  }, [profile?.shareDescription, setShareDescription]);
 
   const handleCopyLink = useCallback(async () => {
     if (!shareUrl) return;
@@ -108,6 +159,27 @@ export function ShareDialog({ isOwner = true }: ShareDialogProps) {
         </div>
         <div className={styles.previewHint}>
           This is how your desktop appears when shared on social media.
+        </div>
+      </div>
+
+      {/* Description Section */}
+      <div className={styles.descriptionSection}>
+        <div className={styles.sectionLabel}>
+          Share Description
+          {descSaving && <span className={styles.savingIndicator}> Saving...</span>}
+          {descSaved && !descSaving && <span className={styles.savedIndicator}> Saved</span>}
+        </div>
+        <textarea
+          className={styles.descriptionInput}
+          placeholder="Describe your desktop for link previews (max 200 chars)"
+          value={description}
+          onChange={(e) => handleDescriptionChange(e.target.value)}
+          onBlur={handleSaveDescription}
+          maxLength={200}
+          rows={3}
+        />
+        <div className={styles.descriptionHint}>
+          {description.length}/200 - Shown in link previews on social media, Discord, Slack, etc.
         </div>
       </div>
 

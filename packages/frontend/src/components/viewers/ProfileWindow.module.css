@@ -1,0 +1,197 @@
+/* ProfileWindow - Mac OS 8 "Get Info" style profile viewer */
+
+.container {
+  padding: 16px;
+  font-family: var(--font-family, 'Geneva', 'Verdana', sans-serif);
+  font-size: 12px;
+  color: var(--black, #000);
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Section styling */
+.section {
+  border: 1px solid var(--gray, #808080);
+  padding: 10px;
+  background: var(--window-bg, #fff);
+}
+
+.sectionLabel {
+  font-weight: bold;
+  font-size: 11px;
+  color: var(--gray, #808080);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+/* Display name area */
+.displayName {
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 2px;
+}
+
+.username {
+  font-size: 11px;
+  color: var(--gray, #808080);
+}
+
+/* Bio textarea */
+.bioArea {
+  width: 100%;
+  min-height: 60px;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 12px;
+  border: 1px solid var(--gray, #808080);
+  padding: 6px;
+  background: var(--white, #fff);
+  box-sizing: border-box;
+}
+
+.bioArea:focus {
+  outline: none;
+  border-color: var(--selection, #3875D7);
+}
+
+.bioText {
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+.bioEmpty {
+  color: var(--gray, #808080);
+  font-style: italic;
+}
+
+.charCount {
+  font-size: 10px;
+  color: var(--gray, #808080);
+  text-align: right;
+  margin-top: 2px;
+}
+
+/* Links list */
+.linkList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.linkItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.linkTitle {
+  font-weight: bold;
+  min-width: 60px;
+}
+
+.linkUrl {
+  color: var(--selection, #3875D7);
+  text-decoration: underline;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.linkUrl:hover {
+  color: #1a4da0;
+}
+
+.linkRemoveBtn {
+  background: none;
+  border: 1px solid var(--gray, #808080);
+  font-size: 10px;
+  cursor: pointer;
+  padding: 1px 4px;
+  color: var(--black, #000);
+}
+
+.linkRemoveBtn:hover {
+  background: var(--gray-light, #e0e0e0);
+}
+
+/* Add link form */
+.addLinkForm {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.addLinkInput {
+  flex: 1;
+  font-family: inherit;
+  font-size: 11px;
+  border: 1px solid var(--gray, #808080);
+  padding: 3px 6px;
+}
+
+.addLinkInput:focus {
+  outline: none;
+  border-color: var(--selection, #3875D7);
+}
+
+.addLinkBtn {
+  font-family: inherit;
+  font-size: 11px;
+  border: 1px solid var(--gray, #808080);
+  background: var(--gray-light, #e0e0e0);
+  padding: 3px 8px;
+  cursor: pointer;
+}
+
+.addLinkBtn:hover {
+  background: var(--gray, #c0c0c0);
+}
+
+/* Stats line */
+.stats {
+  font-size: 11px;
+  color: var(--gray, #808080);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Save button */
+.saveRow {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.saveBtn {
+  font-family: inherit;
+  font-size: 12px;
+  border: 2px outset var(--gray, #c0c0c0);
+  background: var(--gray-light, #e0e0e0);
+  padding: 4px 16px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.saveBtn:active {
+  border-style: inset;
+}
+
+.savedMessage {
+  font-size: 11px;
+  color: #2d8a2d;
+  align-self: center;
+}
+
+.noLinks {
+  color: var(--gray, #808080);
+  font-style: italic;
+  font-size: 11px;
+}

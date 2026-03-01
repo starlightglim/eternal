@@ -1,15 +1,19 @@
 import { useCallback, useRef, useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { WindowManager } from '../window';
 import { DesktopIcon, Trash, AssistantDesktopIcon } from '../icons';
+import { Sticker } from './Sticker';
 import { MenuBar } from '../menubar';
 import { UploadProgress } from './UploadProgress';
+import { CSSElementPicker } from '../viewers/CSSElementPicker';
 import { LoadingOverlay, ContextMenu, LinkDialog, IconPicker, WidgetPicker, QuickStartWizard, getWidgetDefaultSize, type ContextMenuItem } from '../ui';
 import { useWindowStore } from '../../stores/windowStore';
 import { useDesktopStore } from '../../stores/desktopStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useClipboardStore } from '../../stores/clipboardStore';
+import { useCSSPickerStore } from '../../stores/cssPickerStore';
 import { useDesktopSync } from '../../hooks/useDesktopSync';
-import { isApiConfigured, getWallpaperUrl } from '../../services/api';
+import { isApiConfigured, getWallpaperUrl, uploadFile as apiUploadFile } from '../../services/api';
 import { getTextFileContentType, type DesktopItem, type WidgetType, type WidgetConfig } from '../../types';
 import {
   FOLDER_DRAG_START,
@@ -78,11 +82,15 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
     return new Set<string>();
   }, [clipboard]);
 
+  // CSS Element Picker state
+  const pickerActive = useCSSPickerStore((state) => state.isActive);
+
   // Note: Desktop items are loaded by useDesktopSync hook (called above)
   // which fetches items + profile from the API when user is authenticated.
 
-  // Restore window state from localStorage after items are loaded
-  // This runs once when loading finishes and we have items
+  // Restore window state after items are loaded
+  // Tries localStorage first, falls back to server-saved windows
+  const serverWindows = useDesktopStore((state) => state.serverWindows);
   const hasRestoredWindows = useRef(false);
   useEffect(() => {
     if (isVisitorMode || hasRestoredWindows.current) return;
@@ -90,9 +98,9 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
 
     // Build a set of valid item IDs for window restoration
     const validItemIds = new Set(items.map(item => item.id));
-    loadWindowState(validItemIds);
+    loadWindowState(validItemIds, serverWindows);
     hasRestoredWindows.current = true;
-  }, [loading, items, isVisitorMode, loadWindowState]);
+  }, [loading, items, isVisitorMode, loadWindowState, serverWindows]);
 
   // New user onboarding: show QuickStart wizard
   const [showQuickStart, setShowQuickStart] = useState(false);
@@ -201,9 +209,18 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
   // Get root-level items (parentId === null), excluding trashed items
   // Performance: useMemo prevents recalculating on every render
   const rootItems = useMemo(
-    () => items.filter((item) => item.parentId === null && !item.isTrashed),
+    () => items.filter((item) => item.parentId === null && !item.isTrashed && item.type !== 'sticker'),
     [items]
   );
+
+  // Stickers are rendered in their own layer with pixel-based positioning
+  const stickerItems = useMemo(
+    () => items.filter((item) => item.parentId === null && !item.isTrashed && item.type === 'sticker'),
+    [items]
+  );
+
+  // Selected sticker state
+  const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
 
   // Performance: Build a Set of occupied positions for O(1) lookup
   // Format: "x,y" string keys for fast membership testing
@@ -434,6 +451,38 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
     };
   }, [isVisitorMode, folderDragItem, folderWindowDropTargetId, findNearestAvailablePosition]);
 
+  // --- Sticker handlers ---
+  const handleStickerSelect = useCallback((id: string) => {
+    setSelectedStickerId(id);
+    deselectAll();
+    setTrashSelected(false);
+    setAssistantSelected(false);
+  }, [deselectAll]);
+
+  const handleStickerMove = useCallback((id: string, position: { x: number; y: number }) => {
+    const { updateItem } = useDesktopStore.getState();
+    updateItem(id, { position });
+  }, []);
+
+  const handleStickerResize = useCallback((id: string, size: { width: number; height: number }) => {
+    const item = items.find(i => i.id === id);
+    if (!item) return;
+    const { updateItem } = useDesktopStore.getState();
+    const currentConfig = item.stickerConfig || { width: 120, height: 120, rotation: 0, opacity: 1 };
+    updateItem(id, { stickerConfig: { ...currentConfig, ...size } });
+  }, [items]);
+
+  const handleStickerContextMenu = useCallback((item: DesktopItem, e: React.MouseEvent) => {
+    if (isVisitorMode) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedStickerId(item.id);
+    setContextMenu({
+      position: { x: e.clientX, y: e.clientY },
+      targetItem: item,
+    });
+  }, [isVisitorMode]);
+
   // Click on empty desktop area - deselect all
   const handleDesktopClick = useCallback(
     (e: React.MouseEvent) => {
@@ -442,6 +491,7 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
         deselectAll();
         setTrashSelected(false);
         setAssistantSelected(false);
+        setSelectedStickerId(null);
       }
     },
     [deselectAll]
@@ -1110,9 +1160,31 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
         if (url.startsWith('#')) url = '';
       }
 
-      // Validate and create link item
+      // Validate and handle URL
       if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
-        // Generate name from URL
+        // Check if URL looks like an image — try to fetch and upload instead of creating link
+        const imageExtPattern = /\.(jpe?g|png|gif|webp)(\?.*)?$/i;
+        if (imageExtPattern.test(url) && isApiConfigured) {
+          try {
+            const response = await fetch(url);
+            if (response.ok) {
+              const blob = await response.blob();
+              if (blob.type.startsWith('image/')) {
+                // Extract filename from URL
+                const urlPath = new URL(url).pathname;
+                const filename = urlPath.split('/').pop() || 'image.png';
+                const file = new File([blob], filename, { type: blob.type });
+                const position = findNearestAvailablePosition(gridX, gridY);
+                await uploadFile(file, null, position);
+                return; // Successfully uploaded as image
+              }
+            }
+          } catch {
+            // Fetch failed (likely CORS) — fall through to link creation
+          }
+        }
+
+        // Fall through: create link item
         let name = 'Link';
         try {
           const urlObj = new URL(url);
@@ -1316,6 +1388,55 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
   const getContextMenuItems = useCallback((): ContextMenuItem[] => {
     const { addItem, updateItem } = useDesktopStore.getState();
 
+    if (contextMenu?.targetItem?.type === 'sticker') {
+      // Menu for a sticker
+      const item = contextMenu.targetItem;
+      const { updateItem } = useDesktopStore.getState();
+      const config = item.stickerConfig || { width: 120, height: 120, rotation: 0, opacity: 1 };
+      return [
+        {
+          id: 'rotate-cw',
+          label: 'Rotate Clockwise',
+          action: () => {
+            updateItem(item.id, { stickerConfig: { ...config, rotation: (config.rotation + 15) % 360 } });
+          },
+        },
+        {
+          id: 'rotate-ccw',
+          label: 'Rotate Counter-CW',
+          action: () => {
+            updateItem(item.id, { stickerConfig: { ...config, rotation: (config.rotation - 15 + 360) % 360 } });
+          },
+        },
+        { id: 'divider-1', label: '', divider: true },
+        {
+          id: 'opacity-100',
+          label: 'Full Opacity',
+          checked: config.opacity === 1,
+          action: () => {
+            updateItem(item.id, { stickerConfig: { ...config, opacity: 1 } });
+          },
+        },
+        {
+          id: 'opacity-50',
+          label: 'Half Opacity',
+          checked: config.opacity === 0.5,
+          action: () => {
+            updateItem(item.id, { stickerConfig: { ...config, opacity: 0.5 } });
+          },
+        },
+        { id: 'divider-2', label: '', divider: true },
+        {
+          id: 'remove-sticker',
+          label: 'Remove Sticker',
+          action: () => {
+            moveToTrash([item.id]);
+            setSelectedStickerId(null);
+          },
+        },
+      ];
+    }
+
     if (contextMenu?.targetItem) {
       // Menu for a desktop item
       const item = contextMenu.targetItem;
@@ -1477,6 +1598,40 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
             setShowWidgetPicker(true);
           },
         },
+        {
+          id: 'add-sticker',
+          label: 'Add Sticker...',
+          action: () => {
+            // Check sticker limit
+            if (stickerItems.length >= 20) {
+              alert('Maximum 20 stickers allowed.');
+              return;
+            }
+            // Open file picker for image
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/jpeg,image/png,image/gif,image/webp';
+            input.onchange = async () => {
+              const file = input.files?.[0];
+              if (!file || !isApiConfigured) return;
+              try {
+                // Upload via API with sticker override
+                const pixelX = contextMenu?.position.x || 100;
+                const pixelY = contextMenu?.position.y || 100;
+                const result = await apiUploadFile(file, null, { x: pixelX, y: pixelY });
+                // After upload, patch item to be a sticker with config
+                const { updateItem: patchItem } = useDesktopStore.getState();
+                patchItem(result.item.id, {
+                  type: 'sticker' as DesktopItem['type'],
+                  stickerConfig: { width: 120, height: 120, rotation: 0, opacity: 1 },
+                });
+              } catch (error) {
+                console.error('Failed to upload sticker:', error);
+              }
+            };
+            input.click();
+          },
+        },
         { id: 'divider-1', label: '', divider: true },
         {
           id: 'change-wallpaper',
@@ -1511,7 +1666,7 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
         },
       ];
     }
-  }, [contextMenu, deselectAll, handleIconDoubleClick, openWindow, moveToTrash, removeItem, selectedIds, findNearestAvailablePosition, cleanUp, selectAll]);
+  }, [contextMenu, deselectAll, handleIconDoubleClick, openWindow, moveToTrash, removeItem, selectedIds, findNearestAvailablePosition, cleanUp, selectAll, stickerItems]);
 
   // Handle link creation from dialog
   const handleLinkCreate = useCallback((url: string, name: string) => {
@@ -1549,6 +1704,7 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
 
       <div
         data-desktop
+        eos-name="desktop"
         className={`${styles.desktop} user-desktop ${isFileDragOver ? styles.dragOver : ''} ${isDesktopDropTarget ? styles.desktopDropTarget : ''} ${profile?.wallpaper?.startsWith('custom:') ? '' : `wallpaper-${profile?.wallpaper || 'default'}`}`}
         style={profile?.wallpaper?.startsWith('custom:') ? (() => {
           const mode = profile?.wallpaperMode || 'cover';
@@ -1607,6 +1763,20 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
           />
         </div>
       )}
+
+      {/* Sticker Layer - rendered between icons and windows */}
+      {stickerItems.map((item) => (
+        <Sticker
+          key={item.id}
+          item={item}
+          isOwner={!isVisitorMode}
+          isSelected={selectedStickerId === item.id}
+          onSelect={handleStickerSelect}
+          onContextMenu={handleStickerContextMenu}
+          onMove={handleStickerMove}
+          onResize={handleStickerResize}
+        />
+      ))}
 
       {/* Desk Assistant Icon - hidden in visitor mode */}
       {!isVisitorMode && (
@@ -1738,6 +1908,12 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
           />
         )}
       </div>
+
+      {/* CSS Element Picker overlay — rendered via portal at document.body level */}
+      {!isVisitorMode && pickerActive && createPortal(
+        <CSSElementPicker />,
+        document.body
+      )}
     </>
   );
 }

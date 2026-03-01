@@ -1,6 +1,7 @@
 import { Window } from './Window';
 import { useWindowStore } from '../../stores/windowStore';
 import { useDesktopStore } from '../../stores/desktopStore';
+import { slugify } from '../../utils/slugify';
 import { ImageViewer } from '../viewers/ImageViewer';
 import { TextViewer } from '../viewers/TextViewer';
 import { MarkdownViewer } from '../viewers/MarkdownViewer';
@@ -19,6 +20,7 @@ import { PreferencesWindow } from '../viewers/PreferencesWindow';
 import { AppearancePanel } from '../viewers/AppearancePanel';
 import { CSSEditor } from '../viewers/CSSEditor';
 import { ShareDialog } from '../viewers/ShareDialog';
+import { ProfileWindow } from '../viewers/ProfileWindow';
 import { DeskAssistant } from '../assistant';
 import { FolderView } from './FolderView';
 import { TrashView } from './TrashView';
@@ -38,6 +40,7 @@ interface WindowManagerProps {
  */
 export function WindowManager({ isVisitorMode = false, visitorItems, folderWindowDropTargetId, ownerUid }: WindowManagerProps) {
   const windows = useWindowStore((state) => state.windows);
+  const items = useDesktopStore((state) => state.items);
 
   // Find the active window (highest z-index among non-minimized)
   const visibleWindows = windows.filter((w) => !w.minimized);
@@ -48,7 +51,16 @@ export function WindowManager({ isVisitorMode = false, visitorItems, folderWindo
 
   return (
     <>
-      {windows.map((win) => (
+      {windows.map((win) => {
+        // Compute eos- values for the window
+        const sourceItems = isVisitorMode && visitorItems ? visitorItems : items;
+        const item = win.contentId ? sourceItems.find((i) => i.id === win.contentId) : undefined;
+        const eosName = item ? slugify(item.name) : slugify(win.title);
+        const eosType = item?.type || win.contentType;
+        const parentItem = item?.parentId ? sourceItems.find((i) => i.id === item.parentId) : undefined;
+        const eosFolder = parentItem ? slugify(parentItem.name) : undefined;
+
+        return (
         <Window
           key={win.id}
           id={win.id}
@@ -60,6 +72,9 @@ export function WindowManager({ isVisitorMode = false, visitorItems, folderWindo
           collapsed={win.collapsed}
           isActive={win.id === activeWindowId}
           contentType={win.contentType}
+          eosName={eosName}
+          eosType={eosType}
+          eosFolder={eosFolder}
         >
           {/* Window content will be rendered based on contentType */}
           <WindowContent
@@ -72,7 +87,8 @@ export function WindowManager({ isVisitorMode = false, visitorItems, folderWindo
             ownerUid={ownerUid}
           />
         </Window>
-      ))}
+        );
+      })}
     </>
   );
 }
@@ -394,6 +410,9 @@ function WindowContent({
 
     case 'share-dialog':
       return <ShareDialog isOwner={!isVisitorMode} />;
+
+    case 'profile':
+      return <ProfileWindow isOwner={!isVisitorMode} />;
 
     default:
       return null;
