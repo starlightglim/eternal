@@ -6,7 +6,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { CUSTOM_ICON_LIBRARY, getIconsByCategory, type CustomIconId } from '../icons/CustomIconLibrary';
+import { getIconsByCategory } from '../icons/customIconUtils';
 import { uploadCustomIcon, getCustomIconUrl } from '../../services/api';
 import styles from './IconPicker.module.css';
 
@@ -240,14 +240,4 @@ export function IconPicker({ currentIcon, itemId, onSelect, onClose }: IconPicke
       </div>
     </div>
   );
-}
-
-/**
- * Render the icon component for a given icon ID
- * Used by DesktopIcon to display custom icons
- */
-export function getCustomIconComponent(iconId: string): React.FC<{ size?: number; className?: string }> | null {
-  const iconData = CUSTOM_ICON_LIBRARY[iconId as CustomIconId];
-  if (!iconData) return null;
-  return iconData.component;
 }

@@ -4,7 +4,7 @@
  * Connects to the owner's Durable Object via /api/ws/:username and
  * receives live item, window, and profile changes.
  */
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useEffectEvent, useRef } from 'react';
 import type { DesktopItem, UserProfile } from '../types';
 import type { SavedWindowState } from '../services/api';
 
@@ -26,19 +26,9 @@ export function useVisitorSync({
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const reconnectDelayRef = useRef(1000);
-  const enabledRef = useRef(enabled);
-  enabledRef.current = enabled;
-
-  // Stable callback refs to avoid reconnecting on callback changes
-  const onItemsRef = useRef(onItemsUpdate);
-  onItemsRef.current = onItemsUpdate;
-  const onWindowsRef = useRef(onWindowsUpdate);
-  onWindowsRef.current = onWindowsUpdate;
-  const onProfileRef = useRef(onProfileUpdate);
-  onProfileRef.current = onProfileUpdate;
-
-  const connect = useCallback(() => {
-    if (!username || !enabledRef.current) return;
+  const connectRef = useRef<() => void>(() => {});
+  const connect = useEffectEvent(() => {
+    if (!username || !enabled) return;
 
     // Derive WebSocket URL from API URL
     const apiUrl = import.meta.env.VITE_API_URL || '';
@@ -65,18 +55,18 @@ export function useVisitorSync({
 
         switch (data.type) {
           case 'snapshot':
-            if (data.items) onItemsRef.current(data.items);
-            if (data.windows) onWindowsRef.current(data.windows);
-            if (data.profile) onProfileRef.current(data.profile);
+            if (data.items) onItemsUpdate(data.items);
+            if (data.windows) onWindowsUpdate(data.windows);
+            if (data.profile) onProfileUpdate(data.profile);
             break;
           case 'items':
-            if (data.items) onItemsRef.current(data.items);
+            if (data.items) onItemsUpdate(data.items);
             break;
           case 'windows':
-            if (data.windows) onWindowsRef.current(data.windows);
+            if (data.windows) onWindowsUpdate(data.windows);
             break;
           case 'profile':
-            if (data.profile) onProfileRef.current(data.profile);
+            if (data.profile) onProfileUpdate(data.profile);
             break;
         }
       } catch (err) {
@@ -86,20 +76,24 @@ export function useVisitorSync({
 
     ws.onclose = () => {
       wsRef.current = null;
-      if (!enabledRef.current) return;
+      if (!enabled) return;
 
       // Reconnect with exponential backoff (cap at 30s)
       const delay = reconnectDelayRef.current;
       reconnectTimeoutRef.current = setTimeout(() => {
         reconnectDelayRef.current = Math.min(delay * 2, 30000);
-        connect();
+        connectRef.current();
       }, delay);
     };
 
     ws.onerror = () => {
       // Error will trigger onclose, reconnect handled there
     };
-  }, [username]);
+  });
+
+  useEffect(() => {
+    connectRef.current = connect;
+  });
 
   useEffect(() => {
     if (!enabled || !username) return;
@@ -107,7 +101,6 @@ export function useVisitorSync({
     connect();
 
     return () => {
-      enabledRef.current = false;
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
@@ -116,5 +109,5 @@ export function useVisitorSync({
         wsRef.current = null;
       }
     };
-  }, [enabled, username, connect]);
+  }, [enabled, username]);
 }

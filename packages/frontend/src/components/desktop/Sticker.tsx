@@ -36,9 +36,9 @@ function StickerInner({
   const config = item.stickerConfig || { width: 120, height: 120, rotation: 0, opacity: 1 };
 
   // Drag state
-  const isDragging = useRef(false);
+  const [isDragging, setIsDragging] = useState(false);
   const dragStartMouse = useRef({ x: 0, y: 0 });
-  const dragStartPos = useRef({ x: 0, y: 0 });
+  const [dragStartPos, setDragStartPos] = useState({ x: item.position.x, y: item.position.y });
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number } | null>(null);
 
   // Resize state
@@ -58,36 +58,36 @@ function StickerInner({
 
     onSelect?.(item.id);
 
-    isDragging.current = true;
+    setIsDragging(true);
     dragStartMouse.current = { x: e.clientX, y: e.clientY };
-    dragStartPos.current = { x: item.position.x, y: item.position.y };
+    setDragStartPos({ x: item.position.x, y: item.position.y });
     setDragOffset(null);
 
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
   }, [isOwner, item.id, item.position, onSelect]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    if (isDragging.current) {
+    if (isDragging) {
       const dx = e.clientX - dragStartMouse.current.x;
       const dy = e.clientY - dragStartMouse.current.y;
       setDragOffset({ x: dx, y: dy });
     }
-  }, []);
+  }, [isDragging]);
 
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
-    if (isDragging.current && dragOffset) {
-      const newX = Math.max(0, dragStartPos.current.x + dragOffset.x);
-      const newY = Math.max(0, dragStartPos.current.y + dragOffset.y);
+    if (isDragging && dragOffset) {
+      const newX = Math.max(0, dragStartPos.x + dragOffset.x);
+      const newY = Math.max(0, dragStartPos.y + dragOffset.y);
       onMove?.(item.id, { x: newX, y: newY });
     }
-    isDragging.current = false;
+    setIsDragging(false);
     setDragOffset(null);
     try {
       (e.target as HTMLElement).releasePointerCapture(e.pointerId);
     } catch {
       // Ignore
     }
-  }, [item.id, dragOffset, onMove]);
+  }, [item.id, dragOffset, dragStartPos, isDragging, onMove]);
 
   // --- Resize handlers ---
   const handleResizeStart = useCallback((e: React.PointerEvent) => {
@@ -133,14 +133,14 @@ function StickerInner({
   }, [isOwner, item, onContextMenu]);
 
   // Compute position
-  const x = dragOffset ? dragStartPos.current.x + dragOffset.x : item.position.x;
-  const y = dragOffset ? dragStartPos.current.y + dragOffset.y : item.position.y;
+  const x = dragOffset ? dragStartPos.x + dragOffset.x : item.position.x;
+  const y = dragOffset ? dragStartPos.y + dragOffset.y : item.position.y;
 
   const className = [
     styles.sticker,
     'sticker', // Plain class for user custom CSS targeting
     isOwner && styles.stickerOwner,
-    isDragging.current && dragOffset && styles.stickerDragging,
+    isDragging && dragOffset && styles.stickerDragging,
     isSelected && styles.stickerSelected,
   ]
     .filter(Boolean)

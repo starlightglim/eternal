@@ -49,20 +49,14 @@ export function PixelCanvas({ itemId, config, isOwner, onConfigUpdate }: PixelCa
   const updateItem = useDesktopStore((state) => state.updateItem);
 
   // Use local state for the grid to enable instant rendering during drawing
-  const [localGrid, setLocalGrid] = useState<number[][]>(config?.grid || createEmptyGrid());
+  const [localGrid, setLocalGrid] = useState<number[][] | null>(null);
   const palette = config?.palette || DEFAULT_PALETTE;
+  const grid = localGrid ?? config?.grid ?? createEmptyGrid();
 
   const [selectedColor, setSelectedColor] = useState(0); // Index into palette
   const [isDrawing, setIsDrawing] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Sync local grid when config changes externally
-  useEffect(() => {
-    if (config?.grid) {
-      setLocalGrid(config.grid);
-    }
-  }, [config?.grid]);
 
   // Cleanup debounce timer on unmount
   useEffect(() => {
@@ -83,6 +77,7 @@ export function PixelCanvas({ itemId, config, isOwner, onConfigUpdate }: PixelCa
         const newConfig: PixelCanvasConfig = { grid: newGrid, palette };
         updateItem(itemId, { widgetConfig: newConfig });
         onConfigUpdate?.(newConfig);
+        setLocalGrid(null);
         saveTimerRef.current = null;
       }, SAVE_DEBOUNCE_MS);
     },
@@ -92,9 +87,9 @@ export function PixelCanvas({ itemId, config, isOwner, onConfigUpdate }: PixelCa
   const setPixel = useCallback(
     (row: number, col: number) => {
       if (!isOwner) return;
-      if (localGrid[row][col] === selectedColor) return;
+      if (grid[row][col] === selectedColor) return;
 
-      const newGrid = localGrid.map((r, ri) =>
+      const newGrid = grid.map((r, ri) =>
         ri === row ? r.map((c, ci) => (ci === col ? selectedColor : c)) : r
       );
       // Update local state instantly for responsive drawing
@@ -102,7 +97,7 @@ export function PixelCanvas({ itemId, config, isOwner, onConfigUpdate }: PixelCa
       // Debounce the API sync
       debouncedSave(newGrid);
     },
-    [localGrid, selectedColor, isOwner, debouncedSave]
+    [grid, selectedColor, isOwner, debouncedSave]
   );
 
   const handlePointerDown = useCallback(
@@ -133,6 +128,7 @@ export function PixelCanvas({ itemId, config, isOwner, onConfigUpdate }: PixelCa
     const newConfig: PixelCanvasConfig = { grid: emptyGrid, palette };
     updateItem(itemId, { widgetConfig: newConfig });
     onConfigUpdate?.(newConfig);
+    setLocalGrid(null);
   }, [itemId, palette, updateItem, onConfigUpdate]);
 
   const fillCanvas = useCallback(() => {
@@ -144,6 +140,7 @@ export function PixelCanvas({ itemId, config, isOwner, onConfigUpdate }: PixelCa
     const newConfig: PixelCanvasConfig = { grid: filledGrid, palette };
     updateItem(itemId, { widgetConfig: newConfig });
     onConfigUpdate?.(newConfig);
+    setLocalGrid(null);
   }, [selectedColor, itemId, palette, updateItem, onConfigUpdate]);
 
   return (
@@ -188,7 +185,7 @@ export function PixelCanvas({ itemId, config, isOwner, onConfigUpdate }: PixelCa
           cursor: isOwner ? 'crosshair' : 'default',
         }}
       >
-        {localGrid.map((row, rowIndex) =>
+        {grid.map((row, rowIndex) =>
           row.map((colorIndex, colIndex) => (
             <div
               key={`${rowIndex}-${colIndex}`}

@@ -106,6 +106,7 @@ export function VisitorPage() {
   // Apply owner's custom appearance when profile is loaded
   useEffect(() => {
     if (!profile) return;
+    const savedAppearance = userAppearance.current;
 
     // Build appearance object from owner's profile (including customCSS)
     const ownerAppearance = {
@@ -124,7 +125,6 @@ export function VisitorPage() {
       // First clear the owner's appearance
       clearAppearance();
       // Then restore the user's own appearance if they had any
-      const savedAppearance = userAppearance.current;
       if (savedAppearance && Object.keys(savedAppearance).length > 0) {
         applyAppearance(savedAppearance);
       }

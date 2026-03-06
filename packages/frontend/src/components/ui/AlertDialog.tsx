@@ -6,7 +6,7 @@
  * Features the classic beveled button style.
  */
 
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import styles from './AlertDialog.module.css';
 
 export type AlertType = 'error' | 'warning' | 'info' | 'confirm';
@@ -40,13 +40,16 @@ export function AlertDialog({
   onClose,
 }: AlertDialogProps) {
   // Default buttons based on type
-  const defaultButtons: AlertButton[] =
-    buttons ?? (type === 'confirm'
-      ? [
-          { label: 'Cancel', onClick: () => onClose?.() },
-          { label: 'OK', onClick: () => onClose?.(), primary: true },
-        ]
-      : [{ label: 'OK', onClick: () => onClose?.(), primary: true }]);
+  const defaultButtons = useMemo<AlertButton[]>(
+    () =>
+      buttons ?? (type === 'confirm'
+        ? [
+            { label: 'Cancel', onClick: () => onClose?.() },
+            { label: 'OK', onClick: () => onClose?.(), primary: true },
+          ]
+        : [{ label: 'OK', onClick: () => onClose?.(), primary: true }]),
+    [buttons, type, onClose]
+  );
 
   // Handle Escape key
   const handleKeyDown = useCallback(

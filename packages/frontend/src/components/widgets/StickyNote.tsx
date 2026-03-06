@@ -7,7 +7,7 @@
  * - Auto-saves on blur
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import type { StickyNoteConfig } from '../../types';
 import { useDesktopStore } from '../../stores/desktopStore';
 import styles from './StickyNote.module.css';
@@ -33,21 +33,15 @@ export function StickyNote({ itemId, config, isOwner, onConfigUpdate }: StickyNo
   const updateItem = useDesktopStore((state) => state.updateItem);
 
   // Default config
-  const currentConfig: StickyNoteConfig = {
+  const currentConfig: StickyNoteConfig = useMemo(() => ({
     color: config?.color || STICKY_NOTE_COLORS[0].value,
     text: config?.text || '',
-  };
+  }), [config?.color, config?.text]);
 
-  const [text, setText] = useState(currentConfig.text);
+  const [textDraft, setText] = useState<string | null>(null);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // Update local state when config changes externally
-  useEffect(() => {
-    if (config?.text !== undefined && config.text !== text) {
-      setText(config.text);
-    }
-  }, [config?.text]);
+  const text = textDraft ?? currentConfig.text;
 
   const saveConfig = useCallback(
     (newConfig: Partial<StickyNoteConfig>) => {
@@ -71,6 +65,7 @@ export function StickyNote({ itemId, config, isOwner, onConfigUpdate }: StickyNo
   const handleTextBlur = useCallback(() => {
     if (text !== currentConfig.text) {
       saveConfig({ text });
+      setText(null);
     }
   }, [text, currentConfig.text, saveConfig]);
 

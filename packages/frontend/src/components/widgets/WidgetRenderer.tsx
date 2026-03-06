@@ -2,7 +2,16 @@
  * WidgetRenderer - Routes widget items to their specific widget components
  */
 
-import type { DesktopItem, WidgetType, WidgetConfig } from '../../types';
+import type {
+  DesktopItem,
+  WidgetType,
+  WidgetConfig,
+  StickyNoteConfig,
+  GuestbookConfig,
+  MusicPlayerConfig,
+  PixelCanvasConfig,
+  LinkBoardConfig,
+} from '../../types';
 import { StickyNote } from './StickyNote';
 import { Guestbook } from './Guestbook';
 import { MusicPlayer } from './MusicPlayer';
@@ -61,12 +70,18 @@ export function WidgetRenderer({ item, isOwner, onConfigUpdate, ownerUid }: Widg
     onConfigUpdate?.(newConfig);
   };
 
+  const stickyConfig = widgetConfig as StickyNoteConfig | undefined;
+  const guestbookConfig = widgetConfig as GuestbookConfig | undefined;
+  const musicPlayerConfig = widgetConfig as MusicPlayerConfig | undefined;
+  const pixelCanvasConfig = widgetConfig as PixelCanvasConfig | undefined;
+  const linkBoardConfig = widgetConfig as LinkBoardConfig | undefined;
+
   switch (widgetType as WidgetType) {
     case 'sticky-note':
       return (
         <StickyNote
           itemId={item.id}
-          config={widgetConfig as any}
+          config={stickyConfig}
           isOwner={isOwner}
           onConfigUpdate={handleConfigUpdate}
         />
@@ -77,7 +92,7 @@ export function WidgetRenderer({ item, isOwner, onConfigUpdate, ownerUid }: Widg
         <Guestbook
           itemId={item.id}
           ownerUid={ownerUid || ''}
-          config={widgetConfig as any}
+          config={guestbookConfig}
           isOwner={isOwner}
           onConfigUpdate={handleConfigUpdate}
         />
@@ -87,7 +102,7 @@ export function WidgetRenderer({ item, isOwner, onConfigUpdate, ownerUid }: Widg
       return (
         <MusicPlayer
           itemId={item.id}
-          config={widgetConfig as any}
+          config={musicPlayerConfig}
           isOwner={isOwner}
           onConfigUpdate={handleConfigUpdate}
         />
@@ -97,7 +112,7 @@ export function WidgetRenderer({ item, isOwner, onConfigUpdate, ownerUid }: Widg
       return (
         <PixelCanvas
           itemId={item.id}
-          config={widgetConfig as any}
+          config={pixelCanvasConfig}
           isOwner={isOwner}
           onConfigUpdate={handleConfigUpdate}
         />
@@ -107,7 +122,7 @@ export function WidgetRenderer({ item, isOwner, onConfigUpdate, ownerUid }: Widg
       return (
         <LinkBoard
           itemId={item.id}
-          config={widgetConfig as any}
+          config={linkBoardConfig}
           isOwner={isOwner}
           onConfigUpdate={handleConfigUpdate}
         />

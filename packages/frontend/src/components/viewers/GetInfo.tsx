@@ -7,7 +7,7 @@ import {
   ImageFileIcon,
   LinkIcon,
 } from '../icons/PixelIcons';
-import { renderCustomIcon, CUSTOM_ICON_LIBRARY, type CustomIconId } from '../icons/CustomIconLibrary';
+import { renderCustomIcon, CUSTOM_ICON_LIBRARY, type CustomIconId } from '../icons/customIconUtils';
 import { getCustomIconUrl } from '../../services/api';
 import type { DesktopItem } from '../../types';
 import styles from './GetInfo.module.css';
@@ -36,7 +36,9 @@ export function GetInfo({ item, isOwner = true }: GetInfoProps) {
   // Custom icon takes precedence if set
   const hasUploadedIcon = item.customIcon?.startsWith('upload:');
   const hasLibraryIcon = item.customIcon && CUSTOM_ICON_LIBRARY[item.customIcon as CustomIconId];
-  const IconComponent = getIconForType(item.type);
+  const locationLabel = item.parentId
+    ? items.find((i) => i.id === item.parentId)?.name || 'Unknown folder'
+    : null;
 
   // Format the file size
   const sizeDisplay = item.fileSize ? formatFileSize(item.fileSize) : '--';
@@ -122,7 +124,7 @@ export function GetInfo({ item, isOwner = true }: GetInfoProps) {
           ) : hasLibraryIcon ? (
             renderCustomIcon(item.customIcon!, 48)
           ) : (
-            <IconComponent size={48} />
+            renderTypeIcon(item.type, 48)
           )}
         </div>
         <div className={styles.nameContainer}>
@@ -227,10 +229,7 @@ export function GetInfo({ item, isOwner = true }: GetInfoProps) {
         <>
           <div className={styles.divider} />
           <div className={styles.infoTable}>
-            <InfoRow label="Location" value={(() => {
-              const parent = items.find((i) => i.id === item.parentId);
-              return parent ? parent.name : 'Unknown folder';
-            })()} />
+            <InfoRow label="Location" value={locationLabel} />
           </div>
         </>
       )}
@@ -259,18 +258,18 @@ function InfoRow({
 /**
  * Get the appropriate icon component for an item type
  */
-function getIconForType(type: string) {
+function renderTypeIcon(type: string, size: number) {
   switch (type) {
     case 'folder':
-      return FolderIcon;
+      return <FolderIcon size={size} />;
     case 'text':
-      return TextFileIcon;
+      return <TextFileIcon size={size} />;
     case 'image':
-      return ImageFileIcon;
+      return <ImageFileIcon size={size} />;
     case 'link':
-      return LinkIcon;
+      return <LinkIcon size={size} />;
     default:
-      return TextFileIcon;
+      return <TextFileIcon size={size} />;
   }
 }
 

@@ -222,7 +222,7 @@ function sanitizeCSSUrls(css: string): string {
   // This regex captures the full url(...) including any internal whitespace
   return css.replace(
     /url\s*\(\s*(['"]?)([^)]*?)\1\s*\)/gi,
-    (match, _quote, urlValue) => {
+    (_match, _quote, urlValue) => {
       // Clean up the URL value (remove internal whitespace/newlines that could be used to bypass)
       const cleanedUrl = urlValue.replace(/[\r\n\t]/g, '').trim();
 

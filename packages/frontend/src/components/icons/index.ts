@@ -12,10 +12,6 @@ export {
   AssistantIcon,
 } from './PixelIcons';
 export {
-  CUSTOM_ICON_LIBRARY,
-  getIconsByCategory,
-  renderCustomIcon,
-  type CustomIconId,
   // Colored Folders
   RedFolderIcon,
   BlueFolderIcon,
@@ -56,3 +52,9 @@ export {
   HeadphonesIcon,
   HomeIcon,
 } from './CustomIconLibrary';
+export {
+  CUSTOM_ICON_LIBRARY,
+  getIconsByCategory,
+  renderCustomIcon,
+  type CustomIconId,
+} from './customIconUtils';

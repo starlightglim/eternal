@@ -7,7 +7,7 @@
  * - Classic Mac audio player aesthetic
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import type { MusicPlayerConfig, MusicTrack } from '../../types';
 import { useDesktopStore } from '../../stores/desktopStore';
 import styles from './MusicPlayer.module.css';
@@ -22,7 +22,7 @@ interface MusicPlayerProps {
 export function MusicPlayer({ itemId, config, isOwner, onConfigUpdate }: MusicPlayerProps) {
   const updateItem = useDesktopStore((state) => state.updateItem);
 
-  const tracks = config?.tracks || [];
+  const tracks = useMemo(() => config?.tracks || [], [config?.tracks]);
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
@@ -112,7 +112,7 @@ export function MusicPlayer({ itemId, config, isOwner, onConfigUpdate }: MusicPl
         setIsPlaying(false);
       });
     }
-  }, [currentTrackIndex, currentTrack]);
+  }, [currentTrackIndex, currentTrack, isPlaying]);
 
   const addTrack = useCallback(() => {
     if (!editTitle.trim() || !editUrl.trim()) return;

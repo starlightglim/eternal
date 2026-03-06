@@ -30,11 +30,6 @@ export function CSSAssetPanel({ onInsertUrl }: CSSAssetPanelProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch assets on mount
-  useEffect(() => {
-    loadAssets();
-  }, []);
-
   const loadAssets = useCallback(async () => {
     try {
       setLoading(true);
@@ -47,6 +42,11 @@ export function CSSAssetPanel({ onInsertUrl }: CSSAssetPanelProps) {
       setLoading(false);
     }
   }, []);
+
+  // Fetch assets on mount
+  useEffect(() => {
+    loadAssets();
+  }, [loadAssets]);
 
   const handleUpload = useCallback(async (file: File) => {
     try {

@@ -102,21 +102,13 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
     hasRestoredWindows.current = true;
   }, [loading, items, isVisitorMode, loadWindowState, serverWindows]);
 
-  // New user onboarding: show QuickStart wizard
-  const [showQuickStart, setShowQuickStart] = useState(false);
-  const hasCheckedNewUser = useRef(false);
-
-  useEffect(() => {
-    if (isVisitorMode || loading || hasCheckedNewUser.current) return;
-    if (!profile?.isNewUser) return;
-
-    hasCheckedNewUser.current = true;
-    setShowQuickStart(true);
-  }, [isVisitorMode, loading, profile]);
+  // New user onboarding
+  const [quickStartDismissed, setQuickStartDismissed] = useState(false);
+  const showQuickStart = !quickStartDismissed && !isVisitorMode && !loading && !!profile?.isNewUser;
 
   // Handle QuickStart wizard completion
   const handleQuickStartComplete = useCallback(() => {
-    setShowQuickStart(false);
+    setQuickStartDismissed(true);
 
     // Update local profile state to mark as not new
     if (profile) {
@@ -1697,7 +1689,7 @@ export function Desktop({ isVisitorMode = false }: DesktopProps) {
         },
       ];
     }
-  }, [contextMenu, deselectAll, handleIconDoubleClick, openWindow, moveToTrash, removeItem, selectedIds, findNearestAvailablePosition, cleanUp, selectAll, stickerItems]);
+  }, [contextMenu, deselectAll, handleIconDoubleClick, openWindow, moveToTrash, selectedIds, findNearestAvailablePosition, cleanUp, selectAll, stickerItems]);
 
   // Handle link creation from dialog
   const handleLinkCreate = useCallback((url: string, name: string) => {

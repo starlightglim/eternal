@@ -11,7 +11,7 @@ import { useWindowStore } from '../../stores/windowStore';
 import { useAuthStore } from '../../stores/authStore';
 import { WindowManager } from '../window';
 import { FolderIcon, TextFileIcon, ImageFileIcon, LinkIcon, AudioFileIcon, VideoFileIcon, PDFFileIcon, WidgetIcon } from '../icons/PixelIcons';
-import { renderCustomIcon, CUSTOM_ICON_LIBRARY, type CustomIconId } from '../icons/CustomIconLibrary';
+import { renderCustomIcon, CUSTOM_ICON_LIBRARY, type CustomIconId } from '../icons/customIconUtils';
 import { getCustomIconUrl } from '../../services/api';
 import { getTextFileContentType, type DesktopItem } from '../../types';
 import styles from './MobileBrowser.module.css';

@@ -8,7 +8,7 @@
  * - Member since and item count stats
  */
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useAuthStore } from '../../stores/authStore';
 import { useDesktopStore } from '../../stores/desktopStore';
 import type { ProfileLink } from '../../types';
@@ -36,25 +36,29 @@ export function ProfileWindow({ isOwner = true, visitorProfile }: ProfileWindowP
   const displayName = displayProfile?.displayName || username;
 
   // Editable state
-  const [bio, setBioLocal] = useState(displayProfile?.bio || '');
-  const [links, setLinksLocal] = useState<ProfileLink[]>(displayProfile?.profileLinks || []);
+  const baseBio = displayProfile?.bio || '';
+  const baseLinks = useMemo(() => displayProfile?.profileLinks || [], [displayProfile?.profileLinks]);
+  const [bioDraft, setBioLocal] = useState<string | null>(null);
+  const [linksDraft, setLinksLocal] = useState<ProfileLink[] | null>(null);
   const [newLinkTitle, setNewLinkTitle] = useState('');
   const [newLinkUrl, setNewLinkUrl] = useState('');
   const [saved, setSaved] = useState(false);
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bio = bioDraft ?? baseBio;
+  const links = linksDraft ?? baseLinks;
 
-  // Sync when profile changes externally
   useEffect(() => {
-    if (displayProfile) {
-      setBioLocal(displayProfile.bio || '');
-      setLinksLocal(displayProfile.profileLinks || []);
-    }
-  }, [displayProfile]);
+    return () => {
+      if (saveTimeout.current) clearTimeout(saveTimeout.current);
+    };
+  }, []);
 
   const handleSave = useCallback(() => {
     if (!isOwner) return;
     setBio(bio);
     setProfileLinks(links);
+    setBioLocal(null);
+    setLinksLocal(null);
     setSaved(true);
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
     saveTimeout.current = setTimeout(() => setSaved(false), 2000);
@@ -76,8 +80,8 @@ export function ProfileWindow({ isOwner = true, visitorProfile }: ProfileWindowP
   }, [links, newLinkTitle, newLinkUrl]);
 
   const handleRemoveLink = useCallback((index: number) => {
-    setLinksLocal((prev) => prev.filter((_, i) => i !== index));
-  }, []);
+    setLinksLocal((prev) => (prev ?? links).filter((_, i) => i !== index));
+  }, [links]);
 
   // Stats
   const rootItemCount = items.filter((i) => i.parentId === null && !i.isTrashed).length;

@@ -36,12 +36,20 @@ interface SoundState {
 
 // Audio context (lazy initialization)
 let audioContext: AudioContext | null = null;
+type WindowWithWebkitAudio = Window & typeof globalThis & {
+  webkitAudioContext?: typeof AudioContext;
+};
 
 function getAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
   if (!audioContext) {
     try {
-      audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const audioContextCtor = window.AudioContext || (window as WindowWithWebkitAudio).webkitAudioContext;
+      if (!audioContextCtor) {
+        console.warn('Web Audio API not supported');
+        return null;
+      }
+      audioContext = new audioContextCtor();
     } catch {
       console.warn('Web Audio API not supported');
       return null;

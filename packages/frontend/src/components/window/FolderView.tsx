@@ -4,7 +4,7 @@ import { useWindowStore } from '../../stores/windowStore';
 import { useClipboardStore } from '../../stores/clipboardStore';
 import { FolderIcon, ImageFileIcon, TextFileIcon, LinkIcon, AudioFileIcon, VideoFileIcon, PDFFileIcon } from '../icons/PixelIcons';
 import { ThumbnailIcon } from '../icons/ThumbnailIcon';
-import { renderCustomIcon, CUSTOM_ICON_LIBRARY, type CustomIconId } from '../icons/CustomIconLibrary';
+import { renderCustomIcon, CUSTOM_ICON_LIBRARY, type CustomIconId } from '../icons/customIconUtils';
 import { getCustomIconUrl } from '../../services/api';
 import { slugify } from '../../utils/slugify';
 import { getTextFileContentType, type DesktopItem } from '../../types';

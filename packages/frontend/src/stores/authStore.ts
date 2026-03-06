@@ -7,6 +7,7 @@ import type { UserProfile, AuthUser } from '../types';
 import {
   isApiConfigured,
   setAuthToken,
+  setRefreshToken,
   setSessionExpiredHandler,
   signup as apiSignup,
   login as apiLogin,
@@ -19,6 +20,7 @@ interface AuthState {
   user: AuthUser | null;
   profile: UserProfile | null;
   token: string | null;
+  refreshToken: string | null;
   loading: boolean;
   error: string | null;
   initialized: boolean;
@@ -75,6 +77,7 @@ export const useAuthStore = create<AuthStore>()(
       user: null,
       profile: null,
       token: null,
+      refreshToken: null,
       loading: false,
       error: null,
       initialized: false,
@@ -105,6 +108,7 @@ export const useAuthStore = create<AuthStore>()(
 
           // Store token in API client
           setAuthToken(response.token);
+          setRefreshToken(response.refreshToken);
 
           const user: AuthUser = {
             uid: response.user.uid,
@@ -123,6 +127,7 @@ export const useAuthStore = create<AuthStore>()(
             user,
             profile,
             token: response.token,
+            refreshToken: response.refreshToken,
             loading: false,
             initialized: true,
           });
@@ -151,6 +156,7 @@ export const useAuthStore = create<AuthStore>()(
 
           // Store token in API client
           setAuthToken(response.token);
+          setRefreshToken(response.refreshToken);
 
           const user: AuthUser = {
             uid: response.user.uid,
@@ -170,6 +176,7 @@ export const useAuthStore = create<AuthStore>()(
             user,
             profile,
             token: response.token,
+            refreshToken: response.refreshToken,
             loading: false,
             initialized: true,
           });
@@ -189,17 +196,20 @@ export const useAuthStore = create<AuthStore>()(
             await apiLogout();
           }
           setAuthToken(null);
+          setRefreshToken(null);
           // Clear window state on logout
           useWindowStore.getState().clearWindowState();
           set({
             user: null,
             profile: null,
             token: null,
+            refreshToken: null,
             loading: false,
           });
         } catch (error: unknown) {
           // Clear state even if logout API fails
           setAuthToken(null);
+          setRefreshToken(null);
           // Clear window state on logout
           useWindowStore.getState().clearWindowState();
           const message = error instanceof Error ? error.message : 'Logout failed';
@@ -207,6 +217,7 @@ export const useAuthStore = create<AuthStore>()(
             user: null,
             profile: null,
             token: null,
+            refreshToken: null,
             loading: false,
             error: message,
           });
@@ -296,21 +307,26 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       initialize: () => {
-        const { token } = get();
+        const { token, refreshToken: storedRefreshToken } = get();
 
         // If we have a stored token, restore it to the API client
         if (token) {
           setAuthToken(token);
         }
+        if (storedRefreshToken) {
+          setRefreshToken(storedRefreshToken);
+        }
 
         // Register session expired handler so API 401s trigger logout
         setSessionExpiredHandler(() => {
           setAuthToken(null);
+          setRefreshToken(null);
           useWindowStore.getState().clearWindowState();
           set({
             user: null,
             profile: null,
             token: null,
+            refreshToken: null,
             loading: false,
             error: 'Your session has expired. Please log in again.',
           });
@@ -350,6 +366,7 @@ export const useAuthStore = create<AuthStore>()(
       // Only persist token
       partialize: (state) => ({
         token: state.token,
+        refreshToken: state.refreshToken,
         user: state.user,
         profile: state.profile,
       }),
@@ -357,6 +374,9 @@ export const useAuthStore = create<AuthStore>()(
       onRehydrateStorage: () => (state) => {
         if (state?.token) {
           setAuthToken(state.token);
+        }
+        if (state?.refreshToken) {
+          setRefreshToken(state.refreshToken);
         }
       },
     }

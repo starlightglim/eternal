@@ -8,7 +8,7 @@
  * - Click opens in new tab
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import type { LinkBoardConfig, LinkBoardLink } from '../../types';
 import { useDesktopStore } from '../../stores/desktopStore';
 import styles from './LinkBoard.module.css';
@@ -23,7 +23,7 @@ interface LinkBoardProps {
 export function LinkBoard({ itemId, config, isOwner, onConfigUpdate }: LinkBoardProps) {
   const updateItem = useDesktopStore((state) => state.updateItem);
 
-  const links = config?.links || [];
+  const links = useMemo(() => config?.links || [], [config?.links]);
 
   const [isAdding, setIsAdding] = useState(false);
   const [editTitle, setEditTitle] = useState('');

@@ -8,6 +8,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import type { WidgetType, WidgetConfig, StickyNoteConfig, GuestbookConfig, MusicPlayerConfig, PixelCanvasConfig, LinkBoardConfig } from '../../types';
 import { STICKY_NOTE_COLORS } from '../widgets/StickyNote';
+import { getWidgetDefaultSize } from './widgetDefaults';
 import styles from './WidgetPicker.module.css';
 
 interface WidgetPickerProps {
@@ -31,7 +32,7 @@ const WIDGETS: WidgetInfo[] = [
     description: 'A colored note for quick messages and reminders.',
     icon: '📝',
     defaultConfig: { color: STICKY_NOTE_COLORS[0].value, text: '' } as StickyNoteConfig,
-    defaultSize: { width: 200, height: 200 },
+    defaultSize: getWidgetDefaultSize('sticky-note'),
   },
   {
     type: 'guestbook',
@@ -39,7 +40,7 @@ const WIDGETS: WidgetInfo[] = [
     description: 'Let visitors leave messages on your desktop!',
     icon: '📖',
     defaultConfig: { entries: [] } as GuestbookConfig,
-    defaultSize: { width: 280, height: 350 },
+    defaultSize: getWidgetDefaultSize('guestbook'),
   },
   {
     type: 'music-player',
@@ -47,7 +48,7 @@ const WIDGETS: WidgetInfo[] = [
     description: 'A mini playlist with play, pause, and skip controls.',
     icon: '🎵',
     defaultConfig: { tracks: [] } as MusicPlayerConfig,
-    defaultSize: { width: 250, height: 300 },
+    defaultSize: getWidgetDefaultSize('music-player'),
   },
   {
     type: 'pixel-canvas',
@@ -58,7 +59,7 @@ const WIDGETS: WidgetInfo[] = [
       grid: Array(16).fill(null).map(() => Array(16).fill(1)),
       palette: ['#000000', '#FFFFFF', '#FF0000', '#0000FF', '#00FF00', '#FFFF00', '#800080', '#FFA500'],
     } as PixelCanvasConfig,
-    defaultSize: { width: 280, height: 320 },
+    defaultSize: getWidgetDefaultSize('pixel-canvas'),
   },
   {
     type: 'link-board',
@@ -66,7 +67,7 @@ const WIDGETS: WidgetInfo[] = [
     description: 'A grid of bookmarks for your favorite sites.',
     icon: '🔗',
     defaultConfig: { links: [] } as LinkBoardConfig,
-    defaultSize: { width: 280, height: 250 },
+    defaultSize: getWidgetDefaultSize('link-board'),
   },
 ];
 
@@ -76,6 +77,12 @@ const WIDGETS: WidgetInfo[] = [
 export function WidgetPicker({ onSelect, onClose }: WidgetPickerProps) {
   const [selectedWidget, setSelectedWidget] = useState<WidgetInfo | null>(null);
   const [widgetName, setWidgetName] = useState('');
+
+  const handleAdd = useCallback(() => {
+    if (!selectedWidget || !widgetName.trim()) return;
+    onSelect(selectedWidget.type, selectedWidget.defaultConfig, widgetName.trim());
+    onClose();
+  }, [selectedWidget, widgetName, onSelect, onClose]);
 
   // Handle keyboard navigation
   useEffect(() => {
@@ -89,7 +96,7 @@ export function WidgetPicker({ onSelect, onClose }: WidgetPickerProps) {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [onClose, selectedWidget, widgetName]);
+  }, [onClose, selectedWidget, widgetName, handleAdd]);
 
   // Handle overlay click
   const handleOverlayClick = useCallback(
@@ -105,12 +112,6 @@ export function WidgetPicker({ onSelect, onClose }: WidgetPickerProps) {
     setSelectedWidget(widget);
     setWidgetName(widget.name);
   }, []);
-
-  const handleAdd = useCallback(() => {
-    if (!selectedWidget || !widgetName.trim()) return;
-    onSelect(selectedWidget.type, selectedWidget.defaultConfig, widgetName.trim());
-    onClose();
-  }, [selectedWidget, widgetName, onSelect, onClose]);
 
   return (
     <div className={styles.overlay} onClick={handleOverlayClick}>
@@ -171,12 +172,4 @@ export function WidgetPicker({ onSelect, onClose }: WidgetPickerProps) {
       </div>
     </div>
   );
-}
-
-/**
- * Get the default window size for a widget type
- */
-export function getWidgetDefaultSize(widgetType: WidgetType): { width: number; height: number } {
-  const widget = WIDGETS.find((w) => w.type === widgetType);
-  return widget?.defaultSize || { width: 250, height: 250 };
 }

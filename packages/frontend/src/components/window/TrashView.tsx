@@ -1,8 +1,8 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useDesktopStore } from '../../stores/desktopStore';
 import { useAlertStore } from '../../stores/alertStore';
 import { FolderIcon, ImageFileIcon, TextFileIcon, LinkIcon } from '../icons/PixelIcons';
-import { renderCustomIcon, CUSTOM_ICON_LIBRARY, type CustomIconId } from '../icons/CustomIconLibrary';
+import { renderCustomIcon, CUSTOM_ICON_LIBRARY, type CustomIconId } from '../icons/customIconUtils';
 import { getCustomIconUrl } from '../../services/api';
 import type { DesktopItem } from '../../types';
 import styles from './TrashView.module.css';
@@ -18,8 +18,16 @@ export function TrashView() {
   const { showConfirm } = useAlertStore();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
 
   const trashedItems = getTrashedItems();
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 60000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   // Handle background click to deselect
   const handleBackgroundClick = useCallback(() => {
@@ -93,8 +101,7 @@ export function TrashView() {
   // Format relative time
   const formatTrashedTime = (timestamp?: number) => {
     if (!timestamp) return '';
-    const now = Date.now();
-    const diff = now - timestamp;
+    const diff = currentTime - timestamp;
     const minutes = Math.floor(diff / 60000);
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);

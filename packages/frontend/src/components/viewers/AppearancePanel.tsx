@@ -9,7 +9,7 @@
  * This is Layer 1 of the customization engine (Visual Identity).
  */
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useThemeStore, THEMES, type ThemeId } from '../../stores/themeStore';
 import { useAppearanceStore } from '../../stores/appearanceStore';
 import styles from './AppearancePanel.module.css';
@@ -70,22 +70,13 @@ export function AppearancePanel() {
   const [showCustomAccent, setShowCustomAccent] = useState(false);
   const [showCustomDesktop, setShowCustomDesktop] = useState(false);
   const [showCustomWindowBg, setShowCustomWindowBg] = useState(false);
-  const [customAccentInput, setCustomAccentInput] = useState(appearance.accentColor || '#000080');
-  const [customDesktopInput, setCustomDesktopInput] = useState(appearance.desktopColor || '#C0C0C0');
-  const [customWindowBgInput, setCustomWindowBgInput] = useState(appearance.windowBgColor || '#FFFFFF');
+  const [customAccentInput, setCustomAccentInput] = useState<string | null>(null);
+  const [customDesktopInput, setCustomDesktopInput] = useState<string | null>(null);
+  const [customWindowBgInput, setCustomWindowBgInput] = useState<string | null>(null);
 
-  // Sync custom inputs when appearance changes
-  useEffect(() => {
-    if (appearance.accentColor) {
-      setCustomAccentInput(appearance.accentColor);
-    }
-    if (appearance.desktopColor) {
-      setCustomDesktopInput(appearance.desktopColor);
-    }
-    if (appearance.windowBgColor) {
-      setCustomWindowBgInput(appearance.windowBgColor);
-    }
-  }, [appearance.accentColor, appearance.desktopColor, appearance.windowBgColor]);
+  const accentInputValue = customAccentInput ?? appearance.accentColor ?? '#000080';
+  const desktopInputValue = customDesktopInput ?? appearance.desktopColor ?? '#C0C0C0';
+  const windowBgInputValue = customWindowBgInput ?? appearance.windowBgColor ?? '#FFFFFF';
 
   // Check if a preset is selected
   const isAccentPreset = useMemo(() => {
@@ -117,22 +108,22 @@ export function AppearancePanel() {
   }, [setWindowBgColor]);
 
   const handleCustomAccent = useCallback(() => {
-    if (/^#[0-9A-Fa-f]{6}$/.test(customAccentInput)) {
-      setAccentColor(customAccentInput);
+    if (/^#[0-9A-Fa-f]{6}$/.test(accentInputValue)) {
+      setAccentColor(accentInputValue);
     }
-  }, [customAccentInput, setAccentColor]);
+  }, [accentInputValue, setAccentColor]);
 
   const handleCustomDesktop = useCallback(() => {
-    if (/^#[0-9A-Fa-f]{6}$/.test(customDesktopInput)) {
-      setDesktopColor(customDesktopInput);
+    if (/^#[0-9A-Fa-f]{6}$/.test(desktopInputValue)) {
+      setDesktopColor(desktopInputValue);
     }
-  }, [customDesktopInput, setDesktopColor]);
+  }, [desktopInputValue, setDesktopColor]);
 
   const handleCustomWindowBg = useCallback(() => {
-    if (/^#[0-9A-Fa-f]{6}$/.test(customWindowBgInput)) {
-      setWindowBgColor(customWindowBgInput);
+    if (/^#[0-9A-Fa-f]{6}$/.test(windowBgInputValue)) {
+      setWindowBgColor(windowBgInputValue);
     }
-  }, [customWindowBgInput, setWindowBgColor]);
+  }, [windowBgInputValue, setWindowBgColor]);
 
   const handleSave = useCallback(async () => {
     await saveAppearance();
@@ -234,13 +225,13 @@ export function AppearancePanel() {
                 <div className={styles.customColorRow}>
                   <input
                     type="color"
-                    value={customAccentInput}
+                    value={accentInputValue}
                     onChange={(e) => setCustomAccentInput(e.target.value)}
                     className={styles.colorPicker}
                   />
                   <input
                     type="text"
-                    value={customAccentInput}
+                    value={accentInputValue}
                     onChange={(e) => setCustomAccentInput(e.target.value)}
                     className={styles.colorInput}
                     placeholder="#000080"
@@ -281,13 +272,13 @@ export function AppearancePanel() {
                 <div className={styles.customColorRow}>
                   <input
                     type="color"
-                    value={customDesktopInput}
+                    value={desktopInputValue}
                     onChange={(e) => setCustomDesktopInput(e.target.value)}
                     className={styles.colorPicker}
                   />
                   <input
                     type="text"
-                    value={customDesktopInput}
+                    value={desktopInputValue}
                     onChange={(e) => setCustomDesktopInput(e.target.value)}
                     className={styles.colorInput}
                     placeholder="#C0C0C0"
@@ -328,13 +319,13 @@ export function AppearancePanel() {
                 <div className={styles.customColorRow}>
                   <input
                     type="color"
-                    value={customWindowBgInput}
+                    value={windowBgInputValue}
                     onChange={(e) => setCustomWindowBgInput(e.target.value)}
                     className={styles.colorPicker}
                   />
                   <input
                     type="text"
-                    value={customWindowBgInput}
+                    value={windowBgInputValue}
                     onChange={(e) => setCustomWindowBgInput(e.target.value)}
                     className={styles.colorInput}
                     placeholder="#FFFFFF"

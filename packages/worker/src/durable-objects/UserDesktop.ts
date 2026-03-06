@@ -76,6 +76,20 @@ export class UserDesktop {
   }
 
   /**
+   * Keep the public KV snapshot in sync with the latest DO state.
+   */
+  private async syncPublicSnapshot(): Promise<void> {
+    if (!this.profile?.uid) return;
+
+    const data = this.getVisitorData();
+    await this.env.DESKTOP_KV.put(
+      `public:${this.profile.uid}`,
+      JSON.stringify(data),
+      { expirationTtl: 300 }
+    );
+  }
+
+  /**
    * Handle incoming requests
    */
   async fetch(request: Request): Promise<Response> {
@@ -434,13 +448,7 @@ export class UserDesktop {
     const data = this.getVisitorData();
 
     // Also push to KV for fast visitor reads (if we have the UID in profile)
-    if (this.profile?.uid) {
-      await this.env.DESKTOP_KV.put(
-        `public:${this.profile.uid}`,
-        JSON.stringify(data),
-        { expirationTtl: 300 } // Cache for 5 minutes
-      );
-    }
+    await this.syncPublicSnapshot();
 
     return data;
   }
@@ -451,6 +459,7 @@ export class UserDesktop {
   private async setProfile(profile: UserProfile): Promise<void> {
     this.profile = profile;
     await this.state.storage.put('profile', profile);
+    await this.syncPublicSnapshot();
     this.broadcastProfile();
   }
 
@@ -564,6 +573,7 @@ export class UserDesktop {
     };
 
     await this.state.storage.put('profile', this.profile);
+    await this.syncPublicSnapshot();
     this.broadcastProfile();
     return this.profile;
   }
@@ -574,6 +584,7 @@ export class UserDesktop {
   private async saveItems(): Promise<void> {
     const itemsArray = Array.from(this.items.values());
     await this.state.storage.put('items', itemsArray);
+    await this.syncPublicSnapshot();
   }
 
   /**
@@ -595,6 +606,7 @@ export class UserDesktop {
       contentId: w.contentId ? String(w.contentId) : undefined,
     }));
     await this.state.storage.put('windows', this.windows);
+    await this.syncPublicSnapshot();
     this.broadcastWindows();
   }
 
@@ -687,6 +699,33 @@ export class UserDesktop {
    * count toward the quota to prevent the trash-cycling bypass.
    */
   private async getQuota(): Promise<QuotaInfo> {
+    if (this.profile?.uid) {
+      let usedBytes = 0;
+      let itemCount = 0;
+      let cursor: string | undefined;
+
+      do {
+        const result = await this.env.ETERNALOS_FILES.list({
+          prefix: `${this.profile.uid}/`,
+          cursor,
+        });
+
+        for (const object of result.objects) {
+          usedBytes += object.size;
+          itemCount++;
+        }
+
+        cursor = result.truncated ? result.cursor : undefined;
+      } while (cursor);
+
+      return {
+        used: usedBytes,
+        limit: DEFAULT_QUOTA_BYTES,
+        remaining: Math.max(0, DEFAULT_QUOTA_BYTES - usedBytes),
+        itemCount,
+      };
+    }
+
     let usedBytes = 0;
     let itemCount = 0;
 

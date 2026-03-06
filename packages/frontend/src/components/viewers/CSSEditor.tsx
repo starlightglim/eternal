@@ -55,7 +55,7 @@ const ALLOWED_URL_PREFIXES = [
 /**
  * Check if a URL value in CSS is allowed
  */
-export function isAllowedCSSUrl(urlValue: string): boolean {
+function isAllowedCSSUrl(urlValue: string): boolean {
   return ALLOWED_URL_PREFIXES.some((prefix) => urlValue.startsWith(prefix));
 }
 
@@ -428,7 +428,7 @@ const CSS_EXAMPLES = [
 export function CSSEditor() {
   const { appearance, setCustomCSS, saveAppearance, isLoading } = useAppearanceStore();
   const { isActive: pickerActive, activate: activatePicker, deactivate: deactivatePicker } = useCSSPickerStore();
-  const [cssInput, setCssInput] = useState(appearance.customCSS || '');
+  const [cssDraft, setCssDraft] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [showReference, setShowReference] = useState(false);
   const [showAssets, setShowAssets] = useState(false);
@@ -436,11 +436,7 @@ export function CSSEditor() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const previewStyleRef = useRef<HTMLStyleElement | null>(null);
-
-  // Sync with appearance store
-  useEffect(() => {
-    setCssInput(appearance.customCSS || '');
-  }, [appearance.customCSS]);
+  const cssInput = cssDraft ?? appearance.customCSS ?? '';
 
   // Cleanup preview style on unmount
   useEffect(() => {
@@ -453,7 +449,7 @@ export function CSSEditor() {
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
-    setCssInput(value);
+    setCssDraft(value);
     setHasUnsavedChanges(true);
 
     // Validate on change
@@ -505,12 +501,13 @@ export function CSSEditor() {
 
     setCustomCSS(cssInput);
     await saveAppearance();
+    setCssDraft(null);
     setHasUnsavedChanges(false);
     setPreviewActive(false);
   }, [cssInput, setCustomCSS, saveAppearance]);
 
   const handleReset = useCallback(() => {
-    setCssInput('');
+    setCssDraft('');
     setValidationError(null);
     setHasUnsavedChanges(true);
     setPreviewActive(false);
@@ -531,7 +528,7 @@ export function CSSEditor() {
     const after = cssInput.slice(end);
     const newCSS = before + (before && !before.endsWith('\n') ? '\n\n' : '') + css + after;
 
-    setCssInput(newCSS);
+    setCssDraft(newCSS);
     setHasUnsavedChanges(true);
 
     setTimeout(() => {
@@ -552,7 +549,7 @@ export function CSSEditor() {
     const after = cssInput.slice(end);
     const newCSS = before + snippet + after;
 
-    setCssInput(newCSS);
+    setCssDraft(newCSS);
     setHasUnsavedChanges(true);
 
     setTimeout(() => {
@@ -574,7 +571,7 @@ export function CSSEditor() {
     const after = cssInput.slice(end);
     const newCSS = before + (before && !before.endsWith('\n') ? '\n\n' : '') + ruleBlock + after;
 
-    setCssInput(newCSS);
+    setCssDraft(newCSS);
     setHasUnsavedChanges(true);
 
     // Position cursor inside the rule block (on the empty line)

@@ -14,6 +14,8 @@ export const isApiConfigured = !!API_URL;
 
 // Store JWT in memory
 let authToken: string | null = null;
+let refreshToken: string | null = null;
+let refreshRequest: Promise<boolean> | null = null;
 
 /**
  * Set the auth token for API requests
@@ -29,6 +31,20 @@ export function getAuthToken(): string | null {
   return authToken;
 }
 
+/**
+ * Set the refresh token for session rotation.
+ */
+export function setRefreshToken(token: string | null): void {
+  refreshToken = token;
+}
+
+/**
+ * Get the current refresh token.
+ */
+export function getRefreshToken(): string | null {
+  return refreshToken;
+}
+
 // Callback for handling session expiry — set by authStore during init
 let onSessionExpired: (() => void) | null = null;
 
@@ -36,12 +52,56 @@ export function setSessionExpiredHandler(handler: (() => void) | null): void {
   onSessionExpired = handler;
 }
 
+interface RefreshResponse {
+  token: string;
+  refreshToken: string;
+  expiresIn: number;
+}
+
+async function refreshSession(): Promise<boolean> {
+  if (!refreshToken) {
+    return false;
+  }
+
+  if (refreshRequest) {
+    return refreshRequest;
+  }
+
+  refreshRequest = (async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refreshToken }),
+      });
+
+      if (!response.ok) {
+        return false;
+      }
+
+      const data = await response.json() as RefreshResponse;
+      authToken = data.token;
+      refreshToken = data.refreshToken;
+      return true;
+    } catch {
+      return false;
+    } finally {
+      refreshRequest = null;
+    }
+  })();
+
+  return refreshRequest;
+}
+
 /**
  * Make an authenticated API request
  */
 async function apiRequest<T>(
   path: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  allowRetry = true
 ): Promise<T> {
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
@@ -58,9 +118,17 @@ async function apiRequest<T>(
   });
 
   if (!response.ok) {
-    // Handle expired/invalid token — trigger session expired flow
+    if (response.status === 401 && authToken && allowRetry) {
+      const refreshed = await refreshSession();
+      if (refreshed) {
+        return apiRequest<T>(path, options, false);
+      }
+    }
+
+    // Handle expired/invalid token after refresh attempt
     if (response.status === 401 && authToken) {
       authToken = null;
+      refreshToken = null;
       onSessionExpired?.();
       throw new Error('Session expired. Please log in again.');
     }
@@ -76,6 +144,8 @@ async function apiRequest<T>(
 
 export interface SignupResponse {
   token: string;
+  refreshToken: string;
+  expiresIn: number;
   user: {
     uid: string;
     username: string;
@@ -85,6 +155,8 @@ export interface SignupResponse {
 
 export interface LoginResponse {
   token: string;
+  refreshToken: string;
+  expiresIn: number;
   user: {
     uid: string;
     username: string;
@@ -113,6 +185,7 @@ export async function login(email: string, password: string): Promise<LoginRespo
 export async function logout(): Promise<void> {
   await apiRequest('/api/auth/logout', { method: 'POST' });
   setAuthToken(null);
+  setRefreshToken(null);
 }
 
 // ============ Password Reset API ============

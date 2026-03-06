@@ -69,7 +69,7 @@ You can help users customize their desktop using TOOL CALLS. When a user wants t
 
 4. **setWallpaper** - Set a wallpaper pattern
    Usage: \`{"tool": "setWallpaper", "args": {"value": "PATTERN"}}\`
-   Patterns: none, dots, diagonal, grid, checkerboard, waves, zigzag, crosses, diamonds, bricks
+   Patterns: default, diagonal, checkerboard, denim, crosshatch, dots, lines, brick, weave, navy, teal, purple, forest
 
 5. **setItemIcon** - Change an item's icon (folders, files)
    Usage: \`{"tool": "setItemIcon", "args": {"itemId": "ID", "icon": "ICON_NAME"}}\`
@@ -143,9 +143,19 @@ const VALID_TOOLS = new Set([
 
 // Valid wallpaper patterns
 const VALID_WALLPAPERS = new Set([
-  'none', 'dots', 'diagonal', 'grid', 'checkerboard',
-  'waves', 'zigzag', 'crosses', 'diamonds', 'bricks',
+  'default', 'diagonal', 'checkerboard', 'denim', 'crosshatch',
+  'dots', 'lines', 'brick', 'weave', 'navy', 'teal', 'purple', 'forest',
 ]);
+
+const WALLPAPER_ALIASES: Record<string, string> = {
+  none: 'default',
+  grid: 'checkerboard',
+  waves: 'weave',
+  zigzag: 'diagonal',
+  crosses: 'crosshatch',
+  diamonds: 'denim',
+  bricks: 'brick',
+};
 
 // Valid widget types
 const VALID_WIDGET_TYPES = new Set([
@@ -208,6 +218,12 @@ function extractToolCalls(responseText: string): ToolCall[] {
 function isValidHexColor(color: unknown): color is string {
   if (typeof color !== 'string') return false;
   return /^#[0-9A-Fa-f]{6}$/.test(color);
+}
+
+function normalizeWallpaper(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = WALLPAPER_ALIASES[value] || value;
+  return VALID_WALLPAPERS.has(normalized) ? normalized : null;
 }
 
 /**
@@ -300,8 +316,8 @@ async function executeTool(
       }
 
       case 'setWallpaper': {
-        const value = args.value;
-        if (typeof value !== 'string' || !VALID_WALLPAPERS.has(value)) {
+        const value = normalizeWallpaper(args.value);
+        if (!value) {
           return { success: false, message: `Invalid wallpaper pattern. Valid options: ${Array.from(VALID_WALLPAPERS).join(', ')}` };
         }
         const response = await stub.fetch(new Request('http://internal/profile', {
@@ -332,7 +348,7 @@ async function executeTool(
         const response = await stub.fetch(new Request('http://internal/items', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ items: [{ id: itemId, customIcon: icon }] }),
+          body: JSON.stringify([{ id: itemId, updates: { customIcon: icon } }]),
         }));
         if (!response.ok) {
           return { success: false, message: 'Failed to update item icon.' };

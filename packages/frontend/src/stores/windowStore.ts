@@ -358,7 +358,8 @@ export const useWindowStore = create<WindowStore>((set, get) => ({
       const menuBarHeight = 20;
 
       const adjustedWindows = validWindows.map((w) => {
-        let { position, size } = w;
+        let { position } = w;
+        const size = w.size;
 
         // Ensure window is not off-screen
         if (position.x < 0) position = { ...position, x: 0 };

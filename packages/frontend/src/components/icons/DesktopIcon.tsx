@@ -2,7 +2,7 @@ import { useCallback, useRef, useEffect, memo } from 'react';
 import type { DesktopItem } from '../../types';
 import { FolderIcon, TextFileIcon, ImageFileIcon, LinkIcon, AudioFileIcon, VideoFileIcon, PDFFileIcon, WidgetIcon } from './PixelIcons';
 import { ThumbnailIcon } from './ThumbnailIcon';
-import { renderCustomIcon, CUSTOM_ICON_LIBRARY, type CustomIconId } from './CustomIconLibrary';
+import { renderCustomIcon, CUSTOM_ICON_LIBRARY, type CustomIconId } from './customIconUtils';
 import { getCustomIconUrl } from '../../services/api';
 import { slugify } from '../../utils/slugify';
 import styles from './DesktopIcon.module.css';
@@ -123,10 +123,11 @@ function DesktopIconInner({
 
   // Clean up pointer capture if component unmounts during drag
   useEffect(() => {
+    const iconElement = iconRef.current;
     return () => {
-      if (iconRef.current && capturedPointerIdRef.current !== null) {
+      if (iconElement && capturedPointerIdRef.current !== null) {
         try {
-          iconRef.current.releasePointerCapture(capturedPointerIdRef.current);
+          iconElement.releasePointerCapture(capturedPointerIdRef.current);
         } catch {
           // Ignore - pointer may already be released
         }

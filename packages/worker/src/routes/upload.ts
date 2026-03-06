@@ -394,7 +394,7 @@ async function checkItemIsPublic(
   const data = await response.json() as { items: DesktopItem[] };
   const item = data.items.find(i => i.id === itemId);
 
-  return item?.isPublic ?? false;
+  return (item?.isPublic ?? false) && !item?.isTrashed;
 }
 
 // Note: sanitizeFilename is now imported from utils/sanitize.ts

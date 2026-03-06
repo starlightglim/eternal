@@ -29,7 +29,7 @@ interface ContextMenuProps {
  */
 export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
-  const [adjustedPos, setAdjustedPos] = useState(position);
+  const [adjustedPos] = useState(position);
 
   // Adjust position to keep menu within viewport - runs synchronously before paint
   useLayoutEffect(() => {
@@ -55,7 +55,8 @@ export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
     }
     if (y < 8) y = 8;
 
-    setAdjustedPos({ x, y });
+    menu.style.left = `${x}px`;
+    menu.style.top = `${y}px`;
   }, [position]);
 
   // Close on click outside

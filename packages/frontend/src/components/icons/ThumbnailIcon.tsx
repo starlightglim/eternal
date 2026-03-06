@@ -42,10 +42,13 @@ export function ThumbnailIcon({
   size = 32,
   isSelected = false,
 }: ThumbnailIconProps) {
+  const supportsIntersectionObserver = typeof IntersectionObserver !== 'undefined';
   // Track whether the icon is visible in the viewport
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(!supportsIntersectionObserver);
   // Track image load state: 'idle' (waiting for visibility), 'loading', 'loaded', 'error'
-  const [loadState, setLoadState] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
+  const [loadState, setLoadState] = useState<'idle' | 'loading' | 'loaded' | 'error'>(
+    supportsIntersectionObserver ? 'idle' : 'loading'
+  );
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Use thumbnail key if available, otherwise use full image
@@ -58,9 +61,7 @@ export function ThumbnailIcon({
     if (!element) return;
 
     // If IntersectionObserver is not available (old browsers), load immediately
-    if (typeof IntersectionObserver === 'undefined') {
-      setIsVisible(true);
-      setLoadState('loading');
+    if (!supportsIntersectionObserver) {
       return;
     }
 
@@ -87,7 +88,7 @@ export function ThumbnailIcon({
     return () => {
       observer.disconnect();
     };
-  }, []);
+  }, [supportsIntersectionObserver]);
 
   const handleLoad = useCallback(() => {
     setLoadState('loaded');
